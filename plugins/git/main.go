@@ -2,20 +2,17 @@ package main
 
 import (
 	"os"
+	
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
-	"gitlab.com/sorcero/devops/buildsys/pkg/schema"
+	"github.com/srevinsaju/buildsys/pkg/schema"
 )
 
-// Here is a real implementation of Provider
-type ProviderGit struct {
+// Here is a real implementation of Stage
+type StageGit struct {
 	logger hclog.Logger
-}
-
-func (g *ProviderGit) Name() string {
-	g.logger.Debug("message from Provider.Git.Name")
-	return "Hello!"
+	context schema.Context
 }
 
 // handshakeConfigs are used to just do a basic handshake between
@@ -30,18 +27,22 @@ var handshakeConfig = plugin.HandshakeConfig{
 
 func main() {
 	logger := hclog.New(&hclog.LoggerOptions{
-		Level:      hclog.Trace,
+		Level:      hclog.DefaultLevel,
 		Output:     os.Stderr,
 		JSONFormat: true,
 		Color: hclog.ForceColor,
 	})
 
-	git := &ProviderGit{
-		logger: logger,
+	git := &StageGit{
+		//logger: logger,
+		context: schema.Context{
+			Data: map[string]string{},
+			//Mutex: &sync.Mutex{},
+		},
 	}
 	// pluginMap is the map of plugins we can dispense.
 	var pluginMap = map[string]plugin.Plugin{
-		"provider": &schema.ProviderPlugin{Impl: git},
+		"provider": &schema.StagePlugin{Impl: git},
 	}
 
 	logger.Debug("message from plugin", "go", "bar")

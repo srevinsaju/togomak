@@ -2,24 +2,39 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 
+	log "github.com/sirupsen/logrus"
 	hclog "github.com/hashicorp/go-hclog"
+	
 	"github.com/hashicorp/go-plugin"
-	"gitlab.com/sorcero/devops/buildsys/pkg/schema"
+	"github.com/srevinsaju/buildsys/pkg/schema"
 )
 
+func init() {
+	// Log as JSON instead of the default ASCII formatter.
+	// log.SetFormatter(&log.JSONFormatter{})
+
+	// Output to stdout instead of the default stderr
+	// Can be any io.Writer, see below for File example
+	log.SetOutput(os.Stdout)
+
+	// Only log the warning severity or above.
+	log.SetLevel(log.TraceLevel)
+}
+
 func main() {
+
+	ctxLog := log.WithField("context", "main")
+
 	// Create an hclog.Logger
 	logger := hclog.New(&hclog.LoggerOptions{
-		Name:   "plugin",
+		Name:   "provider",
 		Output: os.Stdout,
-		Level:  hclog.Debug,
-		Color:  hclog.ForceColor,
+		Level:  hclog.Warn,
 	})
-
+	
 	// We're a host! Start by launching the plugin process.
 	client := plugin.NewClient(&plugin.ClientConfig{
 		HandshakeConfig: handshakeConfig,
@@ -32,19 +47,23 @@ func main() {
 	// Connect via RPC
 	rpcClient, err := client.Client()
 	if err != nil {
-		log.Fatal(err)
+		ctxLog.Fatal(err)
 	}
 
 	// Request the plugin
 	raw, err := rpcClient.Dispense("provider")
 	if err != nil {
-		log.Fatal(err)
+		ctxLog.Fatal(err)
 	}
 
 	// We should have a Greeter now! This feels like a normal interface
 	// implementation but is in fact over an RPC connection.
-	provider := raw.(schema.Provider)
+	provider := raw.(schema.Stage)
 	fmt.Println(provider.Name())
+	provider.GatherInfo()
+	ctxLog.Info("Gathered info")
+	ctxLog.Info(provider.GetContext())
+	
 }
 
 // handshakeConfigs are used to just do a basic handshake between
@@ -59,5 +78,5 @@ var handshakeConfig = plugin.HandshakeConfig{
 
 // pluginMap is the map of plugins we can dispense.
 var pluginMap = map[string]plugin.Plugin{
-	"provider": &schema.ProviderPlugin{},
+	"provider": &schema.StagePlugin{},
 }
