@@ -42,7 +42,7 @@ func main() {
 	}
 	// pluginMap is the map of plugins we can dispense.
 	var pluginMap = map[string]plugin.Plugin{
-		"provider": &schema.StagePlugin{Impl: git},
+		"data": &schema.StagePlugin{Impl: git},
 	}
 
 	logger.Debug("message from plugin", "go", "bar")
