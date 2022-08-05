@@ -13,10 +13,10 @@ import (
 	"github.com/kendru/darwin/go/depgraph"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/srevinsaju/buildsys/pkg/context"
-	"github.com/srevinsaju/buildsys/pkg/ops"
-	"github.com/srevinsaju/buildsys/pkg/provider"
-	"github.com/srevinsaju/buildsys/pkg/schema"
+	"github.com/srevinsaju/togomak/pkg/context"
+	"github.com/srevinsaju/togomak/pkg/ops"
+	"github.com/srevinsaju/togomak/pkg/provider"
+	"github.com/srevinsaju/togomak/pkg/schema"
 )
 
 func init() {
@@ -91,11 +91,18 @@ func main() {
 		if len(stage.DependsOn) == 0 {
 			// no depends on
 			validateLog.Debugf("%s stage depends on %s stage", stage.Id, rootStage.Id)
-			graph.DependOn(stage.Id, rootStage.Id)
+			err = graph.DependOn(stage.Id, rootStage.Id)
+			if err != nil {
+				ctx.Logger.Warn("Error while creating the dependency tree", err)
+			}
 		}
 		for _, dep := range stage.DependsOn {
 			validateLog.Debugf("%s stage depends on %s stage", dep, stage.Id)
-			graph.DependOn(stage.Id, dep)
+			err = graph.DependOn(stage.Id, dep)
+			if err != nil {
+				ctx.Logger.Warn("Error while creating the dependency tree", err)
+			}
+
 		}
 	}
 

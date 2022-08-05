@@ -6,9 +6,9 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
-	
-	"github.com/srevinsaju/buildsys/pkg/context"
-	"github.com/srevinsaju/buildsys/pkg/schema"
+
+	"github.com/srevinsaju/togomak/pkg/context"
+	"github.com/srevinsaju/togomak/pkg/schema"
 )
 
 // handshakeConfigs are used to just do a basic handshake between
@@ -44,7 +44,7 @@ func initProvider(ctx *context.Context, p schema.ProviderConfig) schema.Provider
 			providers = make(map[string]schema.Provider)
 		}
 		provider := schema.Provider{
-			Config:   p,
+			Config:  p,
 			Context: ctx,
 		}
 		providers[p.Id] = provider
@@ -77,7 +77,7 @@ func initProvider(ctx *context.Context, p schema.ProviderConfig) schema.Provider
 		Config:   p,
 		Client:   client,
 		Provider: raw.(schema.Stage),
-		Context: ctx,
+		Context:  ctx,
 	}
 	providers[p.Id] = provider
 	ctx.Logger.Trace("providers", providers)
@@ -96,7 +96,7 @@ func Destroy(ctx *context.Context, p schema.ProviderConfig) {
 	v, ok := providers[p.Id]
 	ctx.Logger.Tracef("Currently loaded providers are %s", providers)
 	ctx.Logger.Tracef("Unloading provider %s", p.Id)
-	
+
 	if !ok {
 		ctx.Logger.Warnf("Provider %s is not loaded", p.Id)
 		panic("provider is not loaded on to memory yet")

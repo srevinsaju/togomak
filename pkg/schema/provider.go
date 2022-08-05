@@ -1,7 +1,7 @@
 package schema
 
 import (
-	"github.com/srevinsaju/buildsys/pkg/context"
+	"github.com/srevinsaju/togomak/pkg/context"
 
 	"github.com/hashicorp/go-plugin"
 )

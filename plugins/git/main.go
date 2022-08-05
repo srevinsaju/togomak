@@ -2,16 +2,15 @@ package main
 
 import (
 	"os"
-	
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
-	"github.com/srevinsaju/buildsys/pkg/schema"
+	"github.com/srevinsaju/togomak/pkg/schema"
 )
 
 // Here is a real implementation of Stage
 type StageGit struct {
-	logger hclog.Logger
+	logger  hclog.Logger
 	context schema.Context
 }
 
@@ -30,7 +29,7 @@ func main() {
 		Level:      hclog.DefaultLevel,
 		Output:     os.Stderr,
 		JSONFormat: true,
-		Color: hclog.ForceColor,
+		Color:      hclog.ForceColor,
 	})
 
 	git := &StageGit{

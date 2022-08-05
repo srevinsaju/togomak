@@ -7,8 +7,9 @@ import (
 	"path"
 
 	"github.com/flosch/pongo2/v6"
-	"github.com/srevinsaju/buildsys/pkg/context"
-	"github.com/srevinsaju/buildsys/pkg/schema"
+
+	"github.com/srevinsaju/togomak/pkg/context"
+	"github.com/srevinsaju/togomak/pkg/schema"
 )
 
 func RunStage(stageCtx *context.Context, stage schema.StageConfig) {
@@ -66,6 +67,7 @@ func RunStage(stageCtx *context.Context, stage schema.StageConfig) {
 
 			cmd := exec.Command("podman", "run", "--rm", "--entrypoint=sh", "-v", tempTargetRunDir+":/workspace:Z", stage.Container, "-c", "/workspace/run.sh")
 			stageCtx.Logger.Debug("Running ", cmd.String())
+
 			cmd.Stdout = stageCtx.Logger.Writer()
 			cmd.Stderr = stageCtx.Logger.Writer()
 			err = cmd.Run()
@@ -83,11 +85,11 @@ func RunStage(stageCtx *context.Context, stage schema.StageConfig) {
 
 		}
 	} else {
-		// run the args 
+		// run the args
 		newArgs := make([]string, len(stage.Args))
 
 		for i, arg := range stage.Args {
-			// render them with pongo 
+			// render them with pongo
 			tpl, err := pongo2.FromString(arg)
 			if err != nil {
 				stageCtx.Logger.Fatal("Cannot render args:", err)

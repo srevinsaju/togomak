@@ -1,7 +1,6 @@
 package main
 
-import "github.com/srevinsaju/buildsys/pkg/schema"
-
+import "github.com/srevinsaju/togomak/pkg/schema"
 
 func (g *StageGit) Name() string {
 	return "git"
@@ -27,10 +26,8 @@ func (g *StageGit) GatherInfo() error {
 	return nil
 }
 
-
 func (g *StageGit) SetContext(context schema.Context) {
-	
-	
+
 	g.context.Data = context.Data
 }
 
