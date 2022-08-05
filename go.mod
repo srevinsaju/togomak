@@ -5,11 +5,17 @@ go 1.17
 require (
 	github.com/hashicorp/go-hclog v1.2.2
 	github.com/hashicorp/go-plugin v1.4.4
+	github.com/moby/sys/mountinfo v0.6.2
 	github.com/sirupsen/logrus v1.9.0
+	github.com/spf13/afero v1.9.2
+	github.com/urfave/cli/v2 v2.11.1
 )
 
 require (
+	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/google/go-cmp v0.5.7 // indirect
+	github.com/russross/blackfriday/v2 v2.1.0 // indirect
+	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 )
 

@@ -21,7 +21,7 @@ type StageGit struct {
 var handshakeConfig = plugin.HandshakeConfig{
 	ProtocolVersion:  1,
 	MagicCookieKey:   "BASIC_PLUGIN",
-	MagicCookieValue: "buildsys",
+	MagicCookieValue: "togomak",
 }
 
 func main() {

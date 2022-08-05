@@ -2,19 +2,18 @@ package schema
 
 import (
 	"net/rpc"
-	
 
 	"github.com/hashicorp/go-plugin"
 )
 
-type Context struct{
+type Context struct {
 	Data map[string]string
 }
 
 // Stage is the interface that we're exposing as a plugin.
 type Stage interface {
 	Name() string
-	Description() string 
+	Description() string
 	//Version() string
 	//Author() string
 
@@ -28,15 +27,12 @@ type Stage interface {
 // Here is an implementation that talks over RPC
 type StageRPC struct{ client *rpc.Client }
 
-
 // Here is the RPC server that StageRPC talks to, conforming to
 // the requirements of net/rpc
 type StageRPCServer struct {
 	// This is the real implementation
 	Impl Stage
 }
-
-
 
 // This is the implementation of plugin.Plugin so we can serve/consume this
 //

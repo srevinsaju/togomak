@@ -12,7 +12,6 @@ func (g *StageRPC) GatherInfo() error {
 	return resp
 }
 
-
 func (s *StageRPCServer) GatherInfo(args interface{}, resp *error) error {
 	*resp = s.Impl.GatherInfo()
 	return nil

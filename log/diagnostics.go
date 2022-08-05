@@ -3,15 +3,14 @@ package log
 import "fmt"
 
 type Pos struct {
-	Line int
+	Line   int
 	Column int
 }
 
-
 type Diagnostic struct {
-	Error error
-	Description string 
-	Pos Pos
+	Error       error
+	Description string
+	Pos         Pos
 }
 
 type Diagnostics []Diagnostic
@@ -28,7 +27,6 @@ func (d Diagnostics) HasError() bool {
 	}
 	return false
 }
-
 
 func (d Diagnostics) Show() {
 	for _, diag := range d {

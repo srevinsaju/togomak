@@ -12,7 +12,6 @@ func (g *StageRPC) Name() string {
 	return resp
 }
 
-
 func (s *StageRPCServer) Name(args interface{}, resp *string) error {
 	*resp = s.Impl.Name()
 	return nil

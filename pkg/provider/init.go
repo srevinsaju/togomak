@@ -18,7 +18,7 @@ import (
 var handshakeConfig = plugin.HandshakeConfig{
 	ProtocolVersion:  1,
 	MagicCookieKey:   "BASIC_PLUGIN",
-	MagicCookieValue: "buildsys",
+	MagicCookieValue: "togomak",
 }
 
 // pluginMap is the map of plugins we can dispense.

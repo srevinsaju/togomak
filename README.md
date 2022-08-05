@@ -14,14 +14,14 @@ Building from source
 --------------------
 You will require Go 1.18+ to build this project.
 ```bash
-cd cmd/buildsys
+cd cmd/togomak
 go build .
 ```
 
 Running the binary
 ------------------
 ```bash
-./buildsys ./config.yaml
+./togomak ./config.yaml
 ```
 
 ## Concepts 
