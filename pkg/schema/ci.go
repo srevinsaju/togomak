@@ -2,7 +2,8 @@ package schema
 
 type StageConfig struct {
 	Id          string   `yaml:"id"`
-	DependsOn   []string `yaml:"depends-on"`
+	DependsOn   []string `yaml:"depends-on,omitempty"`
+	Condition   string   `yaml:"condition,omitempty"`
 	Plugin      string   `yaml:"plugin,omitempty"`
 	Script      string   `yaml:"script,omitempty"`
 	Args        []string `yaml:"args,omitempty"`
@@ -27,7 +28,8 @@ func (p *StageConfig) LoadStage() string {
 }
 
 type ProviderConfig struct {
-	Id   string `yaml:"id"`
+	Id string `yaml:"id"`
+
 	Git  string `yaml:"git"`
 	Path string `yaml:"path"`
 }

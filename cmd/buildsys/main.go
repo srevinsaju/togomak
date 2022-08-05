@@ -2,76 +2,50 @@ package main
 
 import (
 	"io/ioutil"
+	"strings"
 	"sync"
 
 	"gopkg.in/yaml.v3"
 
 	"os"
-	"os/exec"
 
-	hclog "github.com/hashicorp/go-hclog"
+	"github.com/flosch/pongo2/v6"
 	"github.com/kendru/darwin/go/depgraph"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/hashicorp/go-plugin"
 	"github.com/srevinsaju/buildsys/pkg/context"
 	"github.com/srevinsaju/buildsys/pkg/ops"
+	"github.com/srevinsaju/buildsys/pkg/provider"
 	"github.com/srevinsaju/buildsys/pkg/schema"
 )
 
 func init() {
 	// Log as JSON instead of the default ASCII formatter.
-	log.SetFormatter(&log.TextFormatter{PadLevelText: true})
+	log.SetFormatter(&log.TextFormatter{
+		DisableTimestamp: true,
+	})
 
 	// Output to stdout instead of the default stderr
 	// Can be any io.Writer, see below for File example
 	log.SetOutput(os.Stdout)
 
 	// Only log the warning severity or above.
-	log.SetLevel(log.TraceLevel)
+	if os.Getenv("BUILDSYS_DEBUG") != "" {
+		log.SetLevel(log.TraceLevel)
+	} else {
+		log.SetLevel(log.InfoLevel)
+	}
+
 }
 
 func main() {
 
 	ctx := &context.Context{
 		Logger: log.WithFields(log.Fields{}),
+		Data:   map[string]interface{}{},
 	}
 
-	// Create an hclog.Logger
-	logger := hclog.New(&hclog.LoggerOptions{
-		Name:   "provider",
-		Output: os.Stdout,
-		Level:  hclog.Warn,
-	})
-
-	// We're a host! Start by launching the plugin process.
-	client := plugin.NewClient(&plugin.ClientConfig{
-		HandshakeConfig: handshakeConfig,
-		Plugins:         pluginMap,
-		Cmd:             exec.Command("../../plugins/git/git"),
-		Logger:          logger,
-	})
-	defer client.Kill()
-
-	// Connect via RPC
-	rpcClient, err := client.Client()
-	if err != nil {
-		ctx.Logger.Fatal(err)
-	}
-
-	// Request the plugin
-	raw, err := rpcClient.Dispense("data")
-	if err != nil {
-		ctx.Logger.Fatal(err)
-	}
-
-	// We should have a Greeter now! This feels like a normal interface
-	// implementation but is in fact over an RPC connection.
-	provider := raw.(schema.Stage)
-	provider.GatherInfo()
-	ctx.Logger.Info("Gathered info")
-	ctx.Logger.Info(provider.GetContext())
-
+	ctx.Logger.Debugf("Starting buildsys")
 	fileName := os.Args[len(os.Args)-1]
 	yfile, err := ioutil.ReadFile(fileName)
 	if err != nil {
@@ -92,7 +66,7 @@ func main() {
 	ctx.TempDir = tempDir
 
 	validateLog := log.WithFields(log.Fields{"context": "validate"})
-	validateLog.Info("Validating YAML config")
+	validateLog.Trace("Validating YAML config")
 
 	stages := map[string]string{}
 
@@ -123,10 +97,52 @@ func main() {
 			validateLog.Debugf("%s stage depends on %s stage", dep, stage.Id)
 			graph.DependOn(stage.Id, dep)
 		}
+	}
+
+	// load the providers
+	providers := map[string]schema.Provider{}
+
+	for _, p := range data.Providers {
+		if _, ok := providers[p.Id]; !ok {
+			providerCtx := ctx.AddChild("provider", p.Id)
+			providers[p.Id] = provider.Get(providerCtx, p)
+
+		} else {
+			validateLog.Fatal("Duplicate provider ID: " + p.Id)
+		}
 
 	}
 
-	ctx.Logger.Info("Sorting dependency tree")
+	// gather information from all providers
+	for _, p := range providers {
+		if p.Config.Path == "" {
+			continue
+		}
+		ctx.Logger.Tracef("Requesting information from provider %s", p.Config.Id)
+
+		err := p.Provider.GatherInfo()
+		if err != nil {
+			p.Context.Logger.Fatal(err)
+		}
+		for k, v := range p.Provider.GetContext().Data {
+			p.Context.Logger.Debugf("Received context from provider %s: %v", k, v)
+			p.Context.Data[k] = v
+		}
+
+	}
+
+	ctx.Logger.Tracef("Context before build %v", ctx.Data)
+	//ctx.Logger.Tracef("SHA is %s", ctx.Data["provider"].(map[string]interface{})["git"].(map[string]interface{})["sha"])
+
+	// unload providers
+	defer func() {
+		ctx.Logger.Debug("Unloading providers")
+		for _, p := range providers {
+			provider.Destroy(ctx, p.Config)
+		}
+	}()
+
+	ctx.Logger.Debug("Sorting dependency tree")
 
 	for _, layer := range graph.TopoSortedLayers() {
 
@@ -138,10 +154,28 @@ func main() {
 				continue
 			}
 			stage := data.Stages.GetStageById(l)
+			stageCtx := ctx.AddChild("stage", stage.Id)
+
+			tpl, err := pongo2.FromString(stage.Condition)
+			if err != nil {
+				stageCtx.Logger.Fatal("Failed to parse condition", err)
+			}
+			condition, err := tpl.Execute(ctx.Data)
+			if err != nil {
+				stageCtx.Logger.Fatal("Failed to execute condition", err)
+			}
+			stageCtx.Logger.Debugf("condition towards running stage is %s", condition)
+
+			if strings.ToLower(strings.TrimSpace(condition)) == "false" {
+				// the stage should not be executed
+				stageCtx.Logger.Info("Skipping stage")
+				continue
+			}
+
 			wg.Add(1)
 			go func(l string) {
 				defer wg.Done()
-				ops.RunStage(ctx, stage)
+				ops.RunStage(stageCtx, stage)
 			}(l)
 		}
 
@@ -149,21 +183,6 @@ func main() {
 
 	}
 
-}
+	ctx.Logger.Debug("All stages completed")
 
-// handshakeConfigs are used to just do a basic handshake between
-// a plugin and host. If the handshake fails, a user friendly error is shown.
-// This prevents users from executing bad plugins or executing a plugin
-// directory. It is a UX feature, not a security feature.
-var handshakeConfig = plugin.HandshakeConfig{
-	ProtocolVersion:  1,
-	MagicCookieKey:   "BASIC_PLUGIN",
-	MagicCookieValue: "buildsys",
-}
-
-// pluginMap is the map of plugins we can dispense.
-var pluginMap = map[string]plugin.Plugin{
-	"stage":    &schema.StagePlugin{},
-	"data":     &schema.StagePlugin{},
-	"provider": &schema.StagePlugin{},
 }

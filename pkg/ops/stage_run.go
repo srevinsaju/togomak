@@ -6,25 +6,31 @@ import (
 	"os/exec"
 	"path"
 
+	"github.com/flosch/pongo2/v6"
 	"github.com/srevinsaju/buildsys/pkg/context"
 	"github.com/srevinsaju/buildsys/pkg/schema"
 )
 
-func RunStage(ctx *context.Context, stage schema.StageConfig) {
-	stageCtx := ctx.AddChild("stage", stage.Id)
+func RunStage(stageCtx *context.Context, stage schema.StageConfig) {
 
-	// show some user friendly output on the details of the stage about to be run 
+	rootCtx := stageCtx.RootParent()
+	// show some user friendly output on the details of the stage about to be run
 	if stage.Name != "" && stage.Description != "" {
-		stageCtx.Logger.Infof("Starting stage: ", stage.Name, " (", stage.Description, ")")
+		stageCtx.Logger.Infof("Stage -> %s (%s)", stage.Name, stage.Description)
 	} else if stage.Name != "" {
-		stageCtx.Logger.Info("Starting stage: ", stage.Name)
+		stageCtx.Logger.Infof("Stage -> %s", stage.Name)
 	} else if stage.Description != "" {
-		stageCtx.Logger.Info("Starting stage: ", stage.Description)
+		stageCtx.Logger.Infof("Stage -> %s", stage.Description)
 	} else {
-		stageCtx.Logger.Info("Starting stage: ", stage.Id)
+		stageCtx.Logger.Infof("Stage -> %s", stage.Id)
 	}
 
 	var err error
+
+	if stage.Script != "" && len(stage.Args) != 0 {
+		// both script and args cannot be set simulatanously
+		stageCtx.Logger.Fatal("Script and Args cannot be set simulatanously")
+	}
 
 	if stage.Script != "" {
 		stageCtx.Logger.Debug("Preparing script")
@@ -32,7 +38,7 @@ func RunStage(ctx *context.Context, stage schema.StageConfig) {
 			stageCtx.Logger.Fatal("Cannot use both script and plugin")
 		}
 
-		tempTargetRunDir := path.Join(ctx.TempDir, stage.Id)
+		tempTargetRunDir := path.Join(stageCtx.TempDir, stage.Id)
 		targetRunPath := path.Join(tempTargetRunDir, "run.sh")
 		stageCtx.Logger.Debug("Writing script to ", targetRunPath)
 		err = os.MkdirAll(tempTargetRunDir, 0755)
@@ -40,7 +46,16 @@ func RunStage(ctx *context.Context, stage schema.StageConfig) {
 			stageCtx.Logger.Fatal(err)
 		}
 
-		err = ioutil.WriteFile(targetRunPath, []byte(stage.Script), 0755)
+		tpl, err := pongo2.FromString(stage.Script)
+		if err != nil {
+			stageCtx.Logger.Fatal(err)
+		}
+		data, err := tpl.Execute(pongo2.Context(stageCtx.RootParent().Data))
+		if err != nil {
+			stageCtx.Logger.Fatal(err)
+		}
+
+		err = ioutil.WriteFile(targetRunPath, []byte(data), 0755)
 		if err != nil {
 			stageCtx.Logger.Fatal(err)
 		}
@@ -67,6 +82,22 @@ func RunStage(ctx *context.Context, stage schema.StageConfig) {
 			}
 
 		}
-	}
+	} else {
+		// run the args 
+		newArgs := make([]string, len(stage.Args))
 
+		for i, arg := range stage.Args {
+			// render them with pongo 
+			tpl, err := pongo2.FromString(arg)
+			if err != nil {
+				stageCtx.Logger.Fatal("Cannot render args:", err)
+			}
+			parsed, err := tpl.Execute(rootCtx.Data)
+			if err != nil {
+				stageCtx.Logger.Fatal("Cannot render args:", err)
+			}
+			newArgs[i] = parsed
+
+		}
+	}
 }

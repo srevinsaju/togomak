@@ -1,5 +1,6 @@
 package schema
 
+
 func (g *StageRPC) GetContext() Context {
 	var resp Context
 	err := g.client.Call("Plugin.GetContext", new(interface{}), &resp)

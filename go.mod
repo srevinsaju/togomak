@@ -9,12 +9,8 @@ require (
 )
 
 require (
-	github.com/kr/pretty v0.2.0 // indirect
-	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
-)
-
-require (
 	github.com/fatih/color v1.13.0 // indirect
+	github.com/flosch/pongo2/v6 v6.0.0
 	github.com/golang/protobuf v1.3.4 // indirect
 	github.com/hashicorp/yamux v0.0.0-20180604194846-3520598351bb // indirect
 	github.com/kendru/darwin/go/depgraph v0.0.0-20220319173517-8abc3541da93
