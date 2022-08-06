@@ -17,13 +17,13 @@ func RunStage(stageCtx *context.Context, stage schema.StageConfig) {
 	rootCtx := stageCtx.RootParent()
 	// show some user friendly output on the details of the stage about to be run
 	if stage.Name != "" && stage.Description != "" {
-		stageCtx.Logger.Infof("Stage -> %s (%s)", stage.Name, stage.Description)
+		stageCtx.Logger.Infof("[+] %s (%s)", stage.Name, stage.Description)
 	} else if stage.Name != "" {
-		stageCtx.Logger.Infof("Stage -> %s", stage.Name)
+		stageCtx.Logger.Infof("[+] %s", stage.Name)
 	} else if stage.Description != "" {
-		stageCtx.Logger.Infof("Stage -> %s", stage.Description)
+		stageCtx.Logger.Infof("[+] %s", stage.Description)
 	} else {
-		stageCtx.Logger.Infof("Stage -> %s", stage.Id)
+		stageCtx.Logger.Infof("[+] %s", stage.Id)
 	}
 
 	var err error

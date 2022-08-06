@@ -88,6 +88,15 @@ stages:
 ```
 
 
+### Build Options
+Some specific `togomak` configuration can be overriden in the `togomak` section
+
+```yaml 
+togomak: 
+    chdir: false  # do not automatically change directory to the root where .togomak is stored
+    debug: false  # do not show debug logs by default
+    
+```
 
 ### Configuration 
 Configuration is in `yaml`. Some fields currently supported are, some fields 
