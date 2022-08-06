@@ -22,7 +22,27 @@ func (g *StageGit) Run() error {
 func (g *StageGit) GatherInfo() error {
 	//g.context.Mutex.Lock()
 	//defer g.context.Mutex.Unlock()
-	g.context.Data["sha"] = "a34cef"
+	if g.error != nil {
+		return g.error
+	}
+	ref, err := g.g.Head()
+	if err != nil {
+		return err
+	}
+	sha := ref.String()
+	g.context.Data["branch"] = ref.Name().String()
+	w, err := g.g.Worktree()
+	if err != nil {
+		return err
+	}
+	s, err := w.Status()
+	if err != nil {
+		return err
+	}
+	if !s.IsClean() {
+		sha += "-dirty"
+	}
+	g.context.Data["sha"] = sha
 	return nil
 }
 

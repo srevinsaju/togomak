@@ -17,7 +17,7 @@ func init() {
 	log.SetOutput(os.Stdout)
 
 	// Only log the warning severity or above.
-	if os.Getenv("BUILDSYS_DEBUG") != "" {
+	if os.Getenv("TOGOMAK_DEBUG") != "" {
 		log.SetLevel(log.TraceLevel)
 	} else {
 		log.SetLevel(log.InfoLevel)

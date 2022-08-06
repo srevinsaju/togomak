@@ -1,6 +1,7 @@
 package ops
 
 import (
+	"github.com/srevinsaju/togomak/pkg/ui"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -12,25 +13,29 @@ import (
 	"github.com/srevinsaju/togomak/pkg/schema"
 )
 
+func PrepareStage(ctx *context.Context, stage schema.StageConfig) {
+	// show some user friendly output on the details of the stage about to be run
+	if stage.Name != "" && stage.Description != "" {
+		ctx.Logger.Infof("[%s] %s (%s)", ui.Plus, stage.Name, stage.Description)
+	} else if stage.Name != "" {
+		ctx.Logger.Infof("[%s] %s", ui.Plus, stage.Name)
+	} else if stage.Description != "" {
+		ctx.Logger.Infof("[%s] %s", ui.Plus, stage.Description)
+	} else {
+		ctx.Logger.Infof("[%s] %s", ui.Plus, stage.Id)
+	}
+
+}
+
 func RunStage(stageCtx *context.Context, stage schema.StageConfig) {
 
 	rootCtx := stageCtx.RootParent()
-	// show some user friendly output on the details of the stage about to be run
-	if stage.Name != "" && stage.Description != "" {
-		stageCtx.Logger.Infof("[+] %s (%s)", stage.Name, stage.Description)
-	} else if stage.Name != "" {
-		stageCtx.Logger.Infof("[+] %s", stage.Name)
-	} else if stage.Description != "" {
-		stageCtx.Logger.Infof("[+] %s", stage.Description)
-	} else {
-		stageCtx.Logger.Infof("[+] %s", stage.Id)
-	}
 
 	var err error
 
 	if stage.Script != "" && len(stage.Args) != 0 {
-		// both script and args cannot be set simulatanously
-		stageCtx.Logger.Fatal("Script and Args cannot be set simulatanously")
+		// both script and args cannot be set simultaneously
+		stageCtx.Logger.Fatal("Script and Args cannot be set simultaneously")
 	}
 
 	if stage.Script != "" {

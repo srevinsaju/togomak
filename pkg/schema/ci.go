@@ -49,6 +49,14 @@ type StageConfig struct {
 	Description string `yaml:"description,omitempty"`
 }
 
+func NewRootStage() StageConfig {
+	return StageConfig{
+		Id:          "root",
+		Name:        "Root",
+		Description: "The root stage",
+	}
+}
+
 type StageConfigs []StageConfig
 
 func (s StageConfigs) GetStageById(id string) StageConfig {
@@ -91,6 +99,11 @@ type DataConfig struct {
 	Sensitive  bool                   `yaml:"sensitive"`
 }
 
+type OptionsConfig struct {
+	Chdir bool `yaml:"chdir"`
+	Debug bool `yaml:"debug"`
+}
+
 // SchemaConfig shows the overall YAML configuration file
 type SchemaConfig struct {
 
@@ -121,4 +134,11 @@ type SchemaConfig struct {
 
 	// Data - have not decided what to do with this yet
 	Data []DataConfig `yaml:"data"`
+
+	// Options provide togomak specific build configurations
+	Options OptionsConfig `yaml:"options"`
+
+	// Matrix is a list of parameters that can be used to build a matrix of
+	// builds. This is useful for testing multiple configurations of the same
+	Matrix map[string][]string `yaml:"matrix"`
 }

@@ -95,7 +95,6 @@ Some specific `togomak` configuration can be overriden in the `togomak` section
 togomak: 
     chdir: false  # do not automatically change directory to the root where .togomak is stored
     debug: false  # do not show debug logs by default
-    
 ```
 
 ### Configuration 

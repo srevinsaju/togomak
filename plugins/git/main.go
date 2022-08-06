@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/go-git/go-git/v5"
 	"os"
 
 	"github.com/hashicorp/go-hclog"
@@ -12,6 +13,8 @@ import (
 type StageGit struct {
 	logger  hclog.Logger
 	context schema.Context
+	g       *git.Repository
+	error   error
 }
 
 // handshakeConfigs are used to just do a basic handshake between
@@ -25,6 +28,7 @@ var handshakeConfig = plugin.HandshakeConfig{
 }
 
 func main() {
+
 	logger := hclog.New(&hclog.LoggerOptions{
 		Level:      hclog.DefaultLevel,
 		Output:     os.Stderr,
@@ -32,19 +36,22 @@ func main() {
 		Color:      hclog.ForceColor,
 	})
 
-	git := &StageGit{
+	repo, err := git.PlainOpen(".")
+
+	gitPlugin := &StageGit{
 		//logger: logger,
 		context: schema.Context{
 			Data: map[string]string{},
 			//Mutex: &sync.Mutex{},
 		},
+		logger: logger,
+		g:      repo,
+		error:  err,
 	}
 	// pluginMap is the map of plugins we can dispense.
 	var pluginMap = map[string]plugin.Plugin{
-		"data": &schema.StagePlugin{Impl: git},
+		"data": &schema.StagePlugin{Impl: gitPlugin},
 	}
-
-	logger.Debug("message from plugin", "go", "bar")
 
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: handshakeConfig,

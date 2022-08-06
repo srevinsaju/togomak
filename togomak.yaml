@@ -13,14 +13,14 @@ stages:
     script: |
       go build -v -o ./.togomak.plugins/togomak-provider-git github.com/srevinsaju/togomak/plugins/git
 
-  - id: togomak
+  - id: build
     script: |
       go build -v -o ./cmd/togomak/togomak github.com/srevinsaju/togomak/cmd/togomak 
 
   - id: install
     condition: true
     depends-on:
-      - togomak
+      - build
     script: |
       go install github.com/srevinsaju/togomak/cmd/togomak
       

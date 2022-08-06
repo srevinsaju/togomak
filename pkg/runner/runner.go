@@ -1,21 +1,22 @@
 package runner
 
 import (
-	"github.com/flosch/pongo2/v6"
 	"github.com/kendru/darwin/go/depgraph"
+	cartesian "github.com/schwarmco/go-cartesian-product"
 	log "github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/pkg/config"
 	"github.com/srevinsaju/togomak/pkg/context"
-	"github.com/srevinsaju/togomak/pkg/ops"
 	"github.com/srevinsaju/togomak/pkg/provider"
 	"github.com/srevinsaju/togomak/pkg/schema"
+	"github.com/srevinsaju/togomak/pkg/ui"
+
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
-	"sync"
 )
+
+const SupportedCiConfigVersion = 1
 
 func Runner(cfg config.Config) {
 
@@ -32,20 +33,31 @@ func Runner(cfg config.Config) {
 		ctx.Logger.Fatal(err)
 	}
 
-	cwd := filepath.Dir(cfg.CiFile)
-	ctx.Logger.Debugf("Changing directory to %s", cwd)
-	err = os.Chdir(cwd)
-	if err != nil {
-		ctx.Logger.Warn(err)
-	}
-
 	data := schema.SchemaConfig{}
 	err = yaml.Unmarshal(yfile, &data)
 	if err != nil {
 		ctx.Logger.Fatal(err)
 	}
 
-	ctx.Logger.Debug("data", data)
+	ctx.Logger.Trace("Checking version of togomak config")
+	if data.Version != SupportedCiConfigVersion {
+
+		ctx.Logger.Fatal("Unsupported version on togomak config")
+	}
+
+	ctx.Logger.Debugf("Need to run stages: %v", cfg.RunStages)
+
+	if !data.Options.Chdir {
+		// change working directory to the directory of the config file
+		cwd := filepath.Dir(cfg.CiFile)
+		ctx.Logger.Debugf("Changing directory to %s", cwd)
+		err = os.Chdir(cwd)
+		if err != nil {
+			ctx.Logger.Warn(err)
+		}
+	}
+
+	ctx.Logger.Tracef("loaded data: %v", data)
 
 	tempDir, err := os.MkdirTemp("", ".togomak")
 	defer os.RemoveAll(tempDir)
@@ -71,10 +83,7 @@ func Runner(cfg config.Config) {
 		stages[stage.Id] = stage.Id
 	}
 
-	rootStage := schema.StageConfig{
-		Id:     "root",
-		Script: "echo Root Stage",
-	}
+	rootStage := schema.NewRootStage()
 	// generate the dependency graph with topological sort
 	graph := depgraph.New()
 	for _, stage := range data.Stages {
@@ -138,46 +147,47 @@ func Runner(cfg config.Config) {
 		}
 	}()
 
-	ctx.Logger.Debug("Sorting dependency tree")
+	// check if matrix is specified
+	if data.Matrix != nil {
 
-	for _, layer := range graph.TopoSortedLayers() {
-
-		var wg sync.WaitGroup
-
-		// run the jobs
-		for _, l := range layer {
-			if l == rootStage.Id {
-				continue
+		matrixLogger := ctx.Logger
+		var keys []string
+		var s [][]interface{}
+		for k, v := range data.Matrix {
+			keys = append(keys, k)
+			var ss []interface{}
+			for _, vv := range v {
+				ss = append(ss, vv)
 			}
-			stage := data.Stages.GetStageById(l)
-			stageCtx := ctx.AddChild("stage", stage.Id)
-
-			tpl, err := pongo2.FromString(stage.Condition)
-			if err != nil {
-				stageCtx.Logger.Fatal("Failed to parse condition", err)
-			}
-			condition, err := tpl.Execute(ctx.Data)
-			if err != nil {
-				stageCtx.Logger.Fatal("Failed to execute condition", err)
-			}
-			stageCtx.Logger.Debugf("condition towards running stage is %s", condition)
-
-			if strings.ToLower(strings.TrimSpace(condition)) == "false" {
-				// the stage should not be executed
-				stageCtx.Logger.Info("Skipping stage")
-				continue
-			}
-
-			wg.Add(1)
-			go func(l string) {
-				defer wg.Done()
-				ops.RunStage(stageCtx, stage)
-			}(l)
+			s = append(s, ss)
 		}
 
-		wg.Wait()
+		matrixText := ui.Grey("matrix")
+		for product := range cartesian.Iter(s...) {
 
+			matrixLogger.Infof("[%s] %s %s build", ui.Plus, ui.SubStage, ui.Matrix)
+
+			ctx.Data["matrix"] = map[string]string{}
+			for i := range keys {
+				matrixLogger.Infof("%s %s %s.%s=%s", ui.SubStage, ui.SubSubStage, matrixText, ui.Grey(keys[i]), product[i])
+				ctx.Data["matrix"].(map[string]string)[keys[i]] = product[i].(string)
+			}
+
+			Run(ctx, cfg, data, graph)
+		}
+
+	} else {
+		Run(ctx, cfg, data, graph)
 	}
 
-	ctx.Logger.Debug("All stages completed")
+}
+
+func contains(cfg config.Config, l string) bool {
+	for _, s := range cfg.RunStages {
+		if s == l {
+			return true
+		}
+	}
+	return false
+
 }

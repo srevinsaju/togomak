@@ -1,6 +1,8 @@
 package provider
 
 import (
+	"fmt"
+	"github.com/spf13/afero"
 	"os"
 	"os/exec"
 
@@ -40,17 +42,19 @@ func initProvider(ctx *context.Context, p schema.ProviderConfig) schema.Provider
 	})
 
 	if p.Path == "" {
-		if providers == nil {
-			providers = make(map[string]schema.Provider)
+		ctx.Logger.Debugf("Searching under .togomak.plugins dir")
+		exists, err := afero.Exists(afero.OsFs{}, fmt.Sprintf(".togomak.plugins/togomak-provider-%s", p.Id))
+		if err != nil {
+			ctx.Logger.Warnf("Failed loading provider %s: %s", p.Id, err)
+			return schema.Provider{
+				Config:  p,
+				Context: ctx,
+			}
 		}
-		provider := schema.Provider{
-			Config:  p,
-			Context: ctx,
+		if exists {
+			ctx.Logger.Debugf("Found provider %s", p.Id)
+			p.Path = fmt.Sprintf(".togomak.plugins/togomak-provider-%s", p.Id)
 		}
-		providers[p.Id] = provider
-		ctx.Logger.Debug("providers", providers)
-		return provider
-
 	}
 
 	// We're a host! Start by launching the plugin process.
