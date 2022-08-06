@@ -1,12 +1,12 @@
-buildsys
-========
+togomak
+=======
 
 > This repository is under active development ⚠️
 > Please check back regularly for updates.
 
 A CI/CD which works everywhere, even on your local environment. 
 
-`buildsys` is a customizable, extensible CI/CD system which multiple 
+`togomak` is a customizable, extensible CI/CD system which multiple 
 backends. It has a plugin based system which allows developers to write 
 their custom code for deploying 
 
@@ -100,4 +100,5 @@ Currently supported fields are:
 
 
 ```yaml
+
 ```
