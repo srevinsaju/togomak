@@ -1,6 +1,8 @@
 togomak
 =======
 
+![Screenshot](docs/img/screenshot.png)
+
 > This repository is under active development ⚠️
 > Please check back regularly for updates.
 
