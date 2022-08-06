@@ -6,6 +6,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/pkg/config"
 	"github.com/srevinsaju/togomak/pkg/context"
+	"github.com/srevinsaju/togomak/pkg/meta"
 	"github.com/srevinsaju/togomak/pkg/provider"
 	"github.com/srevinsaju/togomak/pkg/schema"
 	"github.com/srevinsaju/togomak/pkg/ui"
@@ -25,7 +26,7 @@ func Runner(cfg config.Config) {
 		Logger: log.WithFields(log.Fields{}),
 		Data:   map[string]interface{}{},
 	}
-	ctx.Logger.Debugf("Starting togomak")
+	ctx.Logger.Debugf("Starting %s", meta.AppName)
 
 	ctx.Logger.Debugf("Reading config file %s", cfg.CiFile)
 	yfile, err := ioutil.ReadFile(cfg.CiFile)
@@ -39,7 +40,7 @@ func Runner(cfg config.Config) {
 		ctx.Logger.Fatal(err)
 	}
 
-	ctx.Logger.Trace("Checking version of togomak config")
+	ctx.Logger.Tracef("Checking version of %s config", meta.AppName)
 	if data.Version != SupportedCiConfigVersion {
 
 		ctx.Logger.Fatal("Unsupported version on togomak config")
@@ -47,13 +48,19 @@ func Runner(cfg config.Config) {
 
 	ctx.Logger.Debugf("Need to run stages: %v", cfg.RunStages)
 
-	if !data.Options.Chdir {
+	if !data.Options.Chdir && cfg.ContextDir == "" {
 		// change working directory to the directory of the config file
 		cwd := filepath.Dir(cfg.CiFile)
 		ctx.Logger.Debugf("Changing directory to %s", cwd)
 		err = os.Chdir(cwd)
 		if err != nil {
 			ctx.Logger.Warn(err)
+		}
+	} else {
+		ctx.Logger.Debugf("Changing directory to %s", cfg.ContextDir)
+		err = os.Chdir(cfg.ContextDir)
+		if err != nil {
+			ctx.Logger.Fatal(err)
 		}
 	}
 

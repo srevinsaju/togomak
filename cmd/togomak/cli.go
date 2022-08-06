@@ -1,19 +1,30 @@
 package main
 
 import (
+	"github.com/srevinsaju/togomak/pkg/meta"
 	"github.com/urfave/cli/v2"
 )
 
 func initCli() *cli.App {
 	app := &cli.App{
-		Name:   "togomak",
-		Usage:  "A customizable, powerful CI/CD which works anywhere",
-		Action: cliContextRunner,
+		Name:                 meta.AppName,
+		Usage:                "A customizable, powerful CI/CD which works anywhere",
+		Version:              meta.Version,
+		Action:               cliContextRunner,
+		EnableBashCompletion: true,
+
 		Flags: []cli.Flag{
 			&cli.PathFlag{
 				Name:     "file",
 				Required: false,
 				Usage:    "The CI file which needs to run",
+			},
+
+			&cli.PathFlag{
+				Name:     "context",
+				Required: false,
+				Usage:    "The context directory where the togomak needs to run",
+				Aliases:  []string{"C"},
 			},
 
 			&cli.BoolFlag{

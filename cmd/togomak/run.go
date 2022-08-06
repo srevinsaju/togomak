@@ -1,10 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"github.com/moby/sys/mountinfo"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/srevinsaju/togomak/pkg/config"
+	"github.com/srevinsaju/togomak/pkg/meta"
 	"github.com/srevinsaju/togomak/pkg/runner"
 	"github.com/urfave/cli/v2"
 	"path"
@@ -23,7 +25,7 @@ func autoDetectFile(cwd string) string {
 		log.Fatalf("Couldn't find togomak.yaml. Searched until %s", absPath)
 	}
 
-	p := path.Join(cwd, "togomak.yaml")
+	p := path.Join(cwd, fmt.Sprintf("%s.yaml", meta.AppName))
 	exists, err := afero.Exists(fs, p)
 	if err != nil {
 		log.Fatal(err)
@@ -39,16 +41,17 @@ func autoDetectFile(cwd string) string {
 func cliContextRunner(cliCtx *cli.Context) error {
 
 	var p string
-
+	contextDir := cliCtx.Path("context")
 	if cliCtx.Path("file") != "" {
 		p = cliCtx.Path("file")
 	} else {
-		p = autoDetectFile(".")
+		p = autoDetectFile(contextDir)
 	}
 
 	runner.Runner(config.Config{
-		RunStages: cliCtx.Args().Slice(),
-		CiFile:    p,
+		RunStages:  cliCtx.Args().Slice(),
+		ContextDir: contextDir,
+		CiFile:     p,
 	})
 	return nil
 }

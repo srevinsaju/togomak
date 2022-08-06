@@ -1,6 +1,7 @@
 package config
 
 type Config struct {
-	RunStages []string
-	CiFile    string
+	RunStages  []string
+	ContextDir string
+	CiFile     string
 }
