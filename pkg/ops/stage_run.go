@@ -1,6 +1,8 @@
 package ops
 
 import (
+	"fmt"
+	"github.com/srevinsaju/togomak/pkg/config"
 	"github.com/srevinsaju/togomak/pkg/ui"
 	"io/ioutil"
 	"os"
@@ -14,7 +16,7 @@ import (
 )
 
 func PrepareStage(ctx *context.Context, stage schema.StageConfig) {
-	// show some user friendly output on the details of the stage about to be run
+	// show some user-friendly output on the details of the stage about to be run
 	if stage.Name != "" && stage.Description != "" {
 		ctx.Logger.Infof("[%s] %s (%s)", ui.Plus, stage.Name, stage.Description)
 	} else if stage.Name != "" {
@@ -27,7 +29,7 @@ func PrepareStage(ctx *context.Context, stage schema.StageConfig) {
 
 }
 
-func RunStage(stageCtx *context.Context, stage schema.StageConfig) {
+func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageConfig) {
 
 	rootCtx := stageCtx.RootParent()
 
@@ -70,24 +72,46 @@ func RunStage(stageCtx *context.Context, stage schema.StageConfig) {
 			stageCtx.Logger.Debug("Preparing container")
 			// the user requires a specific container to run on
 
-			cmd := exec.Command("podman", "run", "--rm", "--entrypoint=sh", "-v", tempTargetRunDir+":/workspace:Z", stage.Container, "-c", "/workspace/run.sh")
+			cwd, err := os.Getwd()
+			if err != nil {
+				panic(err)
+			}
+			cmd := exec.Command("podman",
+				"run", "--rm", "--entrypoint=sh",
+				"-v", fmt.Sprintf("%s:%s:Z", cwd, "/workspace"),
+				"-v", tempTargetRunDir+":/workspace.togomak.scripts:Z",
+				"-w", "/workspace.togomak.scripts",
+				stage.Container,
+				"-c", "/workspace.togomak.scripts/run.sh")
 			stageCtx.Logger.Debug("Running ", cmd.String())
 
 			cmd.Stdout = stageCtx.Logger.Writer()
 			cmd.Stderr = stageCtx.Logger.Writer()
-			err = cmd.Run()
-			if err != nil {
-				stageCtx.Logger.Fatal(err)
+			if !cfg.DryRun {
+				err = cmd.Run()
+				if err != nil {
+					stageCtx.Logger.Fatal(err)
+				}
+			} else {
+				fmt.Println(cmd.String())
 			}
 		} else {
 			cmd := exec.Command("sh", "-c", targetRunPath)
 			cmd.Stdout = stageCtx.Logger.Writer()
 			cmd.Stderr = stageCtx.Logger.Writer()
-			err = cmd.Run()
-			if err != nil {
-				stageCtx.Logger.Fatal(err)
+			if !cfg.DryRun {
+				err = cmd.Run()
+				if err != nil {
+					stageCtx.Logger.Fatal(err)
+				}
+			} else {
+				fmt.Println("# cat ", targetRunPath)
+				data, err := os.ReadFile(targetRunPath)
+				if err != nil {
+					stageCtx.Logger.Fatal(err)
+				}
+				fmt.Println(string(data))
 			}
-
 		}
 	} else {
 		// run the args
@@ -105,6 +129,17 @@ func RunStage(stageCtx *context.Context, stage schema.StageConfig) {
 			}
 			newArgs[i] = parsed
 
+		}
+		cmd := exec.Command(newArgs[0], newArgs[1:]...)
+		cmd.Stdout = stageCtx.Logger.Writer()
+		cmd.Stderr = stageCtx.Logger.Writer()
+		if !cfg.DryRun {
+			err = cmd.Run()
+			if err != nil {
+				stageCtx.Logger.Fatal(err)
+			}
+		} else {
+			fmt.Println(cmd.String())
 		}
 	}
 }

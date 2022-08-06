@@ -52,6 +52,7 @@ func cliContextRunner(cliCtx *cli.Context) error {
 		RunStages:  cliCtx.Args().Slice(),
 		ContextDir: contextDir,
 		CiFile:     p,
+		DryRun:     cliCtx.Bool("dry-run"),
 	})
 	return nil
 }

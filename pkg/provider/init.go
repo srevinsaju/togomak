@@ -3,6 +3,7 @@ package provider
 import (
 	"fmt"
 	"github.com/spf13/afero"
+	"github.com/srevinsaju/togomak/pkg/meta"
 	"os"
 	"os/exec"
 
@@ -20,7 +21,7 @@ import (
 var handshakeConfig = plugin.HandshakeConfig{
 	ProtocolVersion:  1,
 	MagicCookieKey:   "BASIC_PLUGIN",
-	MagicCookieValue: "togomak",
+	MagicCookieValue: meta.AppName,
 }
 
 // pluginMap is the map of plugins we can dispense.

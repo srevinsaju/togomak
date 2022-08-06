@@ -52,7 +52,7 @@ func Run(ctx *context.Context, cfg config.Config, data schema.SchemaConfig, grap
 			go func(l string) {
 				defer wg.Done()
 				ops.PrepareStage(ctx, stage)
-				ops.RunStage(stageCtx, stage)
+				ops.RunStage(cfg, stageCtx, stage)
 			}(l)
 		}
 

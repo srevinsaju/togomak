@@ -48,6 +48,14 @@ func initCli() *cli.App {
 				Usage:    "Enable CI mode",
 				EnvVars:  []string{"TOGOMAK_CI"},
 			},
+
+			&cli.BoolFlag{
+				Name:     "dry-run",
+				Required: false,
+				Usage:    "Don't actually run any stage; just print the commands",
+				EnvVars:  []string{"TOGOMAK_DRY_RUN"},
+				Aliases:  []string{"n", "just-print", "recon"},
+			},
 		},
 	}
 
