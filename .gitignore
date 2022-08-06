@@ -1,2 +1,3 @@
-cmd/buildsys/buildsys
 plugins/git/git
+/.togomak.plugins/
+/cmd/togomak/togomak

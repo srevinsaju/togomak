@@ -129,7 +129,6 @@ func Runner(cfg config.Config) {
 	}
 
 	ctx.Logger.Tracef("Context before build %v", ctx.Data)
-	//ctx.Logger.Tracef("SHA is %s", ctx.Data["provider"].(map[string]interface{})["git"].(map[string]interface{})["sha"])
 
 	// unload providers
 	defer func() {
