@@ -54,6 +54,11 @@ func Run(ctx *context.Context, cfg config.Config, data schema.SchemaConfig, grap
 				ops.PrepareStage(ctx, stage)
 				ops.RunStage(cfg, stageCtx, stage)
 			}(l)
+			if cfg.DryRun {
+				// we do not want to print the output of the dry run
+				// concurrently since it will create mixed up output
+				wg.Wait()
+			}
 		}
 
 		wg.Wait()
