@@ -10,6 +10,53 @@ A CI/CD which works everywhere, even on your local environment.
 backends. It has a plugin based system which allows developers to write 
 their custom code for deploying 
 
+`togomak` doesn't aim to be a competitor to other CI/CD systems like 
+GitHub Actions or Jenkins, but in fact extend on them, helping to create 
+a unified place to track builds across all infrastructure, and to make 
+local developers' build and deployment process much easier.
+
+Roadmap
+-------
+- [x] Locally executable CI/CD 
+- [x] Concurrency 
+- [x] YAML Configuration (`togomak.yaml`)
+- [x] Docker support (`.stages[].container`)
+- [x] Matrix Builds (`.matrix`)
+- [x] Dependency tree resolution (`.stages[].depends-on`)
+- [x] Plugins (`.providers[]`)
+- [x] Pipeline Templating (Django like templating, see [`pongo2`](https://github.com/flosch/pongo2))
+- [ ] Dry Run (`-n`, `--dry-run`)
+- [ ] Git 
+  - [ ] Private Git Repositories (`.togomak.git`)
+  - [ ] Public Git Repositories (`.stages[].source`)
+- [ ] External CI/CD Integration
+    - [ ] GitLab CI
+    - [ ] GitHub Actions
+    - [ ] Jenkins 
+- [ ] CI User Interface (`togomak serve`)
+- [ ] Tracking Server, helps to track local builds on developer machines
+- [ ] Deep Merge (`.stages[].extends`), to inherit properties from other stages
+- [ ] Override Build, Stages (`.stages[].overrides.script`, `.stages[].overrides.container`, `.stages[].overrides.args`)
+- [ ] Artifacts collection
+- [ ] Documentation
+- [ ] Releases
+- [ ] Parameters 
+    - [ ] Prompt
+    - [ ] Web User Interface
+    - [ ] CLI User Interface
+    - [ ] Environment Variables
+- [ ] Secrets, although its technically possible to use plugins
+    - [ ] Filtering Secrets in output
+- [ ] Build Backends
+    - [x] Local 
+    - [ ] Google Cloud Build
+- [ ] Logstash logging
+- [ ] Cross stage variable injection
+- [ ] Support for templating loops, before evaluation of stages
+- [ ] Reusable stages from third party services
+- [ ] Logo
+
+    
 Building from source 
 --------------------
 You will require Go 1.18+ to build this project.
@@ -18,10 +65,9 @@ cd cmd/togomak
 go build .
 ```
 
-Running the binary
-------------------
+Or, if you already have `togomak`, just run `togomak` and it can figure out its way 
 ```bash
-./togomak ./config.yaml
+togomak
 ```
 
 ## Concepts 

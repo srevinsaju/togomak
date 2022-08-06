@@ -53,4 +53,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-replace github.com/sirupsen/logrus v1.9.0 => /var/mnt/data/repo/github.com/srevinsaju/logrus
+replace github.com/sirupsen/logrus v1.9.0 => github.com/srevinsaju/logrus v0.0.0-20220806211329-9e78298b69a1
