@@ -10,7 +10,7 @@ import (
 
 const SupportedCiConfigVersion = 1
 
-func Runner(cfg config.Config) {
+func Orchestrator(cfg config.Config) {
 
 	/// create context
 	ctx := &context.Context{
@@ -20,7 +20,7 @@ func Runner(cfg config.Config) {
 	ctx.Logger.Debugf("Starting %s", meta.AppName)
 
 	/// load config
-	data := bootstrap.Config(ctx, cfg)
+	data := bootstrap.Config(ctx, &cfg)
 
 	/// change working directory to the directory of the config file
 	bootstrap.Chdir(ctx, cfg, data)

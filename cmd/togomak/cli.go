@@ -64,6 +64,13 @@ func initCli() *cli.App {
 				Value:       -1,
 				DefaultText: "Default, -1 implies infinity",
 			},
+
+			&cli.BoolFlag{
+				Name:     "fail-fast",
+				Required: false,
+				Usage:    "Fail fast on first error",
+				//Value:    true,
+			},
 		},
 	}
 

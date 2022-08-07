@@ -150,11 +150,16 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 
 		// TODO: implement fail fast flag
 		if err != nil {
-			stageCtx.Logger.Fatal(err)
+			if !cfg.FailFast {
+				stageCtx.Logger.Warnf("Stage failed, continuing because %s.%s=%s", ui.Options, ui.FailFast, ui.False)
+				stageCtx.Logger.Warn(err)
+			} else {
+				stageCtx.Logger.Fatal(err)
+			}
+
 		}
 
 	} else {
-
 		if scriptPath != "" {
 			fmt.Println(ui.Grey(cmd.String()))
 			fmt.Println(ui.Grey("# cat", scriptPath))

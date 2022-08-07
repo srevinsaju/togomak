@@ -48,12 +48,14 @@ func cliContextRunner(cliCtx *cli.Context) error {
 		p = autoDetectFile(contextDir)
 	}
 
-	runner.Runner(config.Config{
-		RunStages:  cliCtx.Args().Slice(),
-		ContextDir: contextDir,
-		CiFile:     p,
-		DryRun:     cliCtx.Bool("dry-run"),
-		JobsNumber: cliCtx.Int("jobs"),
+	runner.Orchestrator(config.Config{
+		RunStages:     cliCtx.Args().Slice(),
+		ContextDir:    contextDir,
+		CiFile:        p,
+		DryRun:        cliCtx.Bool("dry-run"),
+		JobsNumber:    cliCtx.Int("jobs"),
+		FailFast:      cliCtx.Bool("fail-fast"),
+		IsFailFastSet: cliCtx.IsSet("fail-fast"),
 	})
 	return nil
 }
