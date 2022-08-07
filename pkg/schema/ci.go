@@ -105,7 +105,7 @@ type DataConfig struct {
 type OptionsConfig struct {
 	Chdir    bool `yaml:"chdir"`
 	Debug    bool `yaml:"debug"`
-	FailFast bool `yaml:"failfast"`
+	FailLazy bool `yaml:"faillazy"`
 }
 
 // SchemaConfig shows the overall YAML configuration file

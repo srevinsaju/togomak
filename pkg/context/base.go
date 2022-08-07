@@ -5,13 +5,27 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type Status struct {
+	Success bool
+	Message string
+}
+
 type Context struct {
 	Logger *log.Entry
 	parent *Context
 	Graph  *depgraph.Graph
 
+	status  Status
 	TempDir string
 	Data    map[string]interface{}
+}
+
+func (c *Context) SetStatus(s Status) {
+	c.status = s
+	c.Data["status"] = map[string]interface{}{
+		"success": s.Success,
+		"message": s.Message,
+	}
 }
 
 func (c *Context) AddChild(k string, v string) *Context {

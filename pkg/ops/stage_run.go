@@ -143,6 +143,7 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 
 	cmd.Stdout = stageCtx.Logger.Writer()
 	cmd.Stderr = stageCtx.Logger.Writer()
+	status := &context.Status{}
 
 	if !cfg.DryRun {
 		stageCtx.Logger.Debug("Running ", cmd.String())
@@ -150,6 +151,7 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 
 		// TODO: implement fail fast flag
 		if err != nil {
+			status.Message = err.Error()
 			if !cfg.FailFast {
 				stageCtx.Logger.Warnf("Stage failed, continuing because %s.%s=%s", ui.Options, ui.FailFast, ui.False)
 				stageCtx.Logger.Warn(err)
@@ -157,6 +159,8 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 				stageCtx.Logger.Fatal(err)
 			}
 
+		} else {
+			status.Success = true
 		}
 
 	} else {
@@ -172,5 +176,7 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 			fmt.Println(cmd.String())
 		}
 		fmt.Println()
+		status.Success = true
 	}
+	stageCtx.SetStatus(*status)
 }

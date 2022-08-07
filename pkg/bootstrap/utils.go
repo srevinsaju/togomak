@@ -11,3 +11,13 @@ func contains(cfg config.Config, l string) bool {
 	return false
 
 }
+
+func stringContains(d []string, l string) bool {
+	for _, s := range d {
+		if s == l {
+			return true
+		}
+	}
+	return false
+
+}

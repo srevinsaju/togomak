@@ -49,4 +49,6 @@ func Orchestrator(cfg config.Config) {
 	} else {
 		bootstrap.SimpleRun(ctx, cfg, data)
 	}
+
+	bootstrap.Summary(ctx)
 }
