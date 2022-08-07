@@ -6,7 +6,8 @@ stages:
     description: Test if togomak is able to pull a container from the container registry and execute it
     container: python:alpine
     args:
-      - "--version"
+      - python
+      - --version
 
   - id: concurrency-test-1
     name: Concurrency Test 1

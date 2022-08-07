@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strings"
 
 	"github.com/flosch/pongo2/v6"
 
@@ -34,6 +35,8 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 	rootCtx := stageCtx.RootParent()
 
 	var err error
+	var cmd *exec.Cmd
+	var scriptPath string
 
 	if stage.Script != "" && len(stage.Args) != 0 {
 		// both script and args cannot be set simultaneously
@@ -49,6 +52,7 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 		tempTargetRunDir := path.Join(stageCtx.TempDir, stage.Id)
 		targetRunPath := path.Join(tempTargetRunDir, "run.sh")
 		stageCtx.Logger.Debug("Writing script to ", targetRunPath)
+		scriptPath = targetRunPath
 		err = os.MkdirAll(tempTargetRunDir, 0755)
 		if err != nil {
 			stageCtx.Logger.Fatal(err)
@@ -76,7 +80,7 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 			if err != nil {
 				panic(err)
 			}
-			cmd := exec.Command("podman",
+			cmd = exec.Command("podman",
 				"run", "--rm", "--entrypoint=sh",
 				"-v", fmt.Sprintf("%s:%s:Z", cwd, "/workspace"),
 				"-v", tempTargetRunDir+":/workspace.togomak.scripts:Z",
@@ -85,39 +89,15 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 				"-c", "/workspace.togomak.scripts/run.sh")
 			stageCtx.Logger.Debug("Running ", cmd.String())
 
-			cmd.Stdout = stageCtx.Logger.Writer()
-			cmd.Stderr = stageCtx.Logger.Writer()
-			if !cfg.DryRun {
-				err = cmd.Run()
-				if err != nil {
-					stageCtx.Logger.Fatal(err)
-				}
-			} else {
-				fmt.Println(cmd.String())
-			}
 		} else {
-			cmd := exec.Command("sh", "-c", targetRunPath)
-			cmd.Stdout = stageCtx.Logger.Writer()
-			cmd.Stderr = stageCtx.Logger.Writer()
-			if !cfg.DryRun {
-				err = cmd.Run()
-				if err != nil {
-					stageCtx.Logger.Fatal(err)
-				}
-			} else {
-				fmt.Println("# cat ", targetRunPath)
-				data, err := os.ReadFile(targetRunPath)
-				if err != nil {
-					stageCtx.Logger.Fatal(err)
-				}
-				fmt.Println(string(data))
-			}
+			cmd = exec.Command("sh", "-c", targetRunPath)
 		}
 	} else {
 		stageCtx.Logger.Tracef("Running with args %v", stage.Args)
 		// run the args
 		newArgs := make([]string, len(stage.Args))
 
+		// lazy evaluate pongo templates
 		for i, arg := range stage.Args {
 			// render them with pongo
 			tpl, err := pongo2.FromString(arg)
@@ -132,50 +112,60 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 
 		}
 
+		// no container is specified, no script is specified
 		if stage.Container == "" {
 			if len(newArgs) == 0 {
 				stageCtx.Logger.Fatal("No args specified")
 			}
 
-			cmd := exec.Command(newArgs[0], newArgs[1:]...)
-			cmd.Stdout = stageCtx.Logger.Writer()
-			cmd.Stderr = stageCtx.Logger.Writer()
-			if !cfg.DryRun {
-				err = cmd.Run()
-				if err != nil {
-					stageCtx.Logger.Fatal(err)
-				}
-			} else {
-				fmt.Println(cmd.String())
-			}
-		} else {
+			cmd = exec.Command(newArgs[0], newArgs[1:]...)
+
+		} else
+		// container is specified, no script is specified
+		{
 			stageCtx.Logger.Debug("Preparing container")
 			// the user requires a specific container to run on
-
 			cwd, err := os.Getwd()
 			if err != nil {
 				panic(err)
 			}
 
-			dockerArgs := []string{"run", "--rm", "--entrypoint=sh",
+			dockerArgs := []string{"run", "--rm",
 				"-v", fmt.Sprintf("%s:%s:Z", cwd, "/workspace"),
 				"-w", "/workspace",
 				stage.Container}
 
-			cmd := exec.Command("podman",
+			cmd = exec.Command("podman",
 				append(dockerArgs, newArgs...)...)
-			stageCtx.Logger.Debug("Running ", cmd.String())
-
-			cmd.Stdout = stageCtx.Logger.Writer()
-			cmd.Stderr = stageCtx.Logger.Writer()
-			if !cfg.DryRun {
-				err = cmd.Run()
-				if err != nil {
-					stageCtx.Logger.Fatal(err)
-				}
-			} else {
-				fmt.Println(cmd.String())
-			}
 		}
+
+	}
+
+	cmd.Stdout = stageCtx.Logger.Writer()
+	cmd.Stderr = stageCtx.Logger.Writer()
+
+	if !cfg.DryRun {
+		stageCtx.Logger.Debug("Running ", cmd.String())
+		err = cmd.Run()
+
+		// TODO: implement fail fast flag
+		if err != nil {
+			stageCtx.Logger.Fatal(err)
+		}
+
+	} else {
+
+		if scriptPath != "" {
+			fmt.Println(ui.Grey(cmd.String()))
+			fmt.Println(ui.Grey("# cat", scriptPath))
+			data, err := os.ReadFile(scriptPath)
+			if err != nil {
+				stageCtx.Logger.Fatal(err)
+			}
+			fmt.Println(strings.TrimSpace(string(data)))
+		} else {
+			fmt.Println(cmd.String())
+		}
+		fmt.Println()
 	}
 }
