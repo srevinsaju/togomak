@@ -66,10 +66,17 @@ func initCli() *cli.App {
 			},
 
 			&cli.BoolFlag{
-				Name:     "fail-fast",
+				Name:     "fail-lazy",
 				Required: false,
-				Usage:    "Fail fast on first error",
-				//Value:    true,
+				Usage:    "Do not fail fast",
+				Value:    false,
+			},
+
+			&cli.StringFlag{
+				Name:    "summary",
+				Usage:   "Don't print summary",
+				EnvVars: []string{"TOGOMAK_SUMMARY"},
+				Value:   "auto",
 			},
 		},
 	}

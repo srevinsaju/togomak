@@ -152,8 +152,8 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 		// TODO: implement fail fast flag
 		if err != nil {
 			status.Message = err.Error()
-			if !cfg.FailFast {
-				stageCtx.Logger.Warnf("Stage failed, continuing because %s.%s=%s", ui.Options, ui.FailFast, ui.False)
+			if cfg.FailLazy {
+				stageCtx.Logger.Warnf("Stage failed, continuing because %s.%s=%s", ui.Options, ui.FailLazy, ui.False)
 				stageCtx.Logger.Warn(err)
 			} else {
 				stageCtx.Logger.Fatal(err)

@@ -14,7 +14,7 @@ var SubSubStage = Grey("-->")
 var Matrix = Yellow("matrix")
 var Stage = Yellow("stage")
 var Options = Grey("options")
-var FailFast = Grey("failfast")
+var FailLazy = Grey("fail-lazy")
 
 var True = Green("true")
 var False = Red("false")

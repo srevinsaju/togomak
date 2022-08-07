@@ -49,13 +49,13 @@ func cliContextRunner(cliCtx *cli.Context) error {
 	}
 
 	runner.Orchestrator(config.Config{
-		RunStages:     cliCtx.Args().Slice(),
-		ContextDir:    contextDir,
-		CiFile:        p,
-		DryRun:        cliCtx.Bool("dry-run"),
-		JobsNumber:    cliCtx.Int("jobs"),
-		FailFast:      cliCtx.Bool("fail-fast"),
-		IsFailFastSet: cliCtx.IsSet("fail-fast"),
+		RunStages:  cliCtx.Args().Slice(),
+		ContextDir: contextDir,
+		CiFile:     p,
+		DryRun:     cliCtx.Bool("dry-run"),
+		JobsNumber: cliCtx.Int("jobs"),
+		FailLazy:   cliCtx.Bool("fail-lazy"),
+		Summary:    config.GetSummaryType(cliCtx.String("summary")),
 	})
 	return nil
 }

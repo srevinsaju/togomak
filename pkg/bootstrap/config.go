@@ -27,16 +27,15 @@ func Config(ctx *context.Context, cfg *config.Config) schema.SchemaConfig {
 
 		ctx.Logger.Fatal("Unsupported version on togomak config")
 	}
-	cfg.FailFast = true
 
 	// override fail fast if set from command line
 	// ctx.Logger.Tracef("Detected --fail-fast from cli? %v", cfg.FailFast)
-	if cfg.IsFailFastSet && cfg.FailFast == false {
-		ctx.Logger.Debugf("Overriding fail fast from config to %v", cfg.FailFast)
-		data.Options.FailLazy = !cfg.FailFast
-	} else if !cfg.IsFailFastSet && data.Options.FailLazy {
-		ctx.Logger.Tracef("--fail-fast is not set in cli, but is set in config")
-		cfg.FailFast = false
+	if cfg.FailLazy {
+		ctx.Logger.Debugf("Overriding fail fast from config to %v", cfg.FailLazy)
+		data.Options.FailLazy = cfg.FailLazy
+	} else if data.Options.FailLazy {
+		ctx.Logger.Tracef("--fail-lazy is not set in cli, but is set in config")
+		cfg.FailLazy = true
 	}
 	ctx.Logger.Tracef("loaded data: %v", data)
 	return data
