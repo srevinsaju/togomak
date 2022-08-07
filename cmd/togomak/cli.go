@@ -56,6 +56,14 @@ func initCli() *cli.App {
 				EnvVars:  []string{"TOGOMAK_DRY_RUN"},
 				Aliases:  []string{"n", "just-print", "recon"},
 			},
+
+			&cli.IntFlag{
+				Name:        "jobs",
+				Usage:       "Number of parallel jobs to run",
+				Aliases:     []string{"j"},
+				Value:       -1,
+				DefaultText: "Default, -1 implies infinity",
+			},
 		},
 	}
 

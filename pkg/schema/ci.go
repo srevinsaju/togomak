@@ -47,6 +47,9 @@ type StageConfig struct {
 
 	// Description provides more information about the stage to the user.
 	Description string `yaml:"description,omitempty"`
+
+	// Extends specifies the stage that this stage extends. This is optional.
+	Extends string `yaml:"extends,omitempty"`
 }
 
 func NewRootStage() StageConfig {

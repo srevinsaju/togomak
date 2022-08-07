@@ -1,12 +1,14 @@
 package context
 
 import (
+	"github.com/kendru/darwin/go/depgraph"
 	log "github.com/sirupsen/logrus"
 )
 
 type Context struct {
 	Logger *log.Entry
 	parent *Context
+	Graph  *depgraph.Graph
 
 	TempDir string
 	Data    map[string]interface{}

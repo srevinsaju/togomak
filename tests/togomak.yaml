@@ -1,0 +1,25 @@
+version: 1
+
+stages:
+  - id: container-test
+    name: Container Test
+    description: Test if togomak is able to pull a container from the container registry and execute it
+    container: python:alpine
+    args:
+      - "--version"
+
+  - id: concurrency-test-1
+    name: Concurrency Test 1
+    description: Check if concurrency is supported, concurrency-test-{1, 2, 3} must execute in parallel
+    depends-on:
+      - container-test
+    script: | 
+      for i in {1..10}; do
+        echo "Concurrency Test $i"
+        sleep 1
+      done
+
+  - id: concurrency-test-2
+    name: Concurrency Test 2
+    description: Concurrency and extends test
+    extends: .concurrency-test-1

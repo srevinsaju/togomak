@@ -53,6 +53,7 @@ func cliContextRunner(cliCtx *cli.Context) error {
 		ContextDir: contextDir,
 		CiFile:     p,
 		DryRun:     cliCtx.Bool("dry-run"),
+		JobsNumber: cliCtx.Int("jobs"),
 	})
 	return nil
 }

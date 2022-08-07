@@ -5,4 +5,5 @@ type Config struct {
 	ContextDir string
 	CiFile     string
 	DryRun     bool
+	JobsNumber int
 }

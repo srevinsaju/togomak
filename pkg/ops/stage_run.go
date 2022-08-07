@@ -18,13 +18,13 @@ import (
 func PrepareStage(ctx *context.Context, stage schema.StageConfig) {
 	// show some user-friendly output on the details of the stage about to be run
 	if stage.Name != "" && stage.Description != "" {
-		ctx.Logger.Infof("[%s] %s (%s)", ui.Plus, stage.Name, stage.Description)
+		ctx.Logger.Infof("[%s] %s (%s)", ui.Plus, ui.Yellow(stage.Name), ui.Grey(stage.Description))
 	} else if stage.Name != "" {
-		ctx.Logger.Infof("[%s] %s", ui.Plus, stage.Name)
+		ctx.Logger.Infof("[%s] %s", ui.Plus, ui.Yellow(stage.Name))
 	} else if stage.Description != "" {
-		ctx.Logger.Infof("[%s] %s", ui.Plus, stage.Description)
+		ctx.Logger.Infof("[%s] %s (%s)", ui.Plus, ui.Yellow(stage.Id), ui.Grey(stage.Description))
 	} else {
-		ctx.Logger.Infof("[%s] %s", ui.Plus, stage.Id)
+		ctx.Logger.Infof("[%s] %s", ui.Plus, ui.Yellow(stage.Id))
 	}
 
 }
@@ -80,7 +80,7 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 				"run", "--rm", "--entrypoint=sh",
 				"-v", fmt.Sprintf("%s:%s:Z", cwd, "/workspace"),
 				"-v", tempTargetRunDir+":/workspace.togomak.scripts:Z",
-				"-w", "/workspace.togomak.scripts",
+				"-w", "/workspace",
 				stage.Container,
 				"-c", "/workspace.togomak.scripts/run.sh")
 			stageCtx.Logger.Debug("Running ", cmd.String())
@@ -114,6 +114,7 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 			}
 		}
 	} else {
+		stageCtx.Logger.Tracef("Running with args %v", stage.Args)
 		// run the args
 		newArgs := make([]string, len(stage.Args))
 
@@ -130,16 +131,51 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 			newArgs[i] = parsed
 
 		}
-		cmd := exec.Command(newArgs[0], newArgs[1:]...)
-		cmd.Stdout = stageCtx.Logger.Writer()
-		cmd.Stderr = stageCtx.Logger.Writer()
-		if !cfg.DryRun {
-			err = cmd.Run()
-			if err != nil {
-				stageCtx.Logger.Fatal(err)
+
+		if stage.Container == "" {
+			if len(newArgs) == 0 {
+				stageCtx.Logger.Fatal("No args specified")
+			}
+
+			cmd := exec.Command(newArgs[0], newArgs[1:]...)
+			cmd.Stdout = stageCtx.Logger.Writer()
+			cmd.Stderr = stageCtx.Logger.Writer()
+			if !cfg.DryRun {
+				err = cmd.Run()
+				if err != nil {
+					stageCtx.Logger.Fatal(err)
+				}
+			} else {
+				fmt.Println(cmd.String())
 			}
 		} else {
-			fmt.Println(cmd.String())
+			stageCtx.Logger.Debug("Preparing container")
+			// the user requires a specific container to run on
+
+			cwd, err := os.Getwd()
+			if err != nil {
+				panic(err)
+			}
+
+			dockerArgs := []string{"run", "--rm", "--entrypoint=sh",
+				"-v", fmt.Sprintf("%s:%s:Z", cwd, "/workspace"),
+				"-w", "/workspace",
+				stage.Container}
+
+			cmd := exec.Command("podman",
+				append(dockerArgs, newArgs...)...)
+			stageCtx.Logger.Debug("Running ", cmd.String())
+
+			cmd.Stdout = stageCtx.Logger.Writer()
+			cmd.Stderr = stageCtx.Logger.Writer()
+			if !cfg.DryRun {
+				err = cmd.Run()
+				if err != nil {
+					stageCtx.Logger.Fatal(err)
+				}
+			} else {
+				fmt.Println(cmd.String())
+			}
 		}
 	}
 }

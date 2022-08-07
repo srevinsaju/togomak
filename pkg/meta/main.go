@@ -1,6 +1,7 @@
 package meta
 
 const (
-	Version = "0.0.1"
-	AppName = "togomak"
+	Version                  = "0.0.1"
+	AppName                  = "togomak"
+	SupportedCiConfigVersion = 1
 )
