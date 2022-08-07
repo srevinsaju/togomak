@@ -27,7 +27,7 @@ Roadmap
 - [x] Dependency tree resolution (`.stages[].depends-on`)
 - [x] Plugins (`.providers[]`)
 - [x] Pipeline Templating (Django like templating, see [`pongo2`](https://github.com/flosch/pongo2))
-- [ ] Dry Run (`-n`, `--dry-run`)
+- [x] Dry Run (`-n`, `--dry-run`)
 - [ ] Git 
   - [ ] Private Git Repositories (`.togomak.git`)
   - [ ] Public Git Repositories (`.stages[].source`)
@@ -37,7 +37,7 @@ Roadmap
     - [ ] Jenkins 
 - [ ] CI User Interface (`togomak serve`)
 - [ ] Tracking Server, helps to track local builds on developer machines
-- [ ] Deep Merge (`.stages[].extends`), to inherit properties from other stages
+- [x] Deep Merge (`.stages[].extends`), to inherit properties from other stages
 - [ ] Override Build, Stages (`.stages[].overrides.script`, `.stages[].overrides.container`, `.stages[].overrides.args`)
 - [ ] Artifacts collection
 - [ ] Documentation
