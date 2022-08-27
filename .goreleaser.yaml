@@ -1,0 +1,39 @@
+project_name: togomak
+builds:
+  - main: ./cmd/togomak
+    env: [CGO_ENABLED=0]
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+  - main: ./plugins/git
+    env: [CGO_ENABLED=0]
+    binary: togomak-provider-git
+    goos:
+      - linux
+      - windows
+      - darwin 
+    goarch:
+      - amd64
+      - arm64 
+    
+
+release:
+  gitlab:
+    owner: ""
+    name: 30584689
+
+nfpms:
+- maintainer: Srevin Saju
+  description: A CI/CD which works everywhere, even on your local environment.
+  homepage: https://gitlab.com/srevinsaju/togomak
+  license: MIT
+  formats:
+  - deb
+  - rpm
+  - apk
+
