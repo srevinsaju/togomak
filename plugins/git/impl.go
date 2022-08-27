@@ -30,6 +30,7 @@ func (g *StageGit) GatherInfo() error {
 		return err
 	}
 	sha := ref.String()
+	shortSha := ref.String()[:7]
 	g.context.Data["branch"] = ref.Name().String()
 	w, err := g.g.Worktree()
 	if err != nil {
@@ -41,8 +42,10 @@ func (g *StageGit) GatherInfo() error {
 	}
 	if !s.IsClean() {
 		sha += "-dirty"
+		shortSha += "-dirty"
 	}
 	g.context.Data["sha"] = sha
+	g.context.Data["short_sha"] = shortSha
 	return nil
 }
 
