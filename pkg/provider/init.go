@@ -41,7 +41,9 @@ func initProvider(ctx *context.Context, p schema.ProviderConfig) schema.Provider
 		Output: os.Stdout,
 		Level:  hclog.Warn,
 	})
-
+	if providers == nil {
+		providers = make(map[string]schema.Provider)
+	}
 	if p.Path == "" {
 		ctx.Logger.Debugf("Searching under .togomak.plugins dir")
 		exists, err := afero.Exists(afero.OsFs{}, fmt.Sprintf(".togomak.plugins/togomak-provider-%s", p.Id))
