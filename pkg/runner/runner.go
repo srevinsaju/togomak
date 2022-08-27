@@ -45,6 +45,7 @@ func Orchestrator(cfg config.Config) {
 	// check if matrix is specified
 	ctx.Logger.Debugf("Need to run stages: %v", cfg.RunStages)
 	if data.Matrix != nil {
+		ctx.IsMatrix = true
 		bootstrap.MatrixRun(ctx, data, cfg)
 	} else {
 		bootstrap.SimpleRun(ctx, cfg, data)

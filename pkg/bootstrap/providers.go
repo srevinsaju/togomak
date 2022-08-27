@@ -10,6 +10,7 @@ type InternalProviders map[string]schema.Provider
 
 func Providers(ctx *context.Context, data schema.SchemaConfig) InternalProviders {
 	var providers InternalProviders
+	providers = make(InternalProviders)
 	providerLog := ctx.Logger.WithField("context", "providers")
 	providerLog.Debug("Bootstrapping providers")
 

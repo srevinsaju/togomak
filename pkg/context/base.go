@@ -6,14 +6,16 @@ import (
 )
 
 type Status struct {
-	Success bool
-	Message string
+	Success  bool
+	Message  string
+	MatrixId string
 }
 
 type Context struct {
-	Logger *log.Entry
-	parent *Context
-	Graph  *depgraph.Graph
+	Logger   *log.Entry
+	parent   *Context
+	Graph    *depgraph.Graph
+	IsMatrix bool
 
 	status  Status
 	TempDir string
@@ -23,8 +25,9 @@ type Context struct {
 func (c *Context) SetStatus(s Status) {
 	c.status = s
 	c.Data["status"] = map[string]interface{}{
-		"success": s.Success,
-		"message": s.Message,
+		"success":  s.Success,
+		"message":  s.Message,
+		"matrixId": s.MatrixId,
 	}
 }
 

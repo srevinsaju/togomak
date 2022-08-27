@@ -19,13 +19,13 @@ import (
 func PrepareStage(ctx *context.Context, stage schema.StageConfig) {
 	// show some user-friendly output on the details of the stage about to be run
 	if stage.Name != "" && stage.Description != "" {
-		ctx.Logger.Infof("[%s] %s (%s)", ui.Plus, ui.Yellow(stage.Name), ui.Grey(stage.Description))
+		ctx.Logger.Infof("[%s] %s (%s)", ui.Plus, ui.Blue(stage.Name), ui.Grey(stage.Description))
 	} else if stage.Name != "" {
-		ctx.Logger.Infof("[%s] %s", ui.Plus, ui.Yellow(stage.Name))
+		ctx.Logger.Infof("[%s] %s", ui.Plus, ui.Blue(stage.Name))
 	} else if stage.Description != "" {
-		ctx.Logger.Infof("[%s] %s (%s)", ui.Plus, ui.Yellow(stage.Id), ui.Grey(stage.Description))
+		ctx.Logger.Infof("[%s] %s (%s)", ui.Plus, ui.Blue(stage.Id), ui.Grey(stage.Description))
 	} else {
-		ctx.Logger.Infof("[%s] %s", ui.Plus, ui.Yellow(stage.Id))
+		ctx.Logger.Infof("[%s] %s", ui.Plus, ui.Blue(stage.Id))
 	}
 
 }
@@ -143,7 +143,17 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 
 	cmd.Stdout = stageCtx.Logger.Writer()
 	cmd.Stderr = stageCtx.Logger.Writer()
-	status := &context.Status{}
+	matrixId := ""
+	if rootCtx.IsMatrix {
+		m := rootCtx.Data["matrix"].(map[string]string)
+		for k, v := range m {
+			matrixId += fmt.Sprintf("%s=%v, ", k, v)
+		}
+	}
+	stageCtx.Logger.Debugf("Detected matrix stage %s", matrixId)
+	status := &context.Status{
+		MatrixId: matrixId,
+	}
 
 	if !cfg.DryRun {
 		stageCtx.Logger.Debug("Running ", cmd.String())

@@ -3,12 +3,20 @@ version: 1
 options:
   fail-lazy: true
 
+matrix:
+  myAttribute:
+    - foo
+    - bar
+
+providers:
+  - id: git
+
 stages:
   - id: failing-test
     name: Failing Test
     description: This stage should not fail since fail-fast is set to false, but must create a warning
     script: |
-      echo "This is a failing test"
+      echo "This is a failing test, running on fake {{ matrix.myAttribute }}"
       exit 1
 
   - id: container-test
@@ -25,7 +33,7 @@ stages:
     depends-on:
       - container-test
     script: | 
-      for i in {1..10}; do
+      for i in {1..3}; do
         echo "Concurrency Test $i"
         sleep 1
       done
@@ -34,4 +42,9 @@ stages:
     name: Concurrency Test 2
     description: Concurrency and extends test
     extends: .concurrency-test-1
+
+  - id: provider 
+    name: Provider Test 
+    script: | 
+      echo "The commit sha is {{ provider.git.sha }}" 
 
