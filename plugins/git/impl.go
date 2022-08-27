@@ -1,6 +1,9 @@
 package main
 
-import "github.com/srevinsaju/togomak/pkg/schema"
+import (
+	"github.com/srevinsaju/togomak/pkg/schema"
+	"strings"
+)
 
 func (g *StageGit) Name() string {
 	return "git"
@@ -29,8 +32,8 @@ func (g *StageGit) GatherInfo() error {
 	if err != nil {
 		return err
 	}
-	sha := ref.String()
-	shortSha := ref.String()[:7]
+	sha := strings.Split(ref.String(), " ")[0]
+	shortSha := sha[:7]
 	g.context.Data["branch"] = ref.Name().String()
 	w, err := g.g.Worktree()
 	if err != nil {

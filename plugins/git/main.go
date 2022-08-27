@@ -35,8 +35,16 @@ func main() {
 		JSONFormat: true,
 		Color:      hclog.ForceColor,
 	})
+	wd, err := os.Getwd()
+	if err != nil {
+		logger.Error("error getting working directory", "error", err)
+		return
+	}
 
-	repo, err := git.PlainOpen(".")
+	repo, err := git.PlainOpenWithOptions(wd, &git.PlainOpenOptions{
+		DetectDotGit:          true,
+		EnableDotGitCommonDir: true,
+	})
 
 	gitPlugin := &StageGit{
 		//logger: logger,
