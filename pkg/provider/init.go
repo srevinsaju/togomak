@@ -6,6 +6,7 @@ import (
 	"github.com/srevinsaju/togomak/pkg/meta"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
@@ -45,18 +46,38 @@ func initProvider(ctx *context.Context, p schema.ProviderConfig) schema.Provider
 		providers = make(map[string]schema.Provider)
 	}
 	if p.Path == "" {
-		ctx.Logger.Debugf("Searching under .togomak.plugins dir")
-		exists, err := afero.Exists(afero.OsFs{}, fmt.Sprintf(".togomak.plugins/togomak-provider-%s", p.Id))
+		ctx.Logger.Debugf("Searching under .togomak.plugins, $HOME/.togomak.plugins dir")
+		hmdir, err := os.UserHomeDir()
 		if err != nil {
-			ctx.Logger.Warnf("Failed loading provider %s: %s", p.Id, err)
-			return schema.Provider{
-				Config:  p,
-				Context: ctx,
-			}
+			panic(err)
 		}
-		if exists {
-			ctx.Logger.Debugf("Found provider %s", p.Id)
-			p.Path = fmt.Sprintf(".togomak.plugins/togomak-provider-%s", p.Id)
+
+		// first check if the current directory has a .togomak.plugins directory
+		// and load plugins from there, else check home directory.
+		cwd, err := os.Getwd()
+		if err != nil {
+			panic(err)
+		}
+		cwdPluginDir := filepath.Join(cwd, ".togomak.plugins", fmt.Sprintf("togomak-provider-%s", p.Id))
+		exists, err := afero.Exists(afero.OsFs{}, cwdPluginDir)
+		ctx.Logger.Debugf("Checking if %s exists", cwdPluginDir)
+		if err != nil || !exists {
+			ctx.Logger.Debugf("Failed loading provider %s from %s: %s", p.Id, cwdPluginDir, err)
+			togomakPluginDir := filepath.Join(hmdir, ".togomak.plugins", fmt.Sprintf("togomak-provider-%s", p.Id))
+			ctx.Logger.Debugf("Checking if %s exists", togomakPluginDir)
+			exists, err := afero.Exists(afero.OsFs{}, togomakPluginDir)
+			if err != nil || !exists {
+				ctx.Logger.Warnf("Failed loading provider %s from %s: %s", p.Id, togomakPluginDir, err)
+				return schema.Provider{
+					Config:  p,
+					Context: ctx,
+				}
+			}
+			ctx.Logger.Debugf("Found %s", togomakPluginDir)
+			p.Path = togomakPluginDir
+		} else {
+			ctx.Logger.Debugf("Found %s", cwdPluginDir)
+			p.Path = cwdPluginDir
 		}
 	}
 
