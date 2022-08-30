@@ -11,6 +11,13 @@ matrix:
 providers:
   - id: git
 
+parameters:
+  - name: MY_PROJECT_ID
+    default: my-project
+
+  - name: ANOTHER_PROJECT_ID
+    default: "{{ provider.git.sha }}"
+
 stages:
   - id: failing-test
     name: Failing Test
@@ -48,3 +55,6 @@ stages:
     script: | 
       echo "The commit sha is {{ provider.git.sha }}" 
 
+  - id: cloudbuild
+    name: Cloudbuild Test 
+    args: ["echo", "gcloud", "build", "submit", "clouddeploy.yaml", "--project={{ param.MY_PROJECT_ID }}"]  
