@@ -109,6 +109,11 @@ type OptionsConfig struct {
 	Summary  string `yaml:"summary"`
 }
 
+type ParametersConfig struct {
+	Name    string `yaml:"name"`
+	Default string `yaml:"default"`
+}
+
 // SchemaConfig shows the overall YAML configuration file
 type SchemaConfig struct {
 
@@ -120,7 +125,7 @@ type SchemaConfig struct {
 	IncludePlugins []string `yaml:"include_plugins"`
 
 	// Parameters
-	Parameters map[string]string `yaml:"parameters"`
+	Parameters []ParametersConfig `yaml:"parameters"`
 
 	// Extends does an internal deep merge of yaml maps so that
 	// on can inherit the properties of another stage without having to write

@@ -3,6 +3,7 @@ module github.com/srevinsaju/togomak
 go 1.17
 
 require (
+	github.com/AlecAivazis/survey/v2 v2.3.5
 	github.com/charmbracelet/lipgloss v0.5.0
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/hashicorp/go-hclog v1.2.2
@@ -25,9 +26,11 @@ require (
 	github.com/go-git/go-billy/v5 v5.3.1 // indirect
 	github.com/google/go-cmp v0.5.7 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
+	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/kevinburke/ssh_config v0.0.0-20201106050909-4977a11b4351 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
+	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/muesli/reflow v0.2.1-0.20210115123740-9e1d0d53df68 // indirect
 	github.com/muesli/termenv v0.11.1-0.20220204035834-5ac8409525e0 // indirect
@@ -37,6 +40,7 @@ require (
 	github.com/xanzy/ssh-agent v0.3.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	golang.org/x/crypto v0.0.0-20211108221036-ceb1ce70b4fa // indirect
+	golang.org/x/term v0.0.0-20210503060354-a79de5458b56 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )

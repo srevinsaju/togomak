@@ -6,16 +6,24 @@ import (
 	"github.com/srevinsaju/togomak/pkg/config"
 	"github.com/srevinsaju/togomak/pkg/context"
 	"github.com/srevinsaju/togomak/pkg/meta"
+	"github.com/srevinsaju/togomak/pkg/templating"
+	"os"
 )
 
 const SupportedCiConfigVersion = 1
 
 func Orchestrator(cfg config.Config) {
 
+	owd, _ := os.Getwd()
+
 	/// create context
 	ctx := &context.Context{
 		Logger: log.WithFields(log.Fields{}),
-		Data:   map[string]interface{}{},
+		Data: map[string]interface{}{
+			// some default functions
+			"owd": owd,
+			"env": templating.Env,
+		},
 	}
 	ctx.Logger.Debugf("Starting %s", meta.AppName)
 
@@ -28,6 +36,9 @@ func Orchestrator(cfg config.Config) {
 	/// create temporary working directory
 	bootstrap.TempDir(ctx)
 	defer bootstrap.SafeDeleteTempDir(ctx)
+
+	/// get the parameters
+	bootstrap.Params(ctx, data)
 
 	/// run initial validation
 	bootstrap.StageValidate(ctx, data)
