@@ -37,8 +37,7 @@ func main() {
 	})
 	wd, err := os.Getwd()
 	if err != nil {
-		logger.Error("error getting working directory", "error", err)
-		return
+		logger.Warn("error getting working directory", "error", err)
 	}
 
 	repo, err := git.PlainOpenWithOptions(wd, &git.PlainOpenOptions{
