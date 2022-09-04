@@ -52,7 +52,7 @@ var (
 
 func Summary(ctx *context.Context) {
 
-	stageStatuses := ctx.Data["stage"].(map[string]interface{})
+	stageStatuses := ctx.Data.GetMap("stage")
 
 	doc := strings.Builder{}
 	var mainArr []string
@@ -64,15 +64,10 @@ func Summary(ctx *context.Context) {
 		var arr []string
 		arr = append(arr, bold.Render(fmt.Sprintf("Pass %d", i)))
 		for _, layer := range layers {
-			v, ok := stageStatuses[layer]
-			if !ok {
-				ctx.Logger.Tracef("Trying to find key for summary: %s", layer)
-				panic("stage not found for stats check")
-			}
-			stage := v.(map[string]interface{})
-			status := stage["status"].(map[string]interface{})
+			stage := stageStatuses.GetMap(layer)
+			status := stage.GetMap(context.KeyStatus)
 			var renderedText string
-			if status["success"].(bool) {
+			if status.GetBool(context.StatusSuccess) {
 				renderedText = strings.Repeat("  ", i) + bold.Render(bottomLeft+horizontal) + bullet + space + ciPassed(layer)
 
 			} else {

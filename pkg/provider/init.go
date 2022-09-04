@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/spf13/afero"
 	"github.com/srevinsaju/togomak/pkg/meta"
+	"github.com/srevinsaju/togomak/pkg/x"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -35,7 +36,7 @@ var pluginMap = map[string]plugin.Plugin{
 var providers map[string]schema.Provider
 
 func initProvider(ctx *context.Context, p schema.ProviderConfig) schema.Provider {
-	ctx.Logger.Debugf("Loading provider %s", p.Id)
+	ctx.Logger.Debugf("Loading provider %s", p.Name())
 	// Create an hclog.Logger
 	logger := hclog.New(&hclog.LoggerOptions{
 		Name:   "provider",
@@ -46,31 +47,29 @@ func initProvider(ctx *context.Context, p schema.ProviderConfig) schema.Provider
 		providers = make(map[string]schema.Provider)
 	}
 	if p.Path == "" {
-		ctx.Logger.Debugf("Searching under .togomak.plugins, $HOME/.togomak.plugins dir")
-		hmdir, err := os.UserHomeDir()
+		homeDir, err := os.UserHomeDir()
 		if err != nil {
 			panic(err)
 		}
+		ctx.Logger.Debugf("Searching under %s/plugins, %s/%s/plugins dir", meta.BuildDirPrefix, homeDir, meta.BuildDirPrefix)
 
 		// first check if the current directory has a .togomak.plugins directory
 		// and load plugins from there, else check home directory.
 		cwd, err := os.Getwd()
-		if err != nil {
-			panic(err)
-		}
-		cwdPluginDir := filepath.Join(cwd, ".togomak.plugins", fmt.Sprintf("togomak-provider-%s", p.Id))
+		x.Must(err)
+
+		cwdPluginDir := filepath.Join(cwd, meta.BuildDirPrefix, "plugins", fmt.Sprintf("togomak-provider-%s", p.Name()))
 		exists, err := afero.Exists(afero.OsFs{}, cwdPluginDir)
 		ctx.Logger.Debugf("Checking if %s exists", cwdPluginDir)
 		if err != nil || !exists {
-			ctx.Logger.Debugf("Failed loading provider %s from %s: %s", p.Id, cwdPluginDir, err)
-			togomakPluginDir := filepath.Join(hmdir, ".togomak.plugins", fmt.Sprintf("togomak-provider-%s", p.Id))
+			ctx.Logger.Debugf("Failed loading provider %s from %s: %s", p.Name(), cwdPluginDir, err)
+			togomakPluginDir := filepath.Join(homeDir, meta.BuildDirPrefix, "plugins", fmt.Sprintf("togomak-provider-%s", p.Name()))
 			ctx.Logger.Debugf("Checking if %s exists", togomakPluginDir)
 			exists, err := afero.Exists(afero.OsFs{}, togomakPluginDir)
 			if err != nil || !exists {
-				ctx.Logger.Warnf("Failed loading provider %s from %s: %s", p.Id, togomakPluginDir, err)
+				ctx.Logger.Warnf("Failed loading provider %s from %s: %s", p.Name(), togomakPluginDir, err)
 				return schema.Provider{
-					Config:  p,
-					Context: ctx,
+					Config: p,
 				}
 			}
 			ctx.Logger.Debugf("Found %s", togomakPluginDir)
@@ -105,28 +104,30 @@ func initProvider(ctx *context.Context, p schema.ProviderConfig) schema.Provider
 		Config:   p,
 		Client:   client,
 		Provider: raw.(schema.Stage),
-		Context:  ctx,
 	}
-	providers[p.Id] = provider
+	providers[p.Name()] = provider
 	ctx.Logger.Trace("providers", providers)
 	return provider
 
 }
 
+// Get returns a provider by the name of the provider
+// at a time, there can only be one provider by name. There can be multiple providers
+// with different ids on same ID.
 func Get(ctx *context.Context, p schema.ProviderConfig) schema.Provider {
-	if v, ok := providers[p.Id]; ok {
+	if v, ok := providers[p.Name()]; ok {
 		return v
 	}
 	return initProvider(ctx, p)
 }
 
 func Destroy(ctx *context.Context, p schema.ProviderConfig) {
-	v, ok := providers[p.Id]
-	ctx.Logger.Tracef("Currently loaded providers are %s", providers)
-	ctx.Logger.Tracef("Unloading provider %s", p.Id)
+	v, ok := providers[p.Name()]
+	ctx.Logger.Tracef("Currently loaded providers are %v", providers)
+	ctx.Logger.Tracef("Unloading provider %s", p.Name())
 
 	if !ok {
-		ctx.Logger.Warnf("Provider %s is not loaded", p.Id)
+		ctx.Logger.Warnf("Provider %s is not loaded", p.Name())
 		panic("provider is not loaded on to memory yet")
 	}
 
@@ -135,5 +136,5 @@ func Destroy(ctx *context.Context, p schema.ProviderConfig) {
 		defer v.Client.Kill()
 	}
 
-	delete(providers, p.Id)
+	delete(providers, p.Name())
 }

@@ -19,7 +19,7 @@ func Orchestrator(cfg config.Config) {
 	/// create context
 	ctx := &context.Context{
 		Logger: log.WithFields(log.Fields{}),
-		Data: map[string]interface{}{
+		Data: context.Data{
 			// some default functions
 			"owd": owd,
 			"env": templating.Env,
@@ -43,11 +43,15 @@ func Orchestrator(cfg config.Config) {
 	/// run initial validation
 	bootstrap.StageValidate(ctx, data)
 
+	/// expand sources
+	bootstrap.ExpandSources(ctx, &data)
+
 	/// generate dependency graph
 	bootstrap.Graph(ctx, data)
 
 	/// load the providers
 	providers := bootstrap.Providers(ctx, data)
+	providers.SetContext(ctx, data)
 
 	/// gather information from all providers
 	providers.GatherInfo(ctx)

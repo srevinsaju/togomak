@@ -34,7 +34,7 @@ func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig
 			if err != nil {
 				stageCtx.Logger.Fatal("Failed to parse condition", err)
 			}
-			condition, err := tpl.Execute(ctx.Data)
+			condition, err := tpl.Execute(ctx.Data.AsMap())
 			if err != nil {
 				stageCtx.Logger.Fatal("Failed to execute condition", err)
 			}
@@ -52,7 +52,7 @@ func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig
 
 			go func(l string) {
 				defer wg.Done()
-				ops.PrepareStage(ctx, stage)
+				ops.PrepareStage(ctx, &stage)
 				ops.RunStage(cfg, stageCtx, stage)
 			}(l)
 

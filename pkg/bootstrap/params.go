@@ -11,22 +11,21 @@ import (
 )
 
 func Params(ctx *context.Context, data schema.SchemaConfig) {
-	paramsCtx := ctx.AddChild("internal", "params")
-	ctx.Data["param"] = map[string]string{}
+	paramCtx := ctx.AddChild("param", "")
 
 	for _, param := range data.Parameters {
 		v := ""
-		if os.Getenv("TOGOMAK__"+param.Name) != "" {
-			v = os.Getenv("TOGOMAK__" + param.Name)
+		if paramCtx.Getenv(param.Name) != "" {
+			v = paramCtx.Getenv(param.Name)
 		}
 		if param.Default != "" {
 			tpl, err := pongo2.FromString(param.Default)
 			if err != nil {
-				paramsCtx.Logger.Fatal("Cannot render args:", err)
+				paramCtx.Logger.Fatal("Cannot render args:", err)
 			}
-			parsed, err := tpl.Execute(ctx.Data)
+			parsed, err := tpl.Execute(ctx.Data.AsMap())
 			if err != nil {
-				paramsCtx.Logger.Fatal("Cannot render args:", err)
+				paramCtx.Logger.Fatal("Cannot render args:", err)
 			}
 			v = parsed
 		}
@@ -45,7 +44,7 @@ func Params(ctx *context.Context, data schema.SchemaConfig) {
 			}
 
 		}
-		ctx.Data["param"].(map[string]string)[param.Name] = v
+		paramCtx.Data[param.Name] = v
 	}
 
 }
