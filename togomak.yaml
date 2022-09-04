@@ -11,7 +11,7 @@ stages:
 
   - id: git-provider
     script: |
-      go build -v -o ./.togomak.plugins/togomak-provider-git github.com/srevinsaju/togomak/plugins/git
+      go build -v -o ./.togomak/plugins/togomak-provider-git github.com/srevinsaju/togomak/plugins/git
 
   - id: build
     script: |
@@ -23,4 +23,4 @@ stages:
       - build
     script: |
       go install github.com/srevinsaju/togomak/cmd/togomak
-      
+  

@@ -1,9 +1,8 @@
 package schema
 
 import (
-	"net/rpc"
-
 	"github.com/hashicorp/go-plugin"
+	"net/rpc"
 )
 
 type Context struct {
@@ -50,6 +49,7 @@ type StagePlugin struct {
 }
 
 func (p *StagePlugin) Server(*plugin.MuxBroker) (interface{}, error) {
+
 	return &StageRPCServer{Impl: p.Impl}, nil
 }
 

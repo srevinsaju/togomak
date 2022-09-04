@@ -36,13 +36,13 @@ type StageConfig struct {
 	// Args and Script should not be specified simultaneously
 	Args []string `yaml:"args,omitempty"`
 
-	// Container the name of the docker container that needs to be called
+	// Container the RawName of the docker container that needs to be called
 	// This will use the docker backend, or the podman backend depending on
 	// which of the following is available. `docker` backend will have higher
 	// precedence over podman.
 	Container string `yaml:"container,omitempty"`
 
-	// Name specifies the human friendly name of the stage. This is optional.
+	// Name specifies the human friendly RawName of the stage. This is optional.
 	Name string `yaml:"name,omitempty"`
 
 	// Description provides more information about the stage to the user.
@@ -50,6 +50,17 @@ type StageConfig struct {
 
 	// Extends specifies the stage that this stage extends. This is optional.
 	Extends string `yaml:"extends,omitempty"`
+
+	Source StageSourceConfig `yaml:"source,omitempty"`
+}
+
+// StageSourceConfig is a block of definition for an external source
+// specified on a different file to be run
+type StageSourceConfig struct {
+	Type   string   `yaml:"type"`
+	URL    string   `yaml:"url"`
+	File   string   `yaml:"file"`
+	Stages []string `yaml:"stages"`
 }
 
 func NewRootStage() StageConfig {
@@ -68,7 +79,7 @@ func (s StageConfigs) GetStageById(id string) StageConfig {
 			return stage
 		}
 	}
-	panic("Could not find stage with id: " + id)
+	panic("Could not find stage with RawId: " + id)
 }
 
 func (p *StageConfig) LoadStage() string {
@@ -80,19 +91,44 @@ func (p *StageConfig) LoadStage() string {
 type ProviderConfig struct {
 
 	// Id is the unique identification index of the provider
-	// This Id will be used when name resolutions on pongo is
-	// evaluated
-	Id string `yaml:"id"`
+	// This Id will be used when RawName resolutions on pongo is
+	// evaluated. Id defaults to Name if unset
+	RawId string `yaml:"id"`
+
+	// Name is the RawName of the plugin, will be used as Id if Id is unset
+	RawName string `yaml:"name"`
 
 	// Git specifies the URL to the git repository which hosts the provider
 	Git string `yaml:"git"`
 
 	// Path specifies the path to the plugin
 	Path string `yaml:"path"`
+
+	Data map[string]string `yaml:"data"`
+}
+
+func (p ProviderConfig) Name() string {
+	if p.RawName != "" {
+		return p.RawName
+	}
+	if p.RawId != "" {
+		return p.RawId
+	}
+	panic("both provider.RawName and provider.RawId is empty")
+}
+
+func (p ProviderConfig) ID() string {
+	if p.RawId != "" {
+		return p.RawId
+	}
+	if p.RawName != "" {
+		return p.RawName
+	}
+	panic("both provider.RawId and provider.RawName is empty")
 }
 
 type DataConfig struct {
-	Id         string                 `yaml:"id"`
+	Id         string                 `yaml:"RawId"`
 	PluginGit  string                 `yaml:"plugin.git"`
 	PluginPath string                 `yaml:"plugin.path"`
 	Type       string                 `yaml:"type"`

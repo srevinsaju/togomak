@@ -16,7 +16,7 @@ import (
 	"github.com/srevinsaju/togomak/pkg/schema"
 )
 
-func PrepareStage(ctx *context.Context, stage schema.StageConfig) {
+func PrepareStage(ctx *context.Context, stage *schema.StageConfig) {
 	// show some user-friendly output on the details of the stage about to be run
 	if stage.Name != "" && stage.Description != "" {
 		ctx.Logger.Infof("[%s] %s (%s)", ui.Plus, ui.Blue(stage.Name), ui.Grey(stage.Description))
@@ -104,7 +104,7 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 			if err != nil {
 				stageCtx.Logger.Fatal("Cannot render args:", err)
 			}
-			parsed, err := tpl.Execute(rootCtx.Data)
+			parsed, err := tpl.Execute(rootCtx.Data.AsMap())
 			if err != nil {
 				stageCtx.Logger.Fatal("Cannot render args:", err)
 			}
