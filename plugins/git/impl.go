@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/srevinsaju/togomak/pkg/schema"
 	"strings"
+
+	"github.com/srevinsaju/togomak/pkg/schema"
 )
 
 func (g *StageGit) Name() string {
@@ -53,7 +54,6 @@ func (g *StageGit) GatherInfo() error {
 }
 
 func (g *StageGit) SetContext(context schema.Context) {
-
 	g.context.Data = context.Data
 }
 
