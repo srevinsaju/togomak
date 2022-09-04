@@ -15,12 +15,14 @@ func Providers(ctx *context.Context, data schema.SchemaConfig) InternalProviders
 	providerLog.Debug("Bootstrapping providers")
 
 	for _, p := range data.Providers {
-		if _, ok := providers[p.Id]; !ok {
-			providerCtx := ctx.AddChild("provider", p.Id)
-			providers[p.Id] = provider.Get(providerCtx, p)
+
+		if _, ok := providers[p.ID()]; !ok {
+
+			providerCtx := ctx.AddChild("provider", p.ID())
+			providers[p.ID()] = provider.Get(providerCtx, p)
 
 		} else {
-			providerLog.Fatal("Duplicate provider ID: " + p.Id)
+			providerLog.Fatal("Duplicate provider ID: " + p.ID())
 		}
 	}
 	return providers
@@ -34,18 +36,20 @@ func (providers InternalProviders) GatherInfo(ctx *context.Context) {
 	providerLog := ctx.Logger.WithField("context", "providers")
 
 	for _, p := range providers {
+		providerCtx := ctx.AddChild("provider", p.Config.ID())
 		if p.Config.Path == "" {
+			// TODO: fixme
 			continue
 		}
-		providerLog.Tracef("Requesting information from provider %s", p.Config.Id)
+		providerCtx.Logger.Tracef("Requesting information from provider")
 
 		err := p.Provider.GatherInfo()
 		if err != nil {
-			p.Context.Logger.Fatal(err)
+			providerCtx.Logger.Fatal(err)
 		}
 		for k, v := range p.Provider.GetContext().Data {
-			p.Context.Logger.Debugf("Received context from provider %s: %v", k, v)
-			p.Context.Data[k] = v
+			providerCtx.Logger.Debugf("Received context from provider %s: %v", k, v)
+			providerCtx.Data[k] = v
 		}
 	}
 
