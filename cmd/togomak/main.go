@@ -1,9 +1,10 @@
 package main
 
 import (
-	"os"
-
+	"encoding/gob"
 	log "github.com/sirupsen/logrus"
+	"github.com/srevinsaju/togomak/pkg/context"
+	"os"
 )
 
 func init() {
@@ -26,6 +27,8 @@ func init() {
 }
 
 func main() {
+	gob.Register(context.Data{})
+
 	app := initCli()
 	if err := app.Run(os.Args); err != nil {
 		panic(err)

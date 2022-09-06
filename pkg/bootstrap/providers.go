@@ -4,6 +4,7 @@ import (
 	"github.com/srevinsaju/togomak/pkg/context"
 	"github.com/srevinsaju/togomak/pkg/provider"
 	"github.com/srevinsaju/togomak/pkg/schema"
+	"github.com/srevinsaju/togomak/pkg/x"
 )
 
 type InternalProviders map[string]schema.Provider
@@ -30,6 +31,17 @@ func Providers(ctx *context.Context, data schema.SchemaConfig) InternalProviders
 
 func (providers InternalProviders) Get(id string) schema.Provider {
 	return providers[id]
+}
+
+func (providers InternalProviders) SetContext(ctx *context.Context, data schema.SchemaConfig) {
+	// providerLog := ctx.Logger.WithField("context", "providers")
+
+	for _, p := range providers {
+		providerCtx := ctx.AddChild("provider", p.Config.ID())
+		providerCtx.Data["params"] = p.Config.Data
+		providerCtx.Logger.Debug("Sending default parameters")
+		x.Must(p.Provider.SetContext(schema.Context{Data: p.Config.Data}))
+	}
 }
 
 func (providers InternalProviders) GatherInfo(ctx *context.Context) {
