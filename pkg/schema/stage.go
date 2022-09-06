@@ -2,11 +2,12 @@ package schema
 
 import (
 	"github.com/hashicorp/go-plugin"
+	"github.com/srevinsaju/togomak/pkg/context"
 	"net/rpc"
 )
 
 type Context struct {
-	Data map[string]string
+	Data context.Data
 }
 
 // Stage is the interface that we're exposing as a plugin.
@@ -19,11 +20,11 @@ type Stage interface {
 	//CanRun() bool
 	//Run() error
 	GatherInfo() error
-	SetContext(context Context)
+	SetContext(c Context) error
 	GetContext() Context
 }
 
-// Here is an implementation that talks over RPC
+// Here is an/var/mnt/data/repo/github.com/srevinsaju/togomak/.togomak/plugins/togomak-provider-git implementation that talks over RPC
 type StageRPC struct{ client *rpc.Client }
 
 // Here is the RPC server that StageRPC talks to, conforming to

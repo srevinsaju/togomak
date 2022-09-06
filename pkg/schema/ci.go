@@ -1,5 +1,7 @@
 package schema
 
+import "github.com/srevinsaju/togomak/pkg/context"
+
 // StageConfig is a block of definition for a stage to run.
 // Stage is a job which run internally, concurrently by default
 // to achieve a specific task.
@@ -104,7 +106,7 @@ type ProviderConfig struct {
 	// Path specifies the path to the plugin
 	Path string `yaml:"path"`
 
-	Data map[string]string `yaml:"data"`
+	Data context.Data `yaml:"data"`
 }
 
 func (p ProviderConfig) Name() string {

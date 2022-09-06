@@ -2,6 +2,7 @@ package provider
 
 import (
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/srevinsaju/togomak/pkg/meta"
 	"github.com/srevinsaju/togomak/pkg/x"
@@ -36,13 +37,15 @@ var pluginMap = map[string]plugin.Plugin{
 var providers map[string]schema.Provider
 
 func initProvider(ctx *context.Context, p schema.ProviderConfig) schema.Provider {
-	ctx.Logger.Debugf("Loading provider %s", p.Name())
+	providerLogger := ctx.Logger.WithField("provider", p.Name())
+	providerLogger.Debug("Loading provider")
 	// Create an hclog.Logger
 	logger := hclog.New(&hclog.LoggerOptions{
 		Name:   "provider",
-		Output: os.Stdout,
+		Output: providerLogger.WriterLevel(log.DebugLevel),
 		Level:  hclog.Warn,
 	})
+
 	if providers == nil {
 		providers = make(map[string]schema.Provider)
 	}
@@ -86,6 +89,7 @@ func initProvider(ctx *context.Context, p schema.ProviderConfig) schema.Provider
 		Plugins:         pluginMap,
 		Cmd:             exec.Command(p.Path),
 		Logger:          logger,
+		Stderr:          providerLogger.WriterLevel(log.DebugLevel),
 	})
 
 	// Connect via RPC
@@ -115,14 +119,14 @@ func initProvider(ctx *context.Context, p schema.ProviderConfig) schema.Provider
 // at a time, there can only be one provider by name. There can be multiple providers
 // with different ids on same ID.
 func Get(ctx *context.Context, p schema.ProviderConfig) schema.Provider {
-	if v, ok := providers[p.Name()]; ok {
+	if v, ok := providers[p.ID()]; ok {
 		return v
 	}
 	return initProvider(ctx, p)
 }
 
 func Destroy(ctx *context.Context, p schema.ProviderConfig) {
-	v, ok := providers[p.Name()]
+	v, ok := providers[p.ID()]
 	ctx.Logger.Tracef("Currently loaded providers are %v", providers)
 	ctx.Logger.Tracef("Unloading provider %s", p.Name())
 

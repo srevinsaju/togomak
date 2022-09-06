@@ -11,6 +11,14 @@ matrix:
 providers:
   - id: git
 
+  - id: git2 
+    name: git 
+    data: 
+      repo:
+        url: https://github.com/srevinsaju/procmail2telegram
+        depth: 1
+
+
 parameters:
   - name: MY_PROJECT_ID
     default: my-project

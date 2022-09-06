@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/gob"
 	"github.com/go-git/go-git/v5"
+	context "github.com/srevinsaju/togomak/pkg/context"
 	"os"
 
 	"github.com/hashicorp/go-hclog"
@@ -11,10 +13,12 @@ import (
 
 // Here is a real implementation of Stage
 type StageGit struct {
-	logger  hclog.Logger
-	context schema.Context
-	g       *git.Repository
-	error   error
+	logger           hclog.Logger
+	context          schema.Context
+	g                *git.Repository
+	customUserConfig bool
+	gitConfig        GitConfig
+	error            error
 }
 
 // handshakeConfigs are used to just do a basic handshake between
@@ -28,6 +32,8 @@ var handshakeConfig = plugin.HandshakeConfig{
 }
 
 func main() {
+	gob.Register(context.Data{})
+	gob.Register(schema.Context{})
 
 	logger := hclog.New(&hclog.LoggerOptions{
 		Level:      hclog.DefaultLevel,
@@ -35,25 +41,16 @@ func main() {
 		JSONFormat: true,
 		Color:      hclog.ForceColor,
 	})
-	wd, err := os.Getwd()
-	if err != nil {
-		logger.Warn("error getting working directory", "error", err)
-	}
-
-	repo, err := git.PlainOpenWithOptions(wd, &git.PlainOpenOptions{
-		DetectDotGit:          true,
-		EnableDotGitCommonDir: true,
-	})
 
 	gitPlugin := &StageGit{
 		//logger: logger,
 		context: schema.Context{
-			Data: map[string]string{},
+			Data: context.Data{},
 			//Mutex: &sync.Mutex{},
 		},
 		logger: logger,
-		g:      repo,
-		error:  err,
+		g:      nil,
+		error:  nil,
 	}
 	// pluginMap is the map of plugins we can dispense.
 	var pluginMap = map[string]plugin.Plugin{
