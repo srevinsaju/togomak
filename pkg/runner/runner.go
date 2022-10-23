@@ -67,6 +67,8 @@ func Orchestrator(cfg config.Config) {
 	}
 
 	if cfg.Summary == config.SummaryOn || cfg.FailLazy || cfg.Summary != config.SummaryOff && config.GetSummaryType(data.Options.Summary) == config.SummaryOn {
-		bootstrap.Summary(ctx)
+		if cfg.RunStages == nil {
+			bootstrap.Summary(ctx)
+		}
 	}
 }

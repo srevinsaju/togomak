@@ -9,7 +9,7 @@ stages:
     script: |
       go vet github.com/srevinsaju/togomak/...
 
-  - id: git-provider
+  - id: git_provider
     script: |
       go build -v -o ./.togomak/plugins/togomak-provider-git github.com/srevinsaju/togomak/plugins/git
 

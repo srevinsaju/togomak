@@ -40,6 +40,9 @@ func autoDetectFile(cwd string) string {
 
 func cliContextRunner(cliCtx *cli.Context) error {
 
+	if cliCtx.Bool("silent") {
+		log.SetLevel(log.ErrorLevel)
+	}
 	var p string
 	contextDir := cliCtx.Path("context")
 	if cliCtx.Path("file") != "" {

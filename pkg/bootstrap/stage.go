@@ -4,8 +4,11 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/srevinsaju/togomak/pkg/context"
 	"github.com/srevinsaju/togomak/pkg/schema"
+	"regexp"
 	"strings"
 )
+
+var StageIdValidation = regexp.MustCompile(`^([a-zA-Z_]+)$`)
 
 func StageValidate(ctx *context.Context, data schema.SchemaConfig) {
 
@@ -15,8 +18,8 @@ func StageValidate(ctx *context.Context, data schema.SchemaConfig) {
 
 	// check if duplicate ID is present
 	for _, stage := range data.Stages {
-		if stage.Id == "" {
-			validateLog.Fatal("Stage ID is empty")
+		if !StageIdValidation.MatchString(stage.Id) {
+			validateLog.Fatalf("Stage ID must contain only alphabets: %s", stage.Id)
 		}
 		if _, ok := stages[stage.Id]; ok {
 			validateLog.Fatal("Duplicate stage ID: " + stage.Id)
@@ -43,5 +46,6 @@ func StageValidate(ctx *context.Context, data schema.SchemaConfig) {
 			}
 
 		}
+		// TODO: implement extends from git
 	}
 }

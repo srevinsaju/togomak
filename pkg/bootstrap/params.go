@@ -44,7 +44,9 @@ func Params(ctx *context.Context, data schema.SchemaConfig) {
 			}
 
 		}
+		paramCtx.DataMutex.Lock()
 		paramCtx.Data[param.Name] = v
+		paramCtx.DataMutex.Unlock()
 	}
 
 }

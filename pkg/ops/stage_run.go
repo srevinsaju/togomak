@@ -188,5 +188,6 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 		fmt.Println()
 		status.Success = true
 	}
+
 	stageCtx.SetStatus(*status)
 }

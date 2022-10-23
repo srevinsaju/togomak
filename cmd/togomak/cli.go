@@ -50,6 +50,13 @@ func initCli() *cli.App {
 			},
 
 			&cli.BoolFlag{
+				Name:    "silent",
+				Aliases: []string{"s"},
+				Usage:   "Disable All output from togomak",
+				EnvVars: []string{"TOGOMAK_SILENT"},
+			},
+
+			&cli.BoolFlag{
 				Name:     "dry-run",
 				Required: false,
 				Usage:    "Don't actually run any stage; just print the commands",

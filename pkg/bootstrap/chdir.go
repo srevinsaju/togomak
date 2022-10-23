@@ -17,13 +17,17 @@ func Chdir(ctx *context.Context, cfg config.Config, data schema.SchemaConfig) {
 		if err != nil {
 			ctx.Logger.Warn(err)
 		}
+		ctx.DataMutex.Lock()
 		ctx.Data["cwd"] = cwd
+		ctx.DataMutex.Unlock()
 	} else {
 		ctx.Logger.Debugf("Changing directory to %s", cfg.ContextDir)
 		err := os.Chdir(cfg.ContextDir)
 		if err != nil {
 			ctx.Logger.Warn(err)
 		}
+		ctx.DataMutex.Lock()
 		ctx.Data["cwd"] = cfg.ContextDir
+		ctx.DataMutex.Unlock()
 	}
 }
