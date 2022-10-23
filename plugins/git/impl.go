@@ -1,7 +1,9 @@
 package main
 
 import (
+	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/mitchellh/mapstructure"
 	"github.com/srevinsaju/togomak/pkg/context"
@@ -27,30 +29,30 @@ func (g *StageGit) Run() error {
 	return nil
 }
 
-func (g *StageGit) GatherInfo() error {
+func (g *StageGit) GatherInfo() schema.StageError {
 	err := g.init()
 	if err != nil {
-		return err
+		return schema.StageErrorFromErr(err)
 	}
 	//g.context.Mutex.Lock()
 	//defer g.context.Mutex.Unlock()
 	if g.error != nil {
-		return g.error
+		return schema.StageErrorFromErr(g.error)
 	}
 	ref, err := g.g.Head()
 	if err != nil {
-		return err
+		return schema.StageErrorFromErr(err)
 	}
 	sha := strings.Split(ref.String(), " ")[0]
 	shortSha := sha[:7]
 	g.context.Data["branch"] = ref.Name().String()
 	w, err := g.g.Worktree()
 	if err != nil {
-		return err
+		return schema.StageErrorFromErr(err)
 	}
 	s, err := w.Status()
 	if err != nil {
-		return err
+		return schema.StageErrorFromErr(err)
 	}
 	if !s.IsClean() {
 		sha += "-dirty"
@@ -58,7 +60,7 @@ func (g *StageGit) GatherInfo() error {
 	}
 	g.context.Data["sha"] = sha
 	g.context.Data["short_sha"] = shortSha
-	return nil
+	return schema.StageErrorFromErr(nil)
 }
 
 func (g *StageGit) SetContext(c schema.Context) error {
@@ -85,16 +87,39 @@ func (g *StageGit) init() error {
 	var repo *git.Repository
 	var err error
 	if g.customUserConfig {
-		g.logger.Info("decoded data", g.gitConfig) //gitCfg) //,
+		isReferenceNameSet := g.gitConfig.ReferenceName != ""
+		if !isReferenceNameSet {
+			g.logger.Info("reference name not set, using refs/heads/master")
+			g.gitConfig.ReferenceName = "refs/heads/master"
+		}
+		g.logger.Trace("decoded data", g.gitConfig) //gitCfg) //,
 		g.logger.Info("Cloning repository from user config")
 		g.logger.Info("Repository URL: " + g.gitConfig.Repository.URL)
-		repo, err = git.Clone(memory.NewStorage(), nil, &git.CloneOptions{
+		g.logger.Info("Reference Name: " + g.gitConfig.ReferenceName)
+
+		repo, err = git.Clone(memory.NewStorage(), memfs.New(), &git.CloneOptions{
 			URL:               g.gitConfig.Repository.URL,
 			InsecureSkipTLS:   g.gitConfig.SkipTLSInsecure,
 			RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
 			Depth:             g.gitConfig.Repository.Depth,
+			ReferenceName:     plumbing.ReferenceName(g.gitConfig.ReferenceName),
 			SingleBranch:      true,
+			Progress:          os.Stdout,
 		})
+		if err != nil && !isReferenceNameSet {
+			g.logger.Info("Cloning failed, trying with refs/heads/main")
+			g.gitConfig.ReferenceName = "refs/heads/main"
+			repo, err = git.Clone(memory.NewStorage(), memfs.New(), &git.CloneOptions{
+				URL:               g.gitConfig.Repository.URL,
+				InsecureSkipTLS:   g.gitConfig.SkipTLSInsecure,
+				RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
+				Depth:             g.gitConfig.Repository.Depth,
+				ReferenceName:     plumbing.ReferenceName(g.gitConfig.ReferenceName),
+				SingleBranch:      true,
+				Progress:          os.Stdout,
+			})
+		}
+
 		if err != nil {
 			g.logger.Error("Error cloning repository: " + err.Error())
 		}

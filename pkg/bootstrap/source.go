@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/spf13/afero"
 	"github.com/srevinsaju/togomak/pkg/context"
 	"github.com/srevinsaju/togomak/pkg/meta"
@@ -37,6 +38,8 @@ const (
 
 	// SourceTypeGitConfigDefaultsCloneDepth gives the default clone depth
 	SourceTypeGitConfigDefaultsCloneDepth = "1"
+
+	SourceTypeGitConfigReferenceName = "reference_name"
 )
 
 func ExpandSources(ctx *context.Context, data *schema.SchemaConfig) {
@@ -89,18 +92,45 @@ func ExpandSources(ctx *context.Context, data *schema.SchemaConfig) {
 			isGitCloneInsecureSkipTLS := childCtx.Getenv(SourceTypeGitConfigInsecureSkipTLS) != ""
 			childCtx.Logger.Tracef("Parsed data for %s: %v", SourceTypeGitConfigInsecureSkipTLS, isGitCloneInsecureSkipTLS)
 
+			gitCloneReferenceName := childCtx.Getenv(SourceTypeGitConfigReferenceName)
+			if gitCloneReferenceName == "" {
+				childCtx.Logger.Debug("Using refs/heads/master as default reference name")
+				gitCloneReferenceName = "refs/heads/master"
+			}
+
 			// clone the repository
-			childCtx.Logger.Debugf("Cloning %s to %s", v.Source.URL, dest)
+			childCtx.Logger.Debugf("Cloning %s to %s with reference %s", v.Source.URL, dest, gitCloneReferenceName)
 			_, err = git.PlainClone(dest, false, &git.CloneOptions{
 				URL:   v.Source.URL,
 				Depth: gitCloneDepthParsed,
 				// TODO: allow the user to specify the recursive depth of the clone
 				RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
 				SingleBranch:      isGitCloneSingleBranch,
+				ReferenceName:     plumbing.ReferenceName(gitCloneReferenceName),
 				InsecureSkipTLS:   isGitCloneInsecureSkipTLS,
+				Progress:          childCtx.Logger.Writer(),
 			})
+
+			// FIXME: this is a hack to fix the issue of git clone not working with
+			// the reference name. This is a temporary fix, and should be removed
+			// once the issue is fixed upstream
+			// https://github.com/go-git/go-git/issues/363
 			if err != nil {
-				ctx.Logger.Fatal("Failed to clone repository", err)
+				gitCloneReferenceName = "refs/heads/main"
+				childCtx.Logger.Debugf("Cloning %s to %s with reference %s", v.Source.URL, dest, gitCloneReferenceName)
+				_, err = git.PlainClone(dest, false, &git.CloneOptions{
+					URL:   v.Source.URL,
+					Depth: gitCloneDepthParsed,
+					// TODO: allow the user to specify the recursive depth of the clone
+					RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
+					SingleBranch:      isGitCloneSingleBranch,
+					ReferenceName:     plumbing.ReferenceName(gitCloneReferenceName),
+					InsecureSkipTLS:   isGitCloneInsecureSkipTLS,
+					Progress:          childCtx.Logger.Writer(),
+				})
+				if err != nil {
+					ctx.Logger.Fatal("Failed to clone repository", err)
+				}
 			}
 		case SourceTypeFile:
 			childCtx.Logger.Tracef("Copying %s to %s", v.Source.URL, dest)

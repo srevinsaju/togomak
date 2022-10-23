@@ -1,7 +1,7 @@
 package schema
 
-func (g *StageRPC) GatherInfo() error {
-	var resp error
+func (g *StageRPC) GatherInfo() StageError {
+	var resp StageError
 	err := g.client.Call("Plugin.GatherInfo", new(interface{}), &resp)
 	if err != nil {
 		// You usually want your interfaces to return errors. If they don't,
@@ -12,7 +12,7 @@ func (g *StageRPC) GatherInfo() error {
 	return resp
 }
 
-func (s *StageRPCServer) GatherInfo(args interface{}, resp *error) error {
+func (s *StageRPCServer) GatherInfo(args interface{}, resp *StageError) error {
 	*resp = s.Impl.GatherInfo()
 	return nil
 }

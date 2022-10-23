@@ -7,4 +7,5 @@ type RepositoryConfig struct {
 type GitConfig struct {
 	Repository      RepositoryConfig `mapstructure:"repo"`
 	SkipTLSInsecure bool             `mapstructure:"skip_tls_insecure"`
+	ReferenceName   string           `mapstructure:"reference_name"`
 }

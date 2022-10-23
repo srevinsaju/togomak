@@ -131,8 +131,8 @@ func Destroy(ctx *context.Context, p schema.ProviderConfig) {
 	ctx.Logger.Tracef("Unloading provider %s", p.Name())
 
 	if !ok {
-		ctx.Logger.Warnf("Provider %s is not loaded", p.Name())
-		panic("provider is not loaded on to memory yet")
+		ctx.Logger.Debugf("Provider %s is not loaded, or has already been unloaded.", p.Name())
+		return
 	}
 
 	// TODO: destroy the provider

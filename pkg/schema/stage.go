@@ -19,9 +19,24 @@ type Stage interface {
 
 	//CanRun() bool
 	//Run() error
-	GatherInfo() error
+	GatherInfo() StageError
 	SetContext(c Context) error
 	GetContext() Context
+}
+
+type StageError struct {
+	Err   string
+	IsErr bool
+}
+
+func StageErrorFromErr(err error) StageError {
+	if err != nil {
+		return StageError{
+			Err:   err.Error(),
+			IsErr: true,
+		}
+	}
+	return StageError{Err: "", IsErr: err != nil}
 }
 
 // Here is an/var/mnt/data/repo/github.com/srevinsaju/togomak/.togomak/plugins/togomak-provider-git implementation that talks over RPC
