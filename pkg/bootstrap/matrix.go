@@ -26,12 +26,13 @@ func MatrixRun(ctx *context.Context, data schema.SchemaConfig, cfg config.Config
 	for product := range cartesian.Iter(s...) {
 
 		matrixLogger.Infof("[%s] %s %s build", ui.Plus, ui.SubStage, ui.Matrix)
-
+		ctx.DataMutex.Lock()
 		ctx.Data["matrix"] = map[string]string{}
 		for i := range keys {
 			matrixLogger.Infof("%s %s %s.%s=%s", ui.SubStage, ui.SubSubStage, matrixText, ui.Grey(keys[i]), product[i])
 			ctx.Data["matrix"].(map[string]string)[keys[i]] = product[i].(string)
 		}
+		ctx.DataMutex.Unlock()
 
 		SimpleRun(ctx, cfg, data)
 	}

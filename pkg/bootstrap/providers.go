@@ -38,7 +38,9 @@ func (providers InternalProviders) SetContext(ctx *context.Context, data schema.
 
 	for _, p := range providers {
 		providerCtx := ctx.AddChild("provider", p.Config.ID())
+		providerCtx.DataMutex.Lock()
 		providerCtx.Data["params"] = p.Config.Data
+		providerCtx.DataMutex.Unlock()
 		providerCtx.Logger.Debug("Sending default parameters")
 		x.Must(p.Provider.SetContext(schema.Context{Data: p.Config.Data}))
 	}
@@ -60,8 +62,11 @@ func (providers InternalProviders) GatherInfo(ctx *context.Context) {
 			providerCtx.Logger.Fatal(err.Err)
 		}
 		for k, v := range p.Provider.GetContext().Data {
+
 			providerCtx.Logger.Debugf("Received context from provider %s: %v", k, v)
+			providerCtx.DataMutex.Lock()
 			providerCtx.Data[k] = v
+			providerCtx.DataMutex.Unlock()
 		}
 	}
 

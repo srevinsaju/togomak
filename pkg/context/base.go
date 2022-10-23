@@ -6,6 +6,7 @@ import (
 	"github.com/srevinsaju/togomak/pkg/meta"
 	"os"
 	"strings"
+	"sync"
 )
 
 type Status struct {
@@ -40,6 +41,7 @@ func (d Data) GetList(key string) []string {
 }
 
 type Context struct {
+	DataMutex    sync.Mutex
 	Logger       *log.Entry
 	Key          string
 	Value        string
@@ -54,12 +56,22 @@ type Context struct {
 }
 
 func (c *Context) SetStatus(s Status) {
-	c.status = s
-	c.Data[KeyStatus] = Data{
+	rootCtx := c.RootParent()
+	statusMessage := Data{
 		StatusSuccess:  s.Success,
 		StatusMessage:  s.Message,
 		StatusMatrixId: s.MatrixId,
 	}
+	rootCtx.DataMutex.Lock()
+	if _, ok := rootCtx.Data["stage"]; !ok {
+		//rootCtx.Data["stage"] = map[string]map[string]Data{}
+	}
+	//rootCtx.Data["stage"].(Data)[s.] = statusMessage
+	rootCtx.DataMutex.Unlock()
+	c.status = s
+	c.DataMutex.Lock()
+	c.Data[KeyStatus] = statusMessage
+	c.DataMutex.Unlock()
 }
 
 func (c *Context) Getenv(k string) string {
