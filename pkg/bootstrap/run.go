@@ -1,16 +1,24 @@
 package bootstrap
 
 import (
+	"errors"
+	"fmt"
 	"github.com/flosch/pongo2/v6"
+	"github.com/gobwas/glob"
 	"github.com/srevinsaju/togomak/pkg/config"
 	"github.com/srevinsaju/togomak/pkg/context"
 	"github.com/srevinsaju/togomak/pkg/ops"
 	"github.com/srevinsaju/togomak/pkg/schema"
+	"github.com/srevinsaju/togomak/pkg/ui"
+	"io/fs"
+	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig) {
+
 	rootStage := schema.NewRootStage()
 	ctx.Logger.Debug("Sorting dependency tree")
 
@@ -20,6 +28,7 @@ func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig
 		jobCount := 0
 		// run the jobs
 		for _, l := range layer {
+			jobStartTime := time.Now()
 			if l == rootStage.Id {
 				continue
 			}
@@ -27,8 +36,46 @@ func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig
 				ctx.Logger.Debugf("Skipping stage %s", l)
 				continue
 			}
+
 			stage := data.Stages.GetStageById(l)
 			stageCtx := ctx.AddChild("stage", stage.Id)
+
+			// check if the stage need to be run
+			state, stateManager := GetStateForStage(ctx, stage)
+
+			targetStartTime := time.Now()
+			targetIsUptoDate := true
+			for _, t := range stage.Targets {
+				if strings.HasPrefix(t, "./") {
+					t = t[2:]
+				}
+				stageCtx.Logger.Tracef("Expanding glob target: %s", t)
+				g, err := glob.Compile(t)
+				if err != nil {
+					stageCtx.Logger.Warnf("Provided glob expression '%s' may be incorrect. Please check the following error message for more details.", t)
+					stageCtx.Logger.Fatal(err)
+				}
+
+				_ = filepath.Walk(".", func(f string, info fs.FileInfo, err error) error {
+					if !g.Match(f) {
+						return nil
+					}
+					stageCtx.Logger.Tracef("Checking if %s is up to date", f)
+					if !state.IsTargetUpToDate(f) {
+						stageCtx.Logger.Debugf("Target %s is not up to date", f)
+						targetIsUptoDate = false
+						return errors.New("target is not up to date")
+					}
+					return nil
+				})
+
+			}
+			stageCtx.Logger.Tracef("target sync check took %s", time.Now().Sub(targetStartTime))
+
+			if targetIsUptoDate && (stage.Targets != nil || (cfg.Force || cfg.RunAll)) {
+				stageCtx.Logger.Infof(ui.Yellow(fmt.Sprintf("Stage %s is up to date", stage.Id)))
+				continue
+			}
 
 			tpl, err := pongo2.FromString(stage.Condition)
 			if err != nil {
@@ -47,13 +94,17 @@ func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig
 				continue
 			}
 
+			stageCtx.Logger.Tracef("stage condition check took %s", time.Now().Sub(jobStartTime))
+
 			wg.Add(1)
 			jobCount++
 
 			go func(l string) {
+				jobPreparationStartTime := time.Now()
 				defer wg.Done()
 				ops.PrepareStage(ctx, &stage)
 				ops.RunStage(cfg, stageCtx, stage)
+				stageCtx.Logger.Tracef("stage run took %s", time.Now().Sub(jobPreparationStartTime))
 			}(l)
 
 			if jobCount == cfg.JobsNumber {
@@ -66,6 +117,8 @@ func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig
 				// concurrently since it will create mixed up output
 				wg.Wait()
 			}
+
+			UpdateStateForStage(ctx, stage, stateManager)
 		}
 
 		wg.Wait()

@@ -23,6 +23,14 @@ type StageConfig struct {
 	// stage is called
 	Condition string `yaml:"condition,omitempty"`
 
+	// State is a URL reference to a file
+	State string `yaml:"state,omitempty"`
+
+	// Targets is a URL references to a list of files
+	// if any of the files have a modification time greater than the one specified in State
+	// then, it will trigger the state, else skip
+	Targets []string `yaml:"targets"`
+
 	// Plugin
 	Plugin string `yaml:"plugin,omitempty"`
 
@@ -54,6 +62,12 @@ type StageConfig struct {
 	Extends string `yaml:"extends,omitempty"`
 
 	Source StageSourceConfig `yaml:"source,omitempty"`
+
+	tainted bool `yaml:"-"`
+}
+
+func (p *StageConfig) Taint() {
+	p.tainted = true
 }
 
 // StageSourceConfig is a block of definition for an external source
@@ -152,6 +166,18 @@ type ParametersConfig struct {
 	Default string `yaml:"default"`
 }
 
+type StateConfig struct {
+	URL       string `yaml:"url"`
+	Workspace string `yaml:"workspace"`
+}
+
+func NewStateConfig() StateConfig {
+	return StateConfig{
+		URL:       "file://.togomak/state",
+		Workspace: "default",
+	}
+}
+
 // SchemaConfig shows the overall YAML configuration file
 type SchemaConfig struct {
 
@@ -182,6 +208,9 @@ type SchemaConfig struct {
 
 	// Data - have not decided what to do with this yet
 	Data []DataConfig `yaml:"data"`
+
+	// State has options on where to store the pipeline state
+	State StateConfig `yaml:"state,omitempty"`
 
 	// Options provide togomak specific build configurations
 	Options OptionsConfig `yaml:"options"`

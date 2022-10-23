@@ -19,6 +19,8 @@ func GetSummaryType(v string) int {
 }
 
 type Config struct {
+	RunAll        bool
+	Force         bool
 	RunStages     []string
 	ContextDir    string
 	CiFile        string

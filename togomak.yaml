@@ -10,14 +10,20 @@ stages:
       go vet github.com/srevinsaju/togomak/...
 
   - id: git_provider
+    targets: 
+      - "plugins/*/*.go"
     script: |
       go build -v -o ./.togomak/plugins/togomak-provider-git github.com/srevinsaju/togomak/plugins/git
 
   - id: build
+    targets:
+      - "**/*.go"
     script: |
       go build -v -o ./cmd/togomak/togomak github.com/srevinsaju/togomak/cmd/togomak 
 
   - id: install
+    targets:
+      - cmd/togomak/togomak
     condition: true
     depends-on:
       - build
