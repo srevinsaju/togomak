@@ -56,8 +56,8 @@ func (providers InternalProviders) GatherInfo(ctx *context.Context) {
 		providerCtx.Logger.Tracef("Requesting information from provider")
 
 		err := p.Provider.GatherInfo()
-		if err != nil {
-			providerCtx.Logger.Fatal(err)
+		if err.IsErr {
+			providerCtx.Logger.Fatal(err.Err)
 		}
 		for k, v := range p.Provider.GetContext().Data {
 			providerCtx.Logger.Debugf("Received context from provider %s: %v", k, v)

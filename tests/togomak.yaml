@@ -15,8 +15,7 @@ providers:
     name: git 
     data: 
       repo:
-        url: https://github.com/srevinsaju/procmail2telegram
-        depth: 1
+        url: https://github.com/srevinsaju/togomak
 
 
 parameters:
@@ -62,6 +61,7 @@ stages:
     name: Provider Test 
     script: | 
       echo "The commit sha is {{ provider.git.sha }}" 
+      echo "The commit sha of {{ provider.git2.sha }}"
 
   - id: cloudbuild
     name: Cloudbuild Test 
