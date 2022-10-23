@@ -1,16 +1,19 @@
 package runner
 
 import (
+	"fmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/pkg/bootstrap"
 	"github.com/srevinsaju/togomak/pkg/config"
 	"github.com/srevinsaju/togomak/pkg/context"
 	"github.com/srevinsaju/togomak/pkg/meta"
+	"github.com/srevinsaju/togomak/pkg/state"
 	"github.com/srevinsaju/togomak/pkg/templating"
 	"os"
 )
 
 const SupportedCiConfigVersion = 1
+const StateWorkspace = "state_workspace"
 
 func Orchestrator(cfg config.Config) {
 
@@ -36,6 +39,14 @@ func Orchestrator(cfg config.Config) {
 	/// create temporary working directory
 	bootstrap.TempDir(ctx)
 	defer bootstrap.SafeDeleteTempDir(ctx)
+
+	stateUrl := data.State.URL
+	if stateUrl == "" {
+		stateUrl = fmt.Sprintf("file://%s", meta.BuildDirPrefix)
+	}
+
+	ctx.Data["default_state_manager"] = bootstrap.LoadStateBackend(ctx, stateUrl)
+	ctx.Data[state.WorkspaceDataKey] = data.State.Workspace
 
 	/// get the parameters
 	bootstrap.Params(ctx, data)

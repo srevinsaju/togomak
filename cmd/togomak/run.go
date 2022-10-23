@@ -8,6 +8,7 @@ import (
 	"github.com/srevinsaju/togomak/pkg/config"
 	"github.com/srevinsaju/togomak/pkg/meta"
 	"github.com/srevinsaju/togomak/pkg/runner"
+	"github.com/srevinsaju/togomak/pkg/x"
 	"github.com/urfave/cli/v2"
 	"path"
 	"path/filepath"
@@ -54,6 +55,8 @@ func cliContextRunner(cliCtx *cli.Context) error {
 	runner.Orchestrator(config.Config{
 		RunStages:  cliCtx.Args().Slice(),
 		ContextDir: contextDir,
+		Force:      cliCtx.Bool("force"),
+		RunAll:     x.Contains(cliCtx.Args().Slice(), "all"),
 		CiFile:     p,
 		DryRun:     cliCtx.Bool("dry-run"),
 		JobsNumber: cliCtx.Int("jobs"),
