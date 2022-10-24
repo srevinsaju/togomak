@@ -2,12 +2,14 @@ package bootstrap
 
 import (
 	"errors"
+	"fmt"
 	"github.com/flosch/pongo2/v6"
 	"github.com/gobwas/glob"
 	"github.com/srevinsaju/togomak/pkg/config"
 	"github.com/srevinsaju/togomak/pkg/context"
 	"github.com/srevinsaju/togomak/pkg/ops"
 	"github.com/srevinsaju/togomak/pkg/schema"
+	"github.com/srevinsaju/togomak/pkg/ui"
 	"io/fs"
 	"path/filepath"
 	"strings"
@@ -104,7 +106,8 @@ func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig
 				defer wg.Done()
 				ops.PrepareStage(ctx, &stage, false)
 				ops.RunStage(cfg, stageCtx, stage)
-				stageCtx.Logger.Tracef("stage run took %s", time.Now().Sub(jobPreparationStartTime))
+				stageCtx.Logger.Info(ui.Grey(fmt.Sprintf("took %s", time.Now().Sub(jobPreparationStartTime))))
+
 			}(l)
 
 			if jobCount == cfg.JobsNumber {
