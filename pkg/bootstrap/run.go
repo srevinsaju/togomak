@@ -73,7 +73,9 @@ func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig
 			stageCtx.Logger.Tracef("target sync check took %s", time.Now().Sub(targetStartTime))
 
 			if targetIsUptoDate && (stage.Targets != nil || (cfg.Force || cfg.RunAll)) {
-				stageCtx.Logger.Infof(ui.Yellow(fmt.Sprintf("Stage %s is up to date", stage.Id)))
+				stageCtx.Logger.Debug("target up to date")
+				UnlockState(ctx, stage)
+				ops.PrepareStage(ctx, &stage, true)
 				continue
 			}
 
@@ -102,9 +104,10 @@ func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig
 			go func(l string) {
 				jobPreparationStartTime := time.Now()
 				defer wg.Done()
-				ops.PrepareStage(ctx, &stage)
+				ops.PrepareStage(ctx, &stage, false)
 				ops.RunStage(cfg, stageCtx, stage)
-				stageCtx.Logger.Tracef("stage run took %s", time.Now().Sub(jobPreparationStartTime))
+				stageCtx.Logger.Info(ui.Grey(fmt.Sprintf("took %s", time.Now().Sub(jobPreparationStartTime))))
+
 			}(l)
 
 			if jobCount == cfg.JobsNumber {
@@ -118,7 +121,7 @@ func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig
 				wg.Wait()
 			}
 
-			UpdateStateForStage(ctx, stage, stateManager)
+			UpdateStateForStage(ctx, stage, stateManager, false)
 		}
 
 		wg.Wait()

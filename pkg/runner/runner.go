@@ -9,13 +9,16 @@ import (
 	"github.com/srevinsaju/togomak/pkg/meta"
 	"github.com/srevinsaju/togomak/pkg/state"
 	"github.com/srevinsaju/togomak/pkg/templating"
+	"github.com/srevinsaju/togomak/pkg/ui"
 	"os"
+	"time"
 )
 
 const SupportedCiConfigVersion = 1
 const StateWorkspace = "state_workspace"
 
 func Orchestrator(cfg config.Config) {
+	orchestratorStartTime := time.Now()
 
 	owd, _ := os.Getwd()
 
@@ -28,6 +31,7 @@ func Orchestrator(cfg config.Config) {
 			"env": templating.Env,
 		},
 	}
+
 	ctx.Logger.Debugf("Starting %s", meta.AppName)
 
 	/// load config
@@ -82,4 +86,5 @@ func Orchestrator(cfg config.Config) {
 			bootstrap.Summary(ctx)
 		}
 	}
+	ctx.Logger.Info(ui.Grey(fmt.Sprintf("togomak completed in %s", time.Now().Sub(orchestratorStartTime))))
 }
