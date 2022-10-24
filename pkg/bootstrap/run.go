@@ -2,14 +2,12 @@ package bootstrap
 
 import (
 	"errors"
-	"fmt"
 	"github.com/flosch/pongo2/v6"
 	"github.com/gobwas/glob"
 	"github.com/srevinsaju/togomak/pkg/config"
 	"github.com/srevinsaju/togomak/pkg/context"
 	"github.com/srevinsaju/togomak/pkg/ops"
 	"github.com/srevinsaju/togomak/pkg/schema"
-	"github.com/srevinsaju/togomak/pkg/ui"
 	"io/fs"
 	"path/filepath"
 	"strings"
@@ -73,7 +71,9 @@ func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig
 			stageCtx.Logger.Tracef("target sync check took %s", time.Now().Sub(targetStartTime))
 
 			if targetIsUptoDate && (stage.Targets != nil || (cfg.Force || cfg.RunAll)) {
-				stageCtx.Logger.Infof(ui.Yellow(fmt.Sprintf("Stage %s is up to date", stage.Id)))
+				stageCtx.Logger.Debug("target up to date")
+				UnlockState(ctx, stage)
+				ops.PrepareStage(ctx, &stage, true)
 				continue
 			}
 
@@ -102,7 +102,7 @@ func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig
 			go func(l string) {
 				jobPreparationStartTime := time.Now()
 				defer wg.Done()
-				ops.PrepareStage(ctx, &stage)
+				ops.PrepareStage(ctx, &stage, false)
 				ops.RunStage(cfg, stageCtx, stage)
 				stageCtx.Logger.Tracef("stage run took %s", time.Now().Sub(jobPreparationStartTime))
 			}(l)
@@ -118,7 +118,7 @@ func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig
 				wg.Wait()
 			}
 
-			UpdateStateForStage(ctx, stage, stateManager)
+			UpdateStateForStage(ctx, stage, stateManager, false)
 		}
 
 		wg.Wait()

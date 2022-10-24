@@ -16,16 +16,26 @@ import (
 	"github.com/srevinsaju/togomak/pkg/schema"
 )
 
-func PrepareStage(ctx *context.Context, stage *schema.StageConfig) {
+func PrepareStage(ctx *context.Context, stage *schema.StageConfig, skipped bool) {
 	// show some user-friendly output on the details of the stage about to be run
-	if stage.Name != "" && stage.Description != "" {
-		ctx.Logger.Infof("[%s] %s (%s)", ui.Plus, ui.Blue(stage.Name), ui.Grey(stage.Description))
-	} else if stage.Name != "" {
-		ctx.Logger.Infof("[%s] %s", ui.Plus, ui.Blue(stage.Name))
-	} else if stage.Description != "" {
-		ctx.Logger.Infof("[%s] %s (%s)", ui.Plus, ui.Blue(stage.Id), ui.Grey(stage.Description))
+	var name string
+	var id string
+	if !skipped {
+		name = ui.Blue(stage.Name)
+		id = ui.Blue(stage.Id)
 	} else {
-		ctx.Logger.Infof("[%s] %s", ui.Plus, ui.Blue(stage.Id))
+		name = ui.Yellow(stage.Id)
+		id = ui.Yellow(stage.Id)
+	}
+
+	if stage.Name != "" && stage.Description != "" {
+		ctx.Logger.Infof("[%s] %s (%s)", ui.Plus, name, ui.Grey(stage.Description))
+	} else if stage.Name != "" {
+		ctx.Logger.Infof("[%s] %s", ui.Plus, name)
+	} else if stage.Description != "" {
+		ctx.Logger.Infof("[%s] %s (%s)", ui.Plus, id, ui.Grey(stage.Description))
+	} else {
+		ctx.Logger.Infof("[%s] %s", ui.Plus, id)
 	}
 
 }
