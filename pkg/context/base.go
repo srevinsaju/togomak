@@ -20,6 +20,14 @@ type Data map[string]interface{}
 func (d Data) GetString(key string) string {
 	return d[key].(string)
 }
+
+func (d Data) GetStringWithDefault(key string, defaultValue string) string {
+	v := d[key].(string)
+	if v == "" {
+		return defaultValue
+	}
+	return v
+}
 func (d Data) GetBool(key string) bool {
 	return d[key].(bool)
 }

@@ -3,12 +3,14 @@ package bootstrap
 import (
 	"errors"
 	"fmt"
+	"github.com/chartmuseum/storage"
 	"github.com/flosch/pongo2/v6"
 	"github.com/gobwas/glob"
 	"github.com/srevinsaju/togomak/pkg/config"
 	"github.com/srevinsaju/togomak/pkg/context"
 	"github.com/srevinsaju/togomak/pkg/ops"
 	"github.com/srevinsaju/togomak/pkg/schema"
+	"github.com/srevinsaju/togomak/pkg/state"
 	"github.com/srevinsaju/togomak/pkg/ui"
 	"io/fs"
 	"path/filepath"
@@ -40,12 +42,33 @@ func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig
 			stage := data.Stages.GetStageById(l)
 			stageCtx := ctx.AddChild("stage", stage.Id)
 
-			// check if the stage need to be run
-			state, stateManager := GetStateForStage(ctx, stage)
+			var state state.State
+			var stateManager storage.Backend
+			if !cfg.DryRun {
+				state, stateManager = GetStateForStage(ctx, stage)
+			}
+			defer func() {
+				if !cfg.DryRun {
+					stageCtx.Logger.Debug("unlocking state....")
+					UnlockState(ctx, stage)
+				}
 
+			}()
+			// check if the stage need to be run
 			targetStartTime := time.Now()
 			targetIsUptoDate := true
 			for _, t := range stage.Targets {
+				// render targets
+				tpl, err := pongo2.FromString(t)
+				if err != nil {
+					stageCtx.Logger.Fatal("Failed to parse target expression", err)
+				}
+				t, err := tpl.Execute(ctx.Data.AsMap())
+				if err != nil {
+					stageCtx.Logger.Fatal("Failed to parse condition", err)
+				}
+
+				// cleanup targets specifications
 				if strings.HasPrefix(t, "./") {
 					t = t[2:]
 				}
@@ -72,9 +95,8 @@ func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig
 			}
 			stageCtx.Logger.Tracef("target sync check took %s", time.Now().Sub(targetStartTime))
 
-			if targetIsUptoDate && (stage.Targets != nil || (cfg.Force || cfg.RunAll)) {
+			if targetIsUptoDate && (stage.Targets != nil || (cfg.Force || cfg.RunAll)) && !cfg.DryRun {
 				stageCtx.Logger.Debug("target up to date")
-				UnlockState(ctx, stage)
 				ops.PrepareStage(ctx, &stage, true)
 				continue
 			}
@@ -105,7 +127,13 @@ func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig
 				jobPreparationStartTime := time.Now()
 				defer wg.Done()
 				ops.PrepareStage(ctx, &stage, false)
-				ops.RunStage(cfg, stageCtx, stage)
+				err := ops.RunStage(cfg, stageCtx, stage)
+				if err != nil {
+					stageCtx.Logger.Warn("stage failed, unlocking state...")
+					UnlockState(ctx, stage)
+					stageCtx.Logger.Fatal(err)
+				}
+
 				stageCtx.Logger.Info(ui.Grey(fmt.Sprintf("took %s", time.Now().Sub(jobPreparationStartTime))))
 
 			}(l)
@@ -121,7 +149,10 @@ func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig
 				wg.Wait()
 			}
 
-			UpdateStateForStage(ctx, stage, stateManager, false)
+			if !cfg.DryRun {
+				UpdateStateForStage(ctx, stage, stateManager, false)
+			}
+
 		}
 
 		wg.Wait()

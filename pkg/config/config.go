@@ -21,12 +21,14 @@ func GetSummaryType(v string) int {
 type Config struct {
 	RunAll        bool
 	Force         bool
+	NoInteractive bool
 	RunStages     []string
 	ContextDir    string
 	CiFile        string
 	DryRun        bool
 	JobsNumber    int
 	FailLazy      bool
+	Parameters    []string
 	IsFailFastSet bool
 	Summary       int
 }

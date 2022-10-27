@@ -50,6 +50,13 @@ func initCli() *cli.App {
 			},
 
 			&cli.BoolFlag{
+				Name:     "no-interactive",
+				Required: false,
+				Usage:    "Disable interactive mode",
+				EnvVars:  []string{"TOGOMAK_NO_INTERACTIVE"},
+			},
+
+			&cli.BoolFlag{
 				Name:    "silent",
 				Aliases: []string{"s"},
 				Usage:   "Disable All output from togomak",
@@ -84,6 +91,19 @@ func initCli() *cli.App {
 				Usage:   "Don't print summary",
 				EnvVars: []string{"TOGOMAK_SUMMARY"},
 				Value:   "auto",
+			},
+
+			&cli.StringSliceFlag{
+				Name:     "parameters",
+				Required: false,
+				Usage:    "Parameters to be passed to the CI file",
+				Aliases:  []string{"p", "e"},
+			},
+
+			&cli.BoolFlag{
+				Name:     "child",
+				Required: false,
+				Usage:    "Run as a child process",
 			},
 		},
 	}

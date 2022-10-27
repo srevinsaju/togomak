@@ -5,6 +5,7 @@ import (
 )
 
 var Green = color.New(color.FgGreen).SprintFunc()
+var HiCyan = color.New(color.FgHiCyan).SprintFunc()
 var Red = color.New(color.FgRed).SprintFunc()
 var Blue = color.New(color.FgBlue).SprintFunc()
 var Grey = color.New(color.FgHiBlack).SprintFunc()

@@ -63,6 +63,8 @@ type StageConfig struct {
 
 	Source StageSourceConfig `yaml:"source,omitempty"`
 
+	DisableLock bool `yaml:"disable-lock,omitempty"`
+
 	tainted bool `yaml:"-"`
 }
 
@@ -73,10 +75,11 @@ func (p *StageConfig) Taint() {
 // StageSourceConfig is a block of definition for an external source
 // specified on a different file to be run
 type StageSourceConfig struct {
-	Type   string   `yaml:"type"`
-	URL    string   `yaml:"url"`
-	File   string   `yaml:"file"`
-	Stages []string `yaml:"stages"`
+	Type       string             `yaml:"type"`
+	URL        string             `yaml:"url"`
+	File       string             `yaml:"file"`
+	Stages     []string           `yaml:"stages"`
+	Parameters []ParametersConfig `yaml:"parameters"`
 }
 
 func NewRootStage() StageConfig {

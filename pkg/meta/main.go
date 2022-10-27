@@ -7,5 +7,6 @@ const (
 	EnvPrefix                = "TOGOMAK"
 	BuildDirPrefix           = ".togomak"
 	BuildDir                 = "build"
+	DefaultWorkspaceType     = "default"
 	ExtendsDir               = "extends"
 )

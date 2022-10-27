@@ -52,16 +52,33 @@ func cliContextRunner(cliCtx *cli.Context) error {
 		p = autoDetectFile(contextDir)
 	}
 
+	if cliCtx.Bool("child") {
+		log.SetFormatter(&log.JSONFormatter{
+			DisableTimestamp: true,
+		})
+	} else if cliCtx.Bool("json") {
+		log.SetFormatter(&log.JSONFormatter{
+			DisableTimestamp: true,
+		})
+	} else if cliCtx.String("color") == "never" {
+		log.SetFormatter(&log.TextFormatter{
+			DisableTimestamp: true,
+			ForceColors:      false,
+		})
+	}
+
 	runner.Orchestrator(config.Config{
-		RunStages:  cliCtx.Args().Slice(),
-		ContextDir: contextDir,
-		Force:      cliCtx.Bool("force"),
-		RunAll:     x.Contains(cliCtx.Args().Slice(), "all"),
-		CiFile:     p,
-		DryRun:     cliCtx.Bool("dry-run"),
-		JobsNumber: cliCtx.Int("jobs"),
-		FailLazy:   cliCtx.Bool("fail-lazy"),
-		Summary:    config.GetSummaryType(cliCtx.String("summary")),
+		RunStages:     cliCtx.Args().Slice(),
+		ContextDir:    contextDir,
+		NoInteractive: cliCtx.Bool("no-interactive"),
+		Force:         cliCtx.Bool("force"),
+		RunAll:        x.Contains(cliCtx.Args().Slice(), "all"),
+		CiFile:        p,
+		DryRun:        cliCtx.Bool("dry-run"),
+		JobsNumber:    cliCtx.Int("jobs"),
+		Parameters:    cliCtx.StringSlice("parameters"),
+		FailLazy:      cliCtx.Bool("fail-lazy"),
+		Summary:       config.GetSummaryType(cliCtx.String("summary")),
 	})
 	return nil
 }

@@ -50,10 +50,16 @@ func Orchestrator(cfg config.Config) {
 	}
 
 	ctx.Data["default_state_manager"] = bootstrap.LoadStateBackend(ctx, stateUrl)
+	if data.State.Workspace == "" {
+		data.State.Workspace = meta.DefaultWorkspaceType
+	}
 	ctx.Data[state.WorkspaceDataKey] = data.State.Workspace
 
 	/// get the parameters
-	bootstrap.Params(ctx, data)
+	bootstrap.Params(ctx, data, cfg.NoInteractive)
+
+	/// override parameters from the command line, cfg object
+	bootstrap.OverrideParams(ctx, cfg)
 
 	/// run initial validation
 	bootstrap.StageValidate(ctx, data)

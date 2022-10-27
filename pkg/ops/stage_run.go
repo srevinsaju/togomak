@@ -1,13 +1,19 @@
 package ops
 
 import (
+	"errors"
 	"fmt"
+	"github.com/bcicen/jstream"
 	"github.com/srevinsaju/togomak/pkg/config"
+	"github.com/srevinsaju/togomak/pkg/sources"
 	"github.com/srevinsaju/togomak/pkg/ui"
-	"io/ioutil"
+	"github.com/srevinsaju/togomak/pkg/x"
+	"io"
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/flosch/pongo2/v6"
@@ -15,6 +21,48 @@ import (
 	"github.com/srevinsaju/togomak/pkg/context"
 	"github.com/srevinsaju/togomak/pkg/schema"
 )
+
+var rightArrow = ui.Grey("→")
+var stageConstText = ui.HiCyan("stage")
+
+func childTogomakReader(reader io.Reader, stageCtx *context.Context) {
+	decoder := jstream.NewDecoder(reader, 0)
+	for mv := range decoder.Stream() {
+
+		msg := strings.Builder{}
+		mv, ok := mv.Value.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if v, ok := mv["stage"].(string); ok && v != "" {
+			msg.WriteString(fmt.Sprintf("%s [%s=%s] ", rightArrow, stageConstText, mv["stage"].(string)))
+		}
+		if v, ok := mv["msg"].(string); ok && v != "" {
+			msg.WriteString(mv["msg"].(string))
+		}
+		switch mv["level"].(string) {
+		case "info":
+			stageCtx.Logger.Info(msg.String())
+			break
+		case "error":
+			stageCtx.Logger.Error(msg.String())
+			break
+		case "warn":
+			stageCtx.Logger.Warn(msg.String())
+			break
+		case "debug":
+			stageCtx.Logger.Debug(msg.String())
+			break
+		case "trace":
+			stageCtx.Logger.Trace(msg.String())
+			break
+		default:
+			stageCtx.Logger.Info(msg.String())
+			break
+		}
+	}
+
+}
 
 func PrepareStage(ctx *context.Context, stage *schema.StageConfig, skipped bool) {
 	// show some user-friendly output on the details of the stage about to be run
@@ -40,7 +88,7 @@ func PrepareStage(ctx *context.Context, stage *schema.StageConfig, skipped bool)
 
 }
 
-func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageConfig) {
+func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageConfig) error {
 
 	rootCtx := stageCtx.RootParent()
 
@@ -50,13 +98,13 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 
 	if stage.Script != "" && len(stage.Args) != 0 {
 		// both script and args cannot be set simultaneously
-		stageCtx.Logger.Fatal("Script and Args cannot be set simultaneously")
+		return errors.New(".script and .args cannot be set simultaneously")
 	}
 
 	if stage.Script != "" {
-		stageCtx.Logger.Debug("Preparing script")
+		stageCtx.Logger.Debug("preparing script")
 		if stage.Plugin != "" {
-			stageCtx.Logger.Fatal("Cannot use both script and plugin")
+			return errors.New("cannot use both script and plugin")
 		}
 
 		tempTargetRunDir := path.Join(stageCtx.TempDir, stage.Id)
@@ -65,21 +113,21 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 		scriptPath = targetRunPath
 		err = os.MkdirAll(tempTargetRunDir, 0755)
 		if err != nil {
-			stageCtx.Logger.Fatal(err)
+			return err
 		}
 
 		tpl, err := pongo2.FromString(stage.Script)
 		if err != nil {
-			stageCtx.Logger.Fatal(err)
+			return err
 		}
 		data, err := tpl.Execute(pongo2.Context(stageCtx.RootParent().Data))
 		if err != nil {
-			stageCtx.Logger.Fatal(err)
+			return err
 		}
 
-		err = ioutil.WriteFile(targetRunPath, []byte(data), 0755)
+		err = os.WriteFile(targetRunPath, []byte(data), 0755)
 		if err != nil {
-			stageCtx.Logger.Fatal(err)
+			return err
 		}
 
 		if stage.Container != "" {
@@ -102,6 +150,50 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 		} else {
 			cmd = exec.Command("sh", "-c", targetRunPath)
 		}
+	} else if stage.Source.Type != "" {
+		stageCtx.Logger.Debug("Preparing source")
+		togomakContextDir := cfg.ContextDir
+		if togomakContextDir == "" {
+			togomakContextDir = "."
+		}
+		togomakYamlDir := sources.GetStorePath(rootCtx, stage)
+		togomakRelativeYamlFilePath := stage.Source.File
+		if togomakRelativeYamlFilePath == "" {
+			togomakRelativeYamlFilePath = "togomak.yaml"
+		}
+		togomakYamlPath := filepath.Join(togomakYamlDir, togomakRelativeYamlFilePath)
+		togomak := x.MustReturn(os.Executable()).(string)
+
+		args := []string{
+			"--context", togomakContextDir,
+			"--file", togomakYamlPath,
+			"--jobs", strconv.Itoa(cfg.JobsNumber),
+			"--summary=false",
+			"--child",
+			"--no-interactive",
+			// TODO: add --ci flag
+			// TODO: add color flag
+			// TODO: add --debug flag
+			fmt.Sprintf("--fail-lazy=%v", cfg.FailLazy),
+		}
+		if cfg.DryRun {
+			args = append(args, "--dry-run")
+		}
+		for _, param := range stage.Source.Parameters {
+			v := []string{
+				"--parameters",
+				fmt.Sprintf("%s=%s", param.Name, param.Default),
+			}
+			args = append(args, v...)
+		}
+
+		if stage.Source.Stages != nil {
+			args = append(args, stage.Source.Stages...)
+		}
+
+		cmd = exec.Command(togomak, args...)
+		stageCtx.Logger.Warn("Running ", cmd.String())
+
 	} else {
 		stageCtx.Logger.Tracef("Running with args %v", stage.Args)
 		// run the args
@@ -112,11 +204,11 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 			// render them with pongo
 			tpl, err := pongo2.FromString(arg)
 			if err != nil {
-				stageCtx.Logger.Fatal("Cannot render args:", err)
+				return fmt.Errorf("cannot render args '%s': %v", arg, err)
 			}
 			parsed, err := tpl.Execute(rootCtx.Data.AsMap())
 			if err != nil {
-				stageCtx.Logger.Fatal("Cannot render args:", err)
+				return fmt.Errorf("cannot render args '%s': %v", arg, err)
 			}
 			newArgs[i] = parsed
 
@@ -125,7 +217,7 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 		// no container is specified, no script is specified
 		if stage.Container == "" {
 			if len(newArgs) == 0 {
-				stageCtx.Logger.Fatal("No args specified")
+				return fmt.Errorf("no args specified")
 			}
 
 			cmd = exec.Command(newArgs[0], newArgs[1:]...)
@@ -153,10 +245,22 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 
 	cmd.Stdout = stageCtx.Logger.Writer()
 	cmd.Stderr = stageCtx.Logger.Writer()
+
+	// we will be reading input from togomak, so we need rich output
+	if stage.Source.Type != "" {
+
+		pr, pw := io.Pipe()
+
+		go childTogomakReader(pr, stageCtx)
+
+		cmd.Stdout = pw
+		cmd.Stderr = os.Stderr
+	}
 	matrixId := ""
 	if rootCtx.IsMatrix {
 		m := rootCtx.Data["matrix"].(map[string]string)
 		for k, v := range m {
+			// TODO: check if this will create any parsing / escape issues
 			matrixId += fmt.Sprintf("%s=%v, ", k, v)
 		}
 	}
@@ -176,7 +280,8 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 				stageCtx.Logger.Warnf("Stage failed, continuing because %s.%s=%s", ui.Options, ui.FailLazy, ui.False)
 				stageCtx.Logger.Warn(err)
 			} else {
-				stageCtx.Logger.Fatal(err)
+				stageCtx.Logger.Warn(err)
+				return err
 			}
 
 		} else {
@@ -189,7 +294,7 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 			fmt.Println(ui.Grey("# cat", scriptPath))
 			data, err := os.ReadFile(scriptPath)
 			if err != nil {
-				stageCtx.Logger.Fatal(err)
+				return err
 			}
 			fmt.Println(strings.TrimSpace(string(data)))
 		} else {
@@ -200,4 +305,5 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 	}
 
 	stageCtx.SetStatus(*status)
+	return nil
 }

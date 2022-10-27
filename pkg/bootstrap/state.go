@@ -39,7 +39,11 @@ func LoadStateBackend(ctx *context.Context, state string) storage.Backend {
 }
 
 func UnlockState(rootCtx *context.Context, stage schema.StageConfig) {
+	if stage.DisableLock {
+		return
+	}
 	ctx := rootCtx.AddChild("state", stage.Id)
+	ctx.Logger.Tracef("unlocking state for stage %s", stage.Id)
 	workspace := rootCtx.Data.GetString(state.WorkspaceDataKey)
 	stateManager := LoadStateBackend(ctx, stage.State)
 	stateDir := filepath.Join("state", workspace, stage.Id)
@@ -50,10 +54,19 @@ func UnlockState(rootCtx *context.Context, stage schema.StageConfig) {
 	}
 }
 
+func LockState(ctx *context.Context, lockPath string, stateBackend storage.Backend) {
+	ctx.Logger.Tracef("Writing lock file %s", lockPath)
+	err := stateBackend.PutObject(lockPath, []byte{})
+	if err != nil {
+		ctx.Logger.Fatal(err)
+	}
+}
+
 func UpdateStateForStage(ctx *context.Context, stage schema.StageConfig, stateManager storage.Backend, init bool) state.State {
+	ctx.Logger.Tracef("updating state for stage %s", stage.Id)
 	stateDir := filepath.Join("state", ctx.RootParent().Data.GetString(state.WorkspaceDataKey), stage.Id)
 	statePath := filepath.Join(stateDir, "state.json")
-	lockPath := filepath.Join(stateDir, "lock.json")
+	//lockPath := filepath.Join(stateDir, "lock.json")
 	u, err := user.Current()
 	if err != nil {
 		panic(err)
@@ -78,12 +91,6 @@ func UpdateStateForStage(ctx *context.Context, stage schema.StageConfig, stateMa
 	if err != nil {
 		ctx.Logger.Fatal(err)
 	}
-	if !init {
-		err = stateManager.DeleteObject(lockPath)
-		if err != nil {
-			ctx.Logger.Fatal(err)
-		}
-	}
 
 	return st
 }
@@ -98,6 +105,7 @@ func RenderState(st state.State) {
 func GetStateForStage(ctx *context.Context, stage schema.StageConfig) (state.State, storage.Backend) {
 	rootCtx := ctx.RootParent()
 	ctx = rootCtx.AddChild("state", stage.Id)
+	ctx.Logger.Tracef("Fetching state for stage")
 	workspace := rootCtx.Data.GetString(state.WorkspaceDataKey)
 	stateBackend := LoadStateBackend(ctx, stage.State)
 
@@ -108,7 +116,9 @@ func GetStateForStage(ctx *context.Context, stage schema.StageConfig) (state.Sta
 	obj, err := stateBackend.GetObject(statePath)
 	if err != nil {
 		// the state could not exist on the first run
-		return UpdateStateForStage(ctx, stage, stateBackend, true), stateBackend
+		s := UpdateStateForStage(ctx, stage, stateBackend, true)
+		LockState(ctx, lockPath, stateBackend)
+		return s, stateBackend
 	}
 
 	var st state.State
@@ -116,6 +126,11 @@ func GetStateForStage(ctx *context.Context, stage schema.StageConfig) (state.Sta
 	if err != nil {
 		panic(err)
 	}
+
+	if stage.DisableLock {
+		return st, stateBackend
+	}
+
 	// check if the state is locked
 	_, err = stateBackend.GetObject(lockPath)
 	if err == nil {
@@ -123,12 +138,7 @@ func GetStateForStage(ctx *context.Context, stage schema.StageConfig) (state.Sta
 		ctx.Logger.Fatalf("The state is locked. Please run `togomak force-unlock %s --workspace %s` to unlock the state", stage.Id, workspace)
 	} else {
 		// lock the state
-		err = stateBackend.PutObject(lockPath, []byte{})
-		if err != nil {
-			ctx.Logger.Fatal(err)
-		}
+		LockState(ctx, lockPath, stateBackend)
 	}
-
 	return st, stateBackend
-
 }

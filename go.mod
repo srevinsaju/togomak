@@ -4,11 +4,13 @@ go 1.18
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.5
+	github.com/bcicen/jstream v1.0.1
 	github.com/charmbracelet/lipgloss v0.5.0
 	github.com/chartmuseum/storage v0.12.5
 	github.com/go-git/go-billy/v5 v5.3.1
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/gobwas/glob v0.2.3
+	github.com/hashicorp/go-envparse v0.1.0
 	github.com/hashicorp/go-hclog v1.2.2
 	github.com/hashicorp/go-plugin v1.4.4
 	github.com/imdario/mergo v0.3.12
@@ -112,3 +114,5 @@ require (
 )
 
 replace github.com/sirupsen/logrus v1.9.0 => github.com/srevinsaju/logrus v0.0.0-20220806211329-9e78298b69a1
+
+replace github.com/flosch/pongo2/v6 v6.0.0 => github.com/karakanb/pongo2/v6 v6.0.1-0.20221007162815-a737d76a2421

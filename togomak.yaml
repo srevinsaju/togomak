@@ -2,22 +2,28 @@ version: 1
 
 stages:
   - id: fmt
+    disable-lock: true
     script: |
       go fmt github.com/srevinsaju/togomak/...
 
   - id: vet
+    disable-lock: true
     script: |
       go vet github.com/srevinsaju/togomak/...
 
   - id: git_provider
     targets: 
       - "plugins/*/*.go"
+      - "plugins/*/go.mod"
+      - "plugins/*/go.sum"
     script: |
       go build -v -o ./.togomak/plugins/togomak-provider-git github.com/srevinsaju/togomak/plugins/git
 
   - id: build
     targets:
       - "**/*.go"
+      - "go.mod"
+      - "go.sum"
     script: |
       go build -v -o ./cmd/togomak/togomak github.com/srevinsaju/togomak/cmd/togomak 
 
