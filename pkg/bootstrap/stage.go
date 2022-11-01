@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-var StageIdValidation = regexp.MustCompile(`^([a-zA-Z_]+)$`)
+var StageIdValidation = regexp.MustCompile(`^([a-zA-Z_/]+)$`)
 
 func StageValidate(ctx *context.Context, data schema.SchemaConfig) {
 

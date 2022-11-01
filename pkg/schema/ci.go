@@ -65,6 +65,10 @@ type StageConfig struct {
 
 	DisableLock bool `yaml:"disable-lock,omitempty"`
 
+	// Environment specifies the key value map on the environment variables that need to be exported
+	// in the running stage before the script is executed
+	Environment map[string]string `yaml:"environment,omitempty"`
+
 	tainted bool `yaml:"-"`
 }
 

@@ -44,13 +44,6 @@ func cliContextRunner(cliCtx *cli.Context) error {
 	if cliCtx.Bool("silent") {
 		log.SetLevel(log.ErrorLevel)
 	}
-	var p string
-	contextDir := cliCtx.Path("context")
-	if cliCtx.Path("file") != "" {
-		p = cliCtx.Path("file")
-	} else {
-		p = autoDetectFile(contextDir)
-	}
 
 	if cliCtx.Bool("child") {
 		log.SetFormatter(&log.JSONFormatter{
@@ -66,8 +59,26 @@ func cliContextRunner(cliCtx *cli.Context) error {
 			ForceColors:      false,
 		})
 	}
+	runner.Orchestrator(configFromCliContext(cliCtx))
+	return nil
+}
 
-	runner.Orchestrator(config.Config{
+func cliListStages(clictx *cli.Context) error {
+	runner.List(configFromCliContext(clictx))
+	return nil
+}
+
+func configFromCliContext(cliCtx *cli.Context) config.Config {
+
+	var p string
+	contextDir := cliCtx.Path("context")
+	if cliCtx.Path("file") != "" {
+		p = cliCtx.Path("file")
+	} else {
+		p = autoDetectFile(contextDir)
+	}
+
+	return config.Config{
 		RunStages:     cliCtx.Args().Slice(),
 		ContextDir:    contextDir,
 		NoInteractive: cliCtx.Bool("no-interactive"),
@@ -79,6 +90,5 @@ func cliContextRunner(cliCtx *cli.Context) error {
 		Parameters:    cliCtx.StringSlice("parameters"),
 		FailLazy:      cliCtx.Bool("fail-lazy"),
 		Summary:       config.GetSummaryType(cliCtx.String("summary")),
-	})
-	return nil
+	}
 }

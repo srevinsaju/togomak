@@ -17,6 +17,20 @@ import (
 const SupportedCiConfigVersion = 1
 const StateWorkspace = "state_workspace"
 
+func List(cfg config.Config) {
+
+	/// create context
+	ctx := &context.Context{
+		Logger: log.WithFields(log.Fields{}),
+		Data:   context.Data{},
+	}
+	/// load config
+	data := bootstrap.Config(ctx, &cfg)
+	for _, v := range data.Stages {
+		fmt.Println(v.Id)
+	}
+}
+
 func Orchestrator(cfg config.Config) {
 	orchestratorStartTime := time.Now()
 

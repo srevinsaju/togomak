@@ -13,6 +13,14 @@ func initCli() *cli.App {
 		Action:               cliContextRunner,
 		EnableBashCompletion: true,
 
+		Commands: []*cli.Command{
+			{
+				Name:    "list",
+				Aliases: []string{"ls"},
+				Usage:   "List all the available stages",
+				Action:  cliListStages,
+			},
+		},
 		Flags: []cli.Flag{
 			&cli.PathFlag{
 				Name:     "file",

@@ -246,6 +246,23 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 	cmd.Stdout = stageCtx.Logger.Writer()
 	cmd.Stderr = stageCtx.Logger.Writer()
 
+	// add environment variables
+	for k, v := range stage.Environment {
+		tpl, err := pongo2.FromString(v)
+		if err != nil {
+			return fmt.Errorf("cannot render args '%s': %v", v, err)
+		}
+		parsedV, err := tpl.Execute(rootCtx.Data.AsMap())
+		if err != nil {
+			return fmt.Errorf("cannot render args '%s': %v", v, err)
+		}
+
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, parsedV))
+		if cfg.DryRun {
+			fmt.Printf("export %s=%s\n", k, parsedV)
+		}
+	}
+
 	// we will be reading input from togomak, so we need rich output
 	if stage.Source.Type != "" {
 
