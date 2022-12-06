@@ -1,6 +1,7 @@
 project_name: togomak
 builds:
   - main: ./cmd/togomak
+    id: togomak
     env: [CGO_ENABLED=0]
     goos:
       - linux
@@ -11,6 +12,7 @@ builds:
       - arm64
 
   - main: ./plugins/git
+    id: togomake-provider-git
     env: [CGO_ENABLED=0]
     binary: togomak-provider-git
     goos:
@@ -21,11 +23,6 @@ builds:
       - amd64
       - arm64 
     
-
-release:
-  gitlab:
-    owner: ""
-    name: 30584689
 
 nfpms:
 - maintainer: Srevin Saju
