@@ -245,6 +245,7 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 
 	cmd.Stdout = stageCtx.Logger.Writer()
 	cmd.Stderr = stageCtx.Logger.Writer()
+	cmd.Env = os.Environ()
 
 	// add environment variables
 	for k, v := range stage.Environment {
