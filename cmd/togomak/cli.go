@@ -36,6 +36,13 @@ func initCli() *cli.App {
 			},
 
 			&cli.BoolFlag{
+				Name:     "force",
+				Aliases:  []string{"f"},
+				Usage:    "Do not check if target is up-to-date, build unconditionally.",
+				Required: false,
+			},
+
+			&cli.BoolFlag{
 				Name:     "debug",
 				Required: false,
 				Usage:    "Enable debug mode",

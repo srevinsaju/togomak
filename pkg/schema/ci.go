@@ -1,6 +1,8 @@
 package schema
 
-import "github.com/srevinsaju/togomak/pkg/context"
+import (
+	"github.com/srevinsaju/togomak/pkg/context"
+)
 
 // StageConfig is a block of definition for a stage to run.
 // Stage is a job which run internally, concurrently by default
@@ -68,6 +70,9 @@ type StageConfig struct {
 	// Environment specifies the key value map on the environment variables that need to be exported
 	// in the running stage before the script is executed
 	Environment map[string]string `yaml:"environment,omitempty"`
+
+	// Dir specifies the directory in which the command will be run
+	Dir string `yaml:"dir"`
 
 	tainted bool `yaml:"-"`
 }

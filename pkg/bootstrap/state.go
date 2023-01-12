@@ -4,12 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/chartmuseum/storage"
-	"github.com/srevinsaju/togomak/pkg/ui"
-
 	uuid "github.com/satori/go.uuid"
 	"github.com/srevinsaju/togomak/pkg/context"
 	"github.com/srevinsaju/togomak/pkg/schema"
 	"github.com/srevinsaju/togomak/pkg/state"
+	"github.com/srevinsaju/togomak/pkg/ui"
 	"net/url"
 	"os"
 	"os/user"
@@ -38,7 +37,26 @@ func LoadStateBackend(ctx *context.Context, state string) storage.Backend {
 	return nil
 }
 
-func UnlockState(rootCtx *context.Context, stage schema.StageConfig) {
+func UnlockAllStates(rootCtx *context.Context, data schema.SchemaConfig) {
+	rootCtx.Logger.Info("waiting for all processes to finish")
+	for i := range rootCtx.Processes {
+		stage := data.Stages.GetStageById(rootCtx.Processes[i].Id)
+		rootCtx.Logger.Info("waiting for stage ", stage.Id)
+		p := rootCtx.Processes[i].Process
+		if p != nil {
+			err := p.Wait()
+			if err != nil {
+				rootCtx.Logger.Warn(err)
+			} else {
+				rootCtx.Logger.Debug("stage ", stage.Id, " finished")
+			}
+		}
+		rootCtx.Logger.Debug("unlocking stage ", stage.Id)
+		UnlockState(rootCtx, stage, true)
+	}
+}
+
+func UnlockState(rootCtx *context.Context, stage schema.StageConfig, ignoreErrors bool) {
 	if stage.DisableLock {
 		return
 	}
@@ -50,11 +68,18 @@ func UnlockState(rootCtx *context.Context, stage schema.StageConfig) {
 	lockPath := filepath.Join(stateDir, "lock.json")
 	err := stateManager.DeleteObject(lockPath)
 	if err != nil {
-		ctx.Logger.Fatal(err)
+		errFmt := fmt.Sprintf("failed unlocking state %s: %s", stage.Id, err)
+
+		if ignoreErrors {
+			ctx.Logger.Debugf(errFmt)
+			return
+		}
+		ctx.Logger.Warnf(errFmt)
 	}
 }
 
 func LockState(ctx *context.Context, lockPath string, stateBackend storage.Backend) {
+
 	ctx.Logger.Tracef("Writing lock file %s", lockPath)
 	err := stateBackend.PutObject(lockPath, []byte{})
 	if err != nil {

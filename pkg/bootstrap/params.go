@@ -10,6 +10,7 @@ import (
 	"github.com/srevinsaju/togomak/pkg/config"
 	"github.com/srevinsaju/togomak/pkg/context"
 	"github.com/srevinsaju/togomak/pkg/schema"
+	"github.com/srevinsaju/togomak/pkg/templating"
 	"os"
 	"strings"
 )
@@ -27,7 +28,7 @@ func Params(ctx *context.Context, data schema.SchemaConfig, noInteractive bool) 
 			if err != nil {
 				paramCtx.Logger.Fatal("Cannot render args:", err)
 			}
-			parsed, err := tpl.Execute(ctx.Data.AsMap())
+			parsed, err := templating.Execute(tpl, ctx.Data.AsMap())
 			if err != nil {
 				paramCtx.Logger.Fatal("Cannot render args:", err)
 			}

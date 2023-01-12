@@ -35,4 +35,14 @@ stages:
       - build
     script: |
       go install github.com/srevinsaju/togomak/cmd/togomak
-  
+
+  - id: install_git_provider 
+    targets:
+      - ./.togomak/plugins/togomak-provider-git 
+    depends-on:
+      - git_provider
+    condition: false 
+    script: |
+      mkdir -p $HOME/.togomak/plugins
+      cp ./.togomak/plugins/togomak-provider-git ~/.togomak/plugins/. 
+

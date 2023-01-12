@@ -11,6 +11,7 @@ import (
 	"github.com/srevinsaju/togomak/pkg/ops"
 	"github.com/srevinsaju/togomak/pkg/schema"
 	"github.com/srevinsaju/togomak/pkg/state"
+	"github.com/srevinsaju/togomak/pkg/templating"
 	"github.com/srevinsaju/togomak/pkg/ui"
 	"io/fs"
 	"path/filepath"
@@ -50,7 +51,7 @@ func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig
 			defer func() {
 				if !cfg.DryRun {
 					stageCtx.Logger.Debug("unlocking state....")
-					UnlockState(ctx, stage)
+					UnlockState(ctx, stage, false)
 				}
 
 			}()
@@ -63,7 +64,7 @@ func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig
 				if err != nil {
 					stageCtx.Logger.Fatal("Failed to parse target expression", err)
 				}
-				t, err := tpl.Execute(ctx.Data.AsMap())
+				t, err := templating.Execute(tpl, ctx.Data.AsMap())
 				if err != nil {
 					stageCtx.Logger.Fatal("Failed to parse condition", err)
 				}
@@ -95,7 +96,7 @@ func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig
 			}
 			stageCtx.Logger.Tracef("target sync check took %s", time.Now().Sub(targetStartTime))
 
-			if targetIsUptoDate && (stage.Targets != nil || (cfg.Force || cfg.RunAll)) && !cfg.DryRun {
+			if !cfg.Force && targetIsUptoDate && (stage.Targets != nil || (cfg.Force || cfg.RunAll)) && !cfg.DryRun {
 				stageCtx.Logger.Debug("target up to date")
 				ops.PrepareStage(ctx, &stage, true)
 				continue
@@ -105,7 +106,7 @@ func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig
 			if err != nil {
 				stageCtx.Logger.Fatal("Failed to parse condition", err)
 			}
-			condition, err := tpl.Execute(ctx.Data.AsMap())
+			condition, err := templating.Execute(tpl, ctx.Data.AsMap())
 			if err != nil {
 				stageCtx.Logger.Fatal("Failed to execute condition", err)
 			}
@@ -130,7 +131,15 @@ func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig
 				err := ops.RunStage(cfg, stageCtx, stage)
 				if err != nil {
 					stageCtx.Logger.Warn("stage failed, unlocking state...")
-					UnlockState(ctx, stage)
+					UnlockState(ctx, stage, false)
+
+					if !cfg.FailLazy {
+						// the user wants fail fast mode to be enabled.
+						// that means, we will have to ask other jobs to terminate as well.
+						stageCtx.Logger.Warn("waiting for other jobs to complete.")
+						UnlockAllStates(ctx, data)
+
+					}
 					stageCtx.Logger.Fatal(err)
 				}
 

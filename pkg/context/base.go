@@ -49,6 +49,8 @@ func (d Data) GetList(key string) []string {
 }
 
 type Context struct {
+	processMutex sync.Mutex
+	Processes    []*RunningStage
 	DataMutex    sync.Mutex
 	Logger       *log.Entry
 	Key          string
@@ -71,6 +73,8 @@ func (c *Context) SetStatus(s Status) {
 		StatusMatrixId: s.MatrixId,
 	}
 	rootCtx.DataMutex.Lock()
+
+	// TODO: analyze what the following block does
 	if _, ok := rootCtx.Data["stage"]; !ok {
 		//rootCtx.Data["stage"] = map[string]map[string]Data{}
 	}
@@ -142,12 +146,14 @@ func (c *Context) AddChild(k string, v string) *Context {
 	}
 
 	return &Context{
-		Logger:  logger,
-		Key:     k,
-		Value:   v,
-		parent:  c,
-		TempDir: c.TempDir,
-		Data:    data,
+		Logger:       logger,
+		Key:          k,
+		Value:        v,
+		parent:       c,
+		processMutex: sync.Mutex{},
+		Processes:    []*RunningStage{},
+		TempDir:      c.TempDir,
+		Data:         data,
 	}
 }
 
@@ -160,4 +166,13 @@ func (c *Context) RootParent() *Context {
 
 func (c *Context) Parent() *Context {
 	return c.parent
+}
+
+func (c *Context) AddProcess(stage *RunningStage) {
+	if c.parent != nil {
+		panic("cannot add process to a child context")
+	}
+	c.processMutex.Lock()
+	c.Processes = append(c.Processes, stage)
+	c.processMutex.Unlock()
 }

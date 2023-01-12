@@ -6,6 +6,7 @@ import (
 	"github.com/bcicen/jstream"
 	"github.com/srevinsaju/togomak/pkg/config"
 	"github.com/srevinsaju/togomak/pkg/sources"
+	"github.com/srevinsaju/togomak/pkg/templating"
 	"github.com/srevinsaju/togomak/pkg/ui"
 	"github.com/srevinsaju/togomak/pkg/x"
 	"io"
@@ -94,6 +95,11 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 
 	var err error
 	var cmd *exec.Cmd
+
+	rootCtx.AddProcess(&context.RunningStage{
+		Id:      stage.Id,
+		Process: cmd,
+	})
 	var scriptPath string
 
 	if stage.Script != "" && len(stage.Args) != 0 {
@@ -120,7 +126,7 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 		if err != nil {
 			return err
 		}
-		data, err := tpl.Execute(pongo2.Context(stageCtx.RootParent().Data))
+		data, err := templating.ExecuteWithStage(tpl, stageCtx.RootParent().Data, stage)
 		if err != nil {
 			return err
 		}
@@ -206,7 +212,7 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 			if err != nil {
 				return fmt.Errorf("cannot render args '%s': %v", arg, err)
 			}
-			parsed, err := tpl.Execute(rootCtx.Data.AsMap())
+			parsed, err := templating.ExecuteWithStage(tpl, rootCtx.Data.AsMap(), stage)
 			if err != nil {
 				return fmt.Errorf("cannot render args '%s': %v", arg, err)
 			}
@@ -246,6 +252,18 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 	cmd.Stdout = stageCtx.Logger.Writer()
 	cmd.Stderr = stageCtx.Logger.Writer()
 	cmd.Env = os.Environ()
+	if stage.Dir != "" {
+		if filepath.IsAbs(stage.Dir) {
+			cmd.Dir = stage.Dir
+		} else {
+			cwd, err := os.Getwd()
+			if err != nil {
+				panic(err)
+			}
+			cmd.Dir = filepath.Join(cwd, stage.Dir)
+		}
+		stageCtx.Logger.Debugf("command will be executed in %s", cmd.Dir)
+	}
 
 	// add environment variables
 	for k, v := range stage.Environment {
@@ -253,7 +271,7 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 		if err != nil {
 			return fmt.Errorf("cannot render args '%s': %v", v, err)
 		}
-		parsedV, err := tpl.Execute(rootCtx.Data.AsMap())
+		parsedV, err := templating.ExecuteWithStage(tpl, rootCtx.Data.AsMap(), stage)
 		if err != nil {
 			return fmt.Errorf("cannot render args '%s': %v", v, err)
 		}
