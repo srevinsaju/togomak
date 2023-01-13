@@ -41,7 +41,7 @@ func UnlockAllStates(rootCtx *context.Context, data schema.SchemaConfig) {
 	rootCtx.Logger.Info("waiting for all processes to finish")
 	for i := range rootCtx.Processes {
 		stage := data.Stages.GetStageById(rootCtx.Processes[i].Id)
-		rootCtx.Logger.Info("waiting for stage ", stage.Id)
+		rootCtx.Logger.Debug("waiting for stage ", stage.Id)
 		p := rootCtx.Processes[i].Process
 		if p != nil {
 			err := p.Wait()
@@ -160,7 +160,7 @@ func GetStateForStage(ctx *context.Context, stage schema.StageConfig) (state.Sta
 	_, err = stateBackend.GetObject(lockPath)
 	if err == nil {
 		RenderState(st)
-		ctx.Logger.Fatalf("The state is locked. Please run `togomak force-unlock %s --workspace %s` to unlock the state", stage.Id, workspace)
+		ctx.Logger.Fatalf("The state is locked. Please run `togomak force-unlock --workspace %s %s` to unlock the state", workspace, stage.Id)
 	} else {
 		// lock the state
 		LockState(ctx, lockPath, stateBackend)

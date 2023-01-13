@@ -31,6 +31,44 @@ func List(cfg config.Config) {
 	}
 }
 
+func ForceUnlock(cfg config.Config) {
+	ctx := &context.Context{
+		Logger: log.WithFields(log.Fields{}),
+		Data:   context.Data{},
+	}
+
+	/// load config
+	data := bootstrap.Config(ctx, &cfg)
+
+	/// change working directory to the directory of the config file
+	bootstrap.Chdir(ctx, cfg, data)
+
+	stateUrl := data.State.URL
+	if stateUrl == "" {
+		stateUrl = fmt.Sprintf("file://%s", meta.BuildDirPrefix)
+	}
+	ctx.Data["default_state_manager"] = bootstrap.LoadStateBackend(ctx, stateUrl)
+	if data.State.Workspace == "" {
+		data.State.Workspace = meta.DefaultWorkspaceType
+	}
+	ctx.Data[state.WorkspaceDataKey] = data.State.Workspace
+
+	if len(cfg.RunStages) == 0 {
+		// prompt the user to ask if we should unlock all the stages
+		if !ui.PromptYesNo("Are you sure you want to unlock all the stages?") {
+			return
+		}
+		for _, stage := range data.Stages {
+			bootstrap.UnlockState(ctx, stage, true)
+		}
+		return
+	}
+	for i := range cfg.RunStages {
+		stage := cfg.RunStages[i]
+		bootstrap.UnlockState(ctx, data.Stages.GetStageById(stage), false)
+	}
+}
+
 func Orchestrator(cfg config.Config) {
 	orchestratorStartTime := time.Now()
 
@@ -45,6 +83,9 @@ func Orchestrator(cfg config.Config) {
 			"env": templating.Env,
 		},
 	}
+
+	// initialize other templating functions
+	bootstrap.Templating(ctx)
 
 	ctx.Logger.Debugf("Starting %s", meta.AppName)
 

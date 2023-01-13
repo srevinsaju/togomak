@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-var StageIdValidation = regexp.MustCompile(`^([a-zA-Z_/]+)$`)
+var StageIdValidation = regexp.MustCompile(`^([a-zA-Z0-9_/:.\-]+)$`)
 
 func StageValidate(ctx *context.Context, data schema.SchemaConfig) {
 
@@ -21,6 +21,12 @@ func StageValidate(ctx *context.Context, data schema.SchemaConfig) {
 		if !StageIdValidation.MatchString(stage.Id) {
 			validateLog.Fatalf("Stage ID must contain only alphabets: %s", stage.Id)
 		}
+		if strings.Contains(stage.Id, ":") {
+			v := strings.Split(stage.Id, ":")
+			if len(v) != 2 {
+				validateLog.Fatalf("when using extends directive xxx:yyy, there should only be a single ':' ")
+			}
+		}
 		if _, ok := stages[stage.Id]; ok {
 			validateLog.Fatal("Duplicate stage ID: " + stage.Id)
 		}
@@ -29,9 +35,16 @@ func StageValidate(ctx *context.Context, data schema.SchemaConfig) {
 
 	// extend the current stage if .extends is present
 	for i, stage := range data.Stages {
-		if stage.Extends != "" && strings.HasPrefix(stage.Extends, ".") {
+		if stage.Extends != "" && strings.HasPrefix(stage.Extends, ".") ||
+			strings.Contains(stage.Id, ":") && strings.HasPrefix(stage.Id, ".") {
 
-			extendsKey := stage.Extends[1:]
+			var extendsKey string
+			if stage.Extends != "" {
+				extendsKey = stage.Extends[1:]
+			} else {
+				extendsKey = strings.Split(stage.Id, ":")[0][1:]
+			}
+
 			validateLog.Debugf("Extending stage %s with %s", stage.Id, extendsKey)
 
 			_, ok := stages[extendsKey]

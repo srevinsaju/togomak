@@ -23,7 +23,7 @@ type StageConfig struct {
 	// the Stage by the Id, and it will run nevertheless.
 	// Condition may have pongo expressions which will be evaluated before the
 	// stage is called
-	Condition string `yaml:"condition,omitempty"`
+	Condition string `yaml:"if,omitempty"`
 
 	// State is a URL reference to a file
 	State string `yaml:"state,omitempty"`

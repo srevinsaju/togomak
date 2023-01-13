@@ -68,6 +68,11 @@ func cliListStages(clictx *cli.Context) error {
 	return nil
 }
 
+func cliForceUnlock(clictx *cli.Context) error {
+	runner.ForceUnlock(configFromCliContext(clictx))
+	return nil
+}
+
 func configFromCliContext(cliCtx *cli.Context) config.Config {
 
 	var p string

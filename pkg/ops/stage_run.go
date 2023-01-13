@@ -253,14 +253,19 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 	cmd.Stderr = stageCtx.Logger.Writer()
 	cmd.Env = os.Environ()
 	if stage.Dir != "" {
-		if filepath.IsAbs(stage.Dir) {
-			cmd.Dir = stage.Dir
+		tpl, err := pongo2.FromString(stage.Dir)
+		if err != nil {
+			return fmt.Errorf("cannot render dir '%s': %v", stage.Dir, err)
+		}
+		parsed, err := templating.ExecuteWithStage(tpl, rootCtx.Data.AsMap(), stage)
+		if filepath.IsAbs(parsed) {
+			cmd.Dir = parsed
 		} else {
 			cwd, err := os.Getwd()
 			if err != nil {
 				panic(err)
 			}
-			cmd.Dir = filepath.Join(cwd, stage.Dir)
+			cmd.Dir = filepath.Join(cwd, parsed)
 		}
 		stageCtx.Logger.Debugf("command will be executed in %s", cmd.Dir)
 	}

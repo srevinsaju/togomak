@@ -20,6 +20,28 @@ func initCli() *cli.App {
 				Usage:   "List all the available stages",
 				Action:  cliListStages,
 			},
+			{
+				Name:    "run",
+				Aliases: []string{"r"},
+				Usage:   "Run a stage, (subcommand can be ignored)",
+				Action:  cliContextRunner,
+			},
+			{
+				Name:    "init",
+				Aliases: []string{"i"},
+				Usage:   "Initialize a new project",
+			},
+			{
+				Name:  "force-unlock",
+				Usage: "Force unlock a stage, if it is locked",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:  "workspace",
+						Value: "default",
+					},
+				},
+				Action: cliForceUnlock,
+			},
 		},
 		Flags: []cli.Flag{
 			&cli.PathFlag{

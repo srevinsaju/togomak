@@ -35,13 +35,15 @@ func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig
 			if l == rootStage.Id {
 				continue
 			}
-			if len(cfg.RunStages) > 0 && !contains(cfg, l) {
-				ctx.Logger.Debugf("Skipping stage %s", l)
-				continue
-			}
 
 			stage := data.Stages.GetStageById(l)
 			stageCtx := ctx.AddChild("stage", stage.Id)
+
+			if len(cfg.RunStages) > 0 && !contains(cfg, l) {
+				ctx.Logger.Debugf("Skipping stage %s", l)
+				UnlockState(ctx, stage, true)
+				continue
+			}
 
 			var state state.State
 			var stateManager storage.Backend
@@ -50,8 +52,8 @@ func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig
 			}
 			defer func() {
 				if !cfg.DryRun {
-					stageCtx.Logger.Debug("unlocking state....")
-					UnlockState(ctx, stage, false)
+					stageCtx.Logger.Debug("unlocking state...")
+					UnlockState(ctx, stage, true)
 				}
 
 			}()
@@ -106,7 +108,7 @@ func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig
 			if err != nil {
 				stageCtx.Logger.Fatal("Failed to parse condition", err)
 			}
-			condition, err := templating.Execute(tpl, ctx.Data.AsMap())
+			condition, err := templating.ExecuteWithStage(tpl, ctx.Data.AsMap(), stage)
 			if err != nil {
 				stageCtx.Logger.Fatal("Failed to execute condition", err)
 			}
@@ -115,7 +117,9 @@ func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig
 			if strings.ToLower(strings.TrimSpace(condition)) == "false" && len(cfg.RunStages) == 0 {
 				// the stage should not be executed
 				// the stage will only not be executed if it has not been specified manually in the cli
+
 				stageCtx.Logger.Info("Skipping stage")
+				UnlockState(ctx, stage, true)
 				continue
 			}
 
