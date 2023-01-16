@@ -38,6 +38,10 @@ var (
 			Foreground(fail).
 			PaddingRight(1).
 			String()
+	hyphen = lipgloss.NewStyle().SetString("-").
+		Foreground(subtle).
+		PaddingRight(1).
+		String()
 
 	ciPassed = func(s string) string {
 		return checkMark + lipgloss.NewStyle().
@@ -47,6 +51,11 @@ var (
 		return crossMark + lipgloss.NewStyle().
 			Render(s)
 	}
+	ciSkipped = func(s string) string {
+		return hyphen + lipgloss.NewStyle().
+			Render(s)
+	}
+
 	docStyle = lipgloss.NewStyle().Padding(1, 2, 1, 2)
 )
 
@@ -67,11 +76,13 @@ func Summary(ctx *context.Context) {
 			stage := stageStatuses.GetMap(layer)
 			status := stage.GetMap(context.KeyStatus)
 			var renderedText string
-			if status.GetBool(context.StatusSuccess) {
+			v, ok := status.GetBoolWithOk(context.StatusSuccess)
+			if ok && v {
 				renderedText = strings.Repeat("  ", i) + bold.Render(bottomLeft+horizontal) + bullet + space + ciPassed(layer)
-
-			} else {
+			} else if ok {
 				renderedText = strings.Repeat("  ", i) + bold.Render(bottomLeft+horizontal) + bullet + space + ciFailed(layer)
+			} else {
+				renderedText = strings.Repeat("  ", i) + bold.Render(bottomLeft+horizontal) + bullet + space + layer
 			}
 
 			deps := ctx.Graph.Dependencies(layer)

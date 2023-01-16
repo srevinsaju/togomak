@@ -32,6 +32,11 @@ func (d Data) GetBool(key string) bool {
 	return d[key].(bool)
 }
 
+func (d Data) GetBoolWithOk(key string) (bool, bool) {
+	v, ok := d[key].(bool)
+	return v, ok
+}
+
 func (d Data) GetMap(key string) Data {
 	if v, ok := d[key]; ok {
 		return v.(Data)

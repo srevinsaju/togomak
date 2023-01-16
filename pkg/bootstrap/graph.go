@@ -18,14 +18,14 @@ func Graph(ctx *context.Context, data schema.SchemaConfig) {
 			graphLog.Debugf("%s stage depends on %s stage", stage.Id, rootStage.Id)
 			err := graph.DependOn(stage.Id, rootStage.Id)
 			if err != nil {
-				ctx.Logger.Warn("Error while creating the dependency tree", err)
+				ctx.Logger.Fatalf("Error while creating the dependency tree for '%s': %s", stage.Id, err)
 			}
 		}
 		for _, dep := range stage.DependsOn {
 			graphLog.Debugf("%s stage depends on %s stage", dep, stage.Id)
 			err := graph.DependOn(stage.Id, dep)
 			if err != nil {
-				ctx.Logger.Warn("Error while creating the dependency tree", err)
+				ctx.Logger.Fatalf("Error while creating the dependency tree for '%s -> %s': %s", stage.Id, dep, err)
 			}
 
 		}

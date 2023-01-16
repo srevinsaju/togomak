@@ -8,9 +8,9 @@ const (
 
 func GetSummaryType(v string) int {
 	switch v {
-	case "on":
+	case "on", "yes":
 		return SummaryOn
-	case "off":
+	case "off", "no":
 		return SummaryOff
 	default:
 		return SummaryAuto

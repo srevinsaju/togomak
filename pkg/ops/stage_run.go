@@ -277,6 +277,8 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 			return fmt.Errorf("cannot render args '%s': %v", v, err)
 		}
 		parsedV, err := templating.ExecuteWithStage(tpl, rootCtx.Data.AsMap(), stage)
+		parsedV = strings.TrimSpace(parsedV)
+
 		if err != nil {
 			return fmt.Errorf("cannot render args '%s': %v", v, err)
 		}
@@ -332,7 +334,7 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 	} else {
 		if scriptPath != "" {
 			fmt.Println(ui.Grey(cmd.String()))
-			fmt.Println(ui.Grey("# cat", scriptPath))
+			fmt.Println(ui.Grey("# cat ", scriptPath))
 			data, err := os.ReadFile(scriptPath)
 			if err != nil {
 				return err
