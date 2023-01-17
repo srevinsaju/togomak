@@ -1,3 +1,6 @@
 plugins/git/git
 /.togomak.plugins*/
 /cmd/togomak/togomak
+*.log
+.idea/
+.togomak/
