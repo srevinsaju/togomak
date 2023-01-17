@@ -20,6 +20,7 @@ func GetSummaryType(v string) int {
 
 type Config struct {
 	RunAll        bool
+	Color         string
 	Force         bool
 	NoInteractive bool
 	RunStages     []string

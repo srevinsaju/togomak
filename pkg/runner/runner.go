@@ -79,8 +79,9 @@ func Orchestrator(cfg config.Config) {
 		Logger: log.WithFields(log.Fields{}),
 		Data: context.Data{
 			// some default functions
-			"owd": owd,
-			"env": templating.Env,
+			"owd":   owd,
+			"env":   templating.Env,
+			"color": cfg.Color,
 		},
 	}
 

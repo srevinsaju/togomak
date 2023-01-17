@@ -96,6 +96,7 @@ func configFromCliContext(cliCtx *cli.Context) config.Config {
 		Force:         cliCtx.Bool("force"),
 		RunAll:        x.Contains(cliCtx.Args().Slice(), "all"),
 		CiFile:        p,
+		Color:         cliCtx.String("color"),
 		DryRun:        cliCtx.Bool("dry-run"),
 		JobsNumber:    cliCtx.Int("jobs"),
 		Parameters:    cliCtx.StringSlice("parameters"),
