@@ -59,6 +59,12 @@ func cliContextRunner(cliCtx *cli.Context) error {
 			ForceColors:      false,
 		})
 	}
+	if cliCtx.String("color") == "on" || cliCtx.String("color") == "always" {
+		log.SetFormatter(&log.TextFormatter{
+			DisableTimestamp: true,
+			ForceColors:      true,
+		})
+	}
 	runner.Orchestrator(configFromCliContext(cliCtx))
 	return nil
 }
