@@ -86,17 +86,17 @@ func Summary(ctx *context.Context) {
 			}
 
 			deps := ctx.Graph.Dependencies(layer)
+
+			arr = append(arr, renderedText)
 			if len(deps) > 0 {
 
 				for k, _ := range deps {
 					if k == "root" {
 						continue
 					}
-					renderedText += ui.Grey(" -> " + k)
+					arr = append(arr, strings.Repeat("  ", i+3)+ui.Grey(" -> "+k))
 				}
 			}
-
-			arr = append(arr, renderedText)
 
 		}
 		mainArr = append(mainArr, list.Render(lipgloss.JoinVertical(lipgloss.Top, arr...)))
