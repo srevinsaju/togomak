@@ -32,4 +32,5 @@ type Config struct {
 	Parameters    []string
 	IsFailFastSet bool
 	Summary       int
+	Loggers       []string
 }

@@ -3,6 +3,7 @@ package runner
 import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
+	tlog "github.com/srevinsaju/togomak/log"
 	"github.com/srevinsaju/togomak/pkg/bootstrap"
 	"github.com/srevinsaju/togomak/pkg/config"
 	"github.com/srevinsaju/togomak/pkg/context"
@@ -73,6 +74,11 @@ func Orchestrator(cfg config.Config) {
 	orchestratorStartTime := time.Now()
 
 	owd, _ := os.Getwd()
+
+	/// enable google cloud logger if the environment variable is set
+	if os.Getenv("GOOGLE_CLOUD_PROJECT") != "" && os.Getenv("TOGOMAK__LOGGER__GOOGLE_CLOUD") != "" {
+		log.AddHook(tlog.GoogleCloudLoggerHook{})
+	}
 
 	/// create context
 	ctx := &context.Context{
