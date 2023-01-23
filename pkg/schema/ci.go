@@ -165,12 +165,23 @@ type DataConfig struct {
 	From       map[string]string      `yaml:"from"`
 	Sensitive  bool                   `yaml:"sensitive"`
 }
+type RetriesConfig struct {
+	// Enabled sets the retry policy
+	Enabled bool `yaml:"enabled"`
+	// Max gives the number of attempts to retry the job before declaring the job as failed.
+	Max int `yaml:"max"`
+	// MinBackoff gives the seconds to wait before retrying the job again.
+	MinBackoff int `yaml:"min-backoff"`
+	// MaxBackoff gives the maximum time to wait before retrying the job again.
+	MaxBackoff int `yaml:"max-backoff"`
+}
 
 type OptionsConfig struct {
-	Chdir    bool   `yaml:"chdir"`
-	Debug    bool   `yaml:"debug"`
-	FailLazy bool   `yaml:"fail-lazy"`
-	Summary  string `yaml:"summary"`
+	Chdir    bool          `yaml:"chdir"`
+	Debug    bool          `yaml:"debug"`
+	FailLazy bool          `yaml:"fail-lazy"`
+	Summary  string        `yaml:"summary"`
+	Retries  RetriesConfig `yaml:"retries"`
 }
 
 type ParametersConfig struct {

@@ -115,7 +115,7 @@ func (c *Context) Getenv(k string) string {
 		c.envVarPrefix = v
 	}
 	c.Logger.Tracef("Reading environment variable %s", v+k)
-	return os.Getenv(v)
+	return os.Getenv(v+k)
 }
 
 func (c *Context) GetenvWithDefault(k string, defaultValue string) string {
