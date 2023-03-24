@@ -1,6 +1,7 @@
 package context
 
 import (
+	"github.com/google/uuid"
 	"github.com/kendru/darwin/go/depgraph"
 	log "github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/pkg/meta"
@@ -64,6 +65,7 @@ type Context struct {
 	envVarPrefix string
 	Graph        *depgraph.Graph
 	IsMatrix     bool
+	BuildID      uuid.UUID
 
 	status  Status
 	TempDir string

@@ -2,6 +2,7 @@ package runner
 
 import (
 	"fmt"
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	tlog "github.com/srevinsaju/togomak/log"
 	"github.com/srevinsaju/togomak/pkg/bootstrap"
@@ -89,6 +90,7 @@ func Orchestrator(cfg config.Config) {
 			"env":   templating.Env,
 			"color": cfg.Color,
 		},
+		BuildID: uuid.New(),
 	}
 
 	// initialize other templating functions

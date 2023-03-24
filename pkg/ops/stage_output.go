@@ -36,7 +36,7 @@ func RunConfigMapStore(cfg config.Config, stageCtx *context.Context, stage schem
 	stageCtx.DataMutex.Lock()
 	stageCtx.Data[ConfigMapType] = m
 	stageCtx.DataMutex.Unlock()
-	fmt.Println(stageCtx.RootParent().Data.AsMap())
+
 	return nil
 }
 

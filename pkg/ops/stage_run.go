@@ -280,6 +280,9 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 	defer f.Close()
 	cmd.Env = append(cmd.Env, fmt.Sprintf("TOGOMAK_ENV=%s", f.Name()))
 
+	// add togomak build Id
+	cmd.Env = append(cmd.Env, fmt.Sprintf("TOGOMAK_BUILD_ID=%s", rootCtx.BuildID.String()))
+
 	// add environment variables
 	for k, v := range stage.Environment {
 		tpl, err := pongo2.FromString(v)
