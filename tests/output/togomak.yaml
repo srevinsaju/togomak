@@ -1,0 +1,38 @@
+version: 1
+
+options:
+  fail-lazy: true
+
+stages:
+  - id: output_test
+    script: |
+      echo 'This is a retrying test'
+      echo $TOGOMAK_ENV
+      echo "hello=world" >> $TOGOMAK_ENV
+    output: 
+      kind: ConfigMap
+      data: 
+        something: "{{ env.hello }}"
+
+  - id: output_2_test 
+    script: |
+      echo "another test"
+      echo "$TOGOMAK_BUILD_ID"
+      echo "hello=newworld" >> $TOGOMAK_ENV
+    output:
+      kind: ConfigMap
+      data: 
+        something: "{{ env.hello }}"
+
+  - id: something
+    depends-on:
+      - output_test
+      - output_2_test
+    script: |
+      {% for k, v in stage %}
+      echo "{{ k }}: {{ v.ConfigMap.something }}"
+      {% endfor %}
+
+
+
+
