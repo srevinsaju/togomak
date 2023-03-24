@@ -4,6 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/bcicen/jstream"
+	"github.com/flosch/pongo2/v6"
+	"github.com/hashicorp/go-envparse"
+	"github.com/spf13/afero"
 	"github.com/srevinsaju/togomak/pkg/config"
 	"github.com/srevinsaju/togomak/pkg/sources"
 	"github.com/srevinsaju/togomak/pkg/templating"
@@ -16,8 +19,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-
-	"github.com/flosch/pongo2/v6"
 
 	"github.com/srevinsaju/togomak/pkg/context"
 	"github.com/srevinsaju/togomak/pkg/schema"
@@ -96,10 +97,6 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 	var err error
 	var cmd *exec.Cmd
 
-	rootCtx.AddProcess(&context.RunningStage{
-		Id:      stage.Id,
-		Process: cmd,
-	})
 	var scriptPath string
 
 	if stage.Script != "" && len(stage.Args) != 0 {
@@ -249,6 +246,11 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 
 	}
 
+	rootCtx.AddProcess(&context.RunningStage{
+		Id:      stage.Id,
+		Process: cmd,
+	})
+
 	cmd.Stdout = stageCtx.Logger.Writer()
 	cmd.Stderr = stageCtx.Logger.Writer()
 	cmd.Env = os.Environ()
@@ -269,6 +271,14 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 		}
 		stageCtx.Logger.Debugf("command will be executed in %s", cmd.Dir)
 	}
+
+	// add output storage
+	f, err := afero.TempFile(afero.NewOsFs(), stageCtx.TempDir, stage.Id)
+	if err != nil {
+		return fmt.Errorf("cannot create temp file: %v", err)
+	}
+	defer f.Close()
+	cmd.Env = append(cmd.Env, fmt.Sprintf("TOGOMAK_ENV=%s", f.Name()))
 
 	// add environment variables
 	for k, v := range stage.Environment {
@@ -314,7 +324,35 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 
 	if !cfg.DryRun {
 		stageCtx.Logger.Debug("Running ", cmd.String())
-		err = cmd.Run()
+
+		var err error
+		stageCtx.Logger.Trace("running stage with retry", stage.Retry.Enabled)
+		if stage.Retry.Enabled {
+
+			operation := func() error {
+
+				err := cmd.Run()
+				if err != nil {
+					stageCtx.Logger.Info("Stage failed, retrying...")
+					return err
+				}
+				return nil
+			}
+			err = operation()
+			if err != nil {
+				fmt.Println(err)
+				err = operation()
+				if err != nil {
+					fmt.Println(err)
+				}
+			}
+
+			//expBackOff := backoff.NewExponentialBackOff()
+			//			err = backoff.Retry(operation, expBackOff)
+		} else {
+			err = cmd.Run()
+
+		}
 
 		// TODO: implement fail fast flag
 		if err != nil {
@@ -346,6 +384,16 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 		fmt.Println()
 		status.Success = true
 	}
+
+	// parse saved environment file
+	s, err := envparse.Parse(f)
+	if err != nil {
+		stageCtx.Logger.Warn(err)
+		return err
+	}
+	stageCtx.DataMutex.Lock()
+	stageCtx.Data["env"] = s
+	stageCtx.DataMutex.Unlock()
 
 	stageCtx.SetStatus(*status)
 	return nil

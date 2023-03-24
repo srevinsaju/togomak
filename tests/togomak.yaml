@@ -26,6 +26,13 @@ parameters:
     default: "{{ provider.git.sha }}"
 
 stages:
+  - id: retry_test
+    name: Retry Test
+    retry: 
+      enabled: true
+    script: |
+      echo 'This is a retrying test'
+      exit 1
   - id: failing_test
     name: Failing Test
     description: This stage should not fail since fail-fast is set to false, but must create a warning
@@ -51,6 +58,7 @@ stages:
         echo "Concurrency Test $i"
         sleep 1
       done
+
 
   - id: concurrency_test_b
     name: Concurrency Test 2

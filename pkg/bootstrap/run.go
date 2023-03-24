@@ -146,6 +146,7 @@ func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig
 					}
 					stageCtx.Logger.Fatal(err)
 				}
+				ops.RunOutput(cfg, stageCtx, stage)
 
 				stageCtx.Logger.Info(ui.Grey(fmt.Sprintf("took %s", time.Now().Sub(jobPreparationStartTime))))
 

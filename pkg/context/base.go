@@ -115,7 +115,7 @@ func (c *Context) Getenv(k string) string {
 		c.envVarPrefix = v
 	}
 	c.Logger.Tracef("Reading environment variable %s", v+k)
-	return os.Getenv(v+k)
+	return os.Getenv(v + k)
 }
 
 func (c *Context) GetenvWithDefault(k string, defaultValue string) string {
@@ -178,6 +178,13 @@ func (c *Context) AddProcess(stage *RunningStage) {
 		panic("cannot add process to a child context")
 	}
 	c.processMutex.Lock()
+	for i, p := range c.Processes {
+		if p.Id == stage.Id {
+			c.Processes[i] = stage
+			c.processMutex.Unlock()
+			return
+		}
+	}
 	c.Processes = append(c.Processes, stage)
 	c.processMutex.Unlock()
 }

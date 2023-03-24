@@ -4,6 +4,10 @@ import (
 	"github.com/srevinsaju/togomak/pkg/context"
 )
 
+type RetryConfig struct {
+	Enabled bool `yaml:"enabled,omitempty"`
+}
+
 // StageConfig is a block of definition for a stage to run.
 // Stage is a job which run internally, concurrently by default
 // to achieve a specific task.
@@ -75,6 +79,11 @@ type StageConfig struct {
 	Dir string `yaml:"dir"`
 
 	tainted bool `yaml:"-"`
+
+	// Retry specifies the config block for retrying the stage
+	Retry RetryConfig `yaml:"retry,omitempty"`
+
+	Output OutputConfig `yaml:"output,omitempty"`
 }
 
 func (p *StageConfig) Taint() {

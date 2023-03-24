@@ -7,6 +7,7 @@ require (
 	github.com/AlecAivazis/survey/v2 v2.3.5
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/bcicen/jstream v1.0.1
+	github.com/cenkalti/backoff/v4 v4.2.0
 	github.com/charmbracelet/lipgloss v0.5.0
 	github.com/chartmuseum/storage v0.12.5
 	github.com/go-git/go-billy/v5 v5.3.1
@@ -113,7 +114,7 @@ require (
 	golang.org/x/net v0.0.0-20221014081412-f15817d10f9b // indirect
 	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10 // indirect
 	golang.org/x/text v0.4.0 // indirect
-	google.golang.org/genproto v0.0.0-20221201164419-0e50fba7f41c // indirect
+	google.golang.org/genproto v0.0.0-20221201164419-0e50fba7f41c
 	google.golang.org/grpc v1.50.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1
 )
