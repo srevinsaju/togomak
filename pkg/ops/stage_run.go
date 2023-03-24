@@ -273,7 +273,7 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 	}
 
 	// add output storage
-	f, err := afero.TempFile(afero.NewOsFs(), stageCtx.TempDir, stage.Id)
+	f, err := afero.TempFile(afero.NewOsFs(), rootCtx.TempDir, stage.Id)
 	if err != nil {
 		return fmt.Errorf("cannot create temp file: %v", err)
 	}
@@ -282,6 +282,9 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 
 	// add togomak build Id
 	cmd.Env = append(cmd.Env, fmt.Sprintf("TOGOMAK_BUILD_ID=%s", rootCtx.BuildID.String()))
+
+	// add root temp dir location
+	cmd.Env = append(cmd.Env, fmt.Sprintf("TOGOMAK_TEMPDIR=%s", rootCtx.TempDir))
 
 	// add environment variables
 	for k, v := range stage.Environment {

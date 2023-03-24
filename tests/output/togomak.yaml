@@ -8,6 +8,7 @@ stages:
     script: |
       echo 'This is a retrying test'
       echo $TOGOMAK_ENV
+      echo $TOGOMAK_TEMPDIR
       echo "hello=world" >> $TOGOMAK_ENV
     output: 
       kind: ConfigMap
