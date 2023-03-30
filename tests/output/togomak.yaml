@@ -34,6 +34,10 @@ stages:
       echo "{{ k }}: {{ v.ConfigMap.something }}"
       {% endfor %}
 
-
+  - id: some
+    depends-on:
+      - "/somet.*/"
+    script: |
+      echo done
 
 
