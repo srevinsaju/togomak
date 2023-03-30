@@ -3,7 +3,7 @@ package meta
 import uuid "github.com/satori/go.uuid"
 
 const (
-	Version                  = "0.0.2"
+	Version                  = "0.0.3"
 	AppName                  = "togomak"
 	SupportedCiConfigVersion = 1
 	EnvPrefix                = "TOGOMAK"
