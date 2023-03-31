@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/go-envparse"
 	"github.com/spf13/afero"
 	"github.com/srevinsaju/togomak/pkg/config"
+	"github.com/srevinsaju/togomak/pkg/meta"
 	"github.com/srevinsaju/togomak/pkg/sources"
 	"github.com/srevinsaju/togomak/pkg/templating"
 	"github.com/srevinsaju/togomak/pkg/ui"
@@ -281,7 +282,7 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 	cmd.Env = append(cmd.Env, fmt.Sprintf("TOGOMAK_ENV=%s", f.Name()))
 
 	// add togomak build Id
-	cmd.Env = append(cmd.Env, fmt.Sprintf("TOGOMAK_BUILD_ID=%s", rootCtx.BuildID.String()))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("TOGOMAK_BUILD_ID=%s", meta.GetCorrelationId()))
 
 	// add root temp dir location
 	cmd.Env = append(cmd.Env, fmt.Sprintf("TOGOMAK_TEMPDIR=%s", rootCtx.TempDir))

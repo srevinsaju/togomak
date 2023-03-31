@@ -39,5 +39,6 @@ stages:
       - "/somet.*/"
     script: |
       echo done
+      echo ">>>>>>>> {{ id }}"
 
 
