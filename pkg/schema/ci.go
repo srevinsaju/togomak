@@ -210,15 +210,6 @@ func NewStateConfig() StateConfig {
 	}
 }
 
-type BackendConfig struct {
-	// Type specifies the backend type
-	Type string `yaml:"type,omitempty"`
-
-	// CloudBuild specifies the configuration for the cloudbuild backend
-	CloudBuild map[string]interface{} `yaml:"cloudbuild,omitempty"`
-	Local      map[string]interface{} `yaml:"local,omitempty"`
-}
-
 // SchemaConfig shows the overall YAML configuration file
 type SchemaConfig struct {
 

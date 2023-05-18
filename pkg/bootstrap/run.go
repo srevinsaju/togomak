@@ -23,6 +23,9 @@ import (
 func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig) {
 
 	rootStage := schema.NewRootStage()
+	if data.Backend.Type == schema.BackendConfigTypeCloudBuild {
+
+	}
 	ctx.Logger.Debug("Sorting dependency tree")
 
 	for _, layer := range ctx.Graph.TopoSortedLayers() {
