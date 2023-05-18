@@ -6,10 +6,12 @@ options:
 stages:
   - id: output_test
     script: |
+      set -euxo pipefail
       echo 'This is a retrying test'
       echo $TOGOMAK_ENV
       echo $TOGOMAK_TEMPDIR
       echo "hello=world" >> $TOGOMAK_ENV
+      echo sss
     output: 
       kind: ConfigMap
       data: 

@@ -3,4 +3,5 @@ plugins/git/git
 /cmd/togomak/togomak
 *.log
 .idea/
-.togomak/
+.togomak/state
+.togomak/plugins

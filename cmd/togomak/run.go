@@ -34,9 +34,19 @@ func autoDetectFile(cwd string) string {
 
 	if exists {
 		return p
-	} else {
-		return autoDetectFile(path.Join("..", cwd))
 	}
+	p2 := path.Join(cwd, meta.BuildDirPrefix, fmt.Sprintf("%s.yaml", meta.AppName))
+	exists, err = afero.Exists(fs, p2)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if exists {
+		return p2
+	}
+
+	return autoDetectFile(path.Join("..", cwd))
+
 }
 
 func cliContextRunner(cliCtx *cli.Context) error {
