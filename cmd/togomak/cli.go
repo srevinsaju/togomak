@@ -30,6 +30,7 @@ func initCli() *cli.App {
 				Name:    "init",
 				Aliases: []string{"i"},
 				Usage:   "Initialize a new project",
+				Hidden:  true,
 			},
 			{
 				Name:  "force-unlock",
