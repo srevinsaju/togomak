@@ -210,6 +210,15 @@ func NewStateConfig() StateConfig {
 	}
 }
 
+type BackendConfig struct {
+	// Type specifies the backend type
+	Type string `yaml:"type,omitempty"`
+
+	// CloudBuild specifies the configuration for the cloudbuild backend
+	CloudBuild map[string]interface{} `yaml:"cloudbuild,omitempty"`
+	Local      map[string]interface{} `yaml:"local,omitempty"`
+}
+
 // SchemaConfig shows the overall YAML configuration file
 type SchemaConfig struct {
 
@@ -222,6 +231,10 @@ type SchemaConfig struct {
 
 	// Parameters
 	Parameters []ParametersConfig `yaml:"parameters"`
+
+	// Backend specifies where the code will be run, which could be either one
+	// of local, cloudbuild for now
+	Backend BackendConfig `yaml:"backend,omitempty"`
 
 	// Extends does an internal deep merge of yaml maps so that
 	// on can inherit the properties of another stage without having to write
