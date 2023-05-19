@@ -13,11 +13,9 @@ import (
 	"time"
 )
 
-func CloudBuild(togomakCtx *context.Context, data schema.SchemaConfig) {
-	//
-	//for _, stage := range data.Stages {
-	//	stage.Output
-	//}
+func CloudBuild(rootCtx *context.Context, data schema.SchemaConfig) {
+	togomakCtx := rootCtx.AddChild("backend", "cloudbuild")
+	togomakCtx.Logger.Warnf("togomak + cloudbuild support is experimental, some features may not work as expected.")
 
 	ctx := goctx.Background()
 	service, err := cloudbuild.NewService(ctx)
@@ -78,6 +76,7 @@ func CloudBuild(togomakCtx *context.Context, data schema.SchemaConfig) {
 	}
 	togomakCtx.Logger.Infof("togomak:cloudbuild see live logs at %s\n", metadata["build"].(map[string]interface{})["logUrl"].(string))
 
+	// parse the log bucket information
 	logsBucket := metadata["build"].(map[string]interface{})["logsBucket"].(string)
 	id := metadata["build"].(map[string]interface{})["id"].(string)
 	logsBucket = strings.TrimPrefix(logsBucket, "gs://")
@@ -134,7 +133,5 @@ func CloudBuild(togomakCtx *context.Context, data schema.SchemaConfig) {
 	if err != nil {
 		togomakCtx.Logger.Fatalf("Failed to read object: %v", err)
 	}
-
-	fmt.Println("Streaming complete.")
 
 }
