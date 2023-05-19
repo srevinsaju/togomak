@@ -1,0 +1,21 @@
+version: 1
+
+options:
+  fail-lazy: true
+
+backend: 
+  type: cloudbuild
+  cloudbuild:
+    project_id: "sorcero-cicd"
+
+stages:
+  - id: hello
+    script: |
+      echo "hello world 2"
+
+  - id: world
+    depends-on: 
+      - hello
+    script: |
+      echo "hello world 3"
+
