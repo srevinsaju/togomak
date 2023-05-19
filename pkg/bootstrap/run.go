@@ -1,6 +1,8 @@
 package bootstrap
 
 import (
+	"cloud.google.com/go/cloudbuild/apiv1/v2"
+	goctx "context"
 	"errors"
 	"fmt"
 	"github.com/chartmuseum/storage"
@@ -23,11 +25,20 @@ import (
 func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig) {
 
 	rootStage := schema.NewRootStage()
+
 	if data.Backend.Type == schema.BackendConfigTypeCloudBuild {
+		googleCtx := goctx.Background()
+		c, err := cloudbuild.NewClient(googleCtx)
+		if err != nil {
+			ctx.Logger.Fatal(err)
+			return
+		}
+
+		defer c.Close()
 
 	}
-	ctx.Logger.Debug("Sorting dependency tree")
 
+	ctx.Logger.Debug("Sorting dependency tree")
 	for _, layer := range ctx.Graph.TopoSortedLayers() {
 
 		var wg sync.WaitGroup

@@ -3,16 +3,17 @@ module github.com/srevinsaju/togomak
 go 1.18
 
 require (
+	cloud.google.com/go/cloudbuild v1.4.0
 	cloud.google.com/go/logging v1.6.1
 	github.com/AlecAivazis/survey/v2 v2.3.5
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/bcicen/jstream v1.0.1
-	github.com/cenkalti/backoff/v4 v4.2.0
 	github.com/charmbracelet/lipgloss v0.5.0
 	github.com/chartmuseum/storage v0.12.5
 	github.com/go-git/go-billy/v5 v5.3.1
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/gobwas/glob v0.2.3
+	github.com/google/uuid v1.3.0
 	github.com/hashicorp/go-envparse v0.1.0
 	github.com/hashicorp/go-hclog v1.2.2
 	github.com/hashicorp/go-plugin v1.4.4
@@ -60,7 +61,6 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.2.0 // indirect
 	github.com/googleapis/gax-go/v2 v2.7.0 // indirect
 	github.com/gophercloud/gophercloud v0.25.0 // indirect

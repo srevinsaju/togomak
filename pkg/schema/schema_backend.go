@@ -8,6 +8,8 @@ const (
 	// BackendConfigTypeLocal is the local backend
 	BackendConfigTypeLocal      BackendConfigType = "local"
 	BackendConfigTypeCloudBuild BackendConfigType = "cloudbuild"
+
+	BackendConfigTypeDefault BackendConfigType = BackendConfigTypeLocal
 )
 
 // BackendConfig is the configuration for the backend

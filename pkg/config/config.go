@@ -33,4 +33,5 @@ type Config struct {
 	IsFailFastSet bool
 	Summary       int
 	Loggers       []string
+	Backend       string
 }

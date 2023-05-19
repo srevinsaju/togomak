@@ -9,6 +9,7 @@ import (
 	"github.com/srevinsaju/togomak/pkg/config"
 	"github.com/srevinsaju/togomak/pkg/context"
 	"github.com/srevinsaju/togomak/pkg/meta"
+	"github.com/srevinsaju/togomak/pkg/schema"
 	"github.com/srevinsaju/togomak/pkg/state"
 	"github.com/srevinsaju/togomak/pkg/templating"
 	"github.com/srevinsaju/togomak/pkg/ui"
@@ -107,6 +108,16 @@ func Orchestrator(cfg config.Config) {
 	/// create temporary working directory
 	bootstrap.TempDir(ctx)
 	defer bootstrap.SafeDeleteTempDir(ctx)
+
+	// read type of builder backend, default to local backend
+	if data.Backend.Type == "" {
+		data.Backend.Type = schema.BackendConfigTypeDefault
+	}
+
+	if data.Backend.Type == schema.BackendConfigTypeCloudBuild && (schema.BackendConfigType(cfg.Backend) != schema.BackendConfigTypeLocal) {
+		bootstrap.CloudBuild(ctx, data)
+		return
+	}
 
 	stateUrl := data.State.URL
 	if stateUrl == "" {
