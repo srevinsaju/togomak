@@ -1,7 +1,7 @@
 version: 1
 
 options:
-  fail-lazy: true
+  fail-lazy: false
 
 backend: 
   type: cloudbuild
@@ -12,6 +12,7 @@ stages:
   - id: hello
     script: |
       echo "hello world 2"
+      exit 1
 
   - id: world
     depends-on: 

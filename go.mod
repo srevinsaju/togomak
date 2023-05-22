@@ -5,9 +5,11 @@ go 1.18
 require (
 	cloud.google.com/go/cloudbuild v1.4.0
 	cloud.google.com/go/logging v1.6.1
+	cloud.google.com/go/storage v1.27.0
 	github.com/AlecAivazis/survey/v2 v2.3.5
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/bcicen/jstream v1.0.1
+	github.com/cenkalti/backoff/v4 v4.2.1
 	github.com/charmbracelet/lipgloss v0.5.0
 	github.com/chartmuseum/storage v0.12.5
 	github.com/go-git/go-billy/v5 v5.3.1
@@ -21,11 +23,13 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/moby/sys/mountinfo v0.6.2
 	github.com/otiai10/copy v1.7.0
+	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
 	github.com/satori/go.uuid v1.2.0
 	github.com/schwarmco/go-cartesian-product v0.0.0-20180515110546-d5ee747a6dc9
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/afero v1.9.2
 	github.com/urfave/cli/v2 v2.11.1
+	google.golang.org/api v0.103.0
 )
 
 require (
@@ -34,7 +38,6 @@ require (
 	cloud.google.com/go/compute/metadata v0.2.1 // indirect
 	cloud.google.com/go/iam v0.7.0 // indirect
 	cloud.google.com/go/longrunning v0.3.0 // indirect
-	cloud.google.com/go/storage v1.27.0 // indirect
 	github.com/Azure/azure-sdk-for-go v65.0.0+incompatible // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest v0.11.27 // indirect
@@ -95,7 +98,6 @@ require (
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/time v0.0.0-20220411224347-583f2d630306 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
-	google.golang.org/api v0.103.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect

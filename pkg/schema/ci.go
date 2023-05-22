@@ -223,6 +223,9 @@ type SchemaConfig struct {
 	// Parameters
 	Parameters []ParametersConfig `yaml:"parameters"`
 
+	// Environment specifies the key value map on the environment variables that need to be exported
+	Environment map[string]string `yaml:"environment"`
+
 	// Backend specifies where the code will be run, which could be either one
 	// of local, cloudbuild for now
 	Backend BackendConfig `yaml:"backend,omitempty"`

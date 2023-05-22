@@ -71,6 +71,7 @@ func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig
 				}
 
 			}()
+
 			// check if the stage need to be run
 			targetStartTime := time.Now()
 			targetIsUptoDate := true
