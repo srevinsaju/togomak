@@ -1,0 +1,35 @@
+version: 1
+
+options:
+  dependencies:
+    always-include: true
+
+stages:
+  - id: container_test
+    name: Container Test
+    description: Test if togomak is able to pull a container from the container registry and execute it
+    args:
+      - python
+      - --version
+
+  - id: concurrency_test_a
+    name: Concurrency Test 1
+    description: Check if concurrency is supported, concurrency-test-{1, 2, 3} must execute in parallel
+    depends-on:
+      - container_test
+    script: | 
+      for i in {1..3}; do
+        echo "Concurrency Test $i"
+        sleep 1
+      done
+
+  - id: concurrency_test_b
+    name: Concurrency Test 2
+    description: Check if concurrency is supported, concurrency-test-{1, 2, 3} must execute in parallel
+    script: | 
+      for i in {1..3}; do
+        echo "Concurrency Test $i"
+        sleep 1
+      done
+
+

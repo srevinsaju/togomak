@@ -3,6 +3,7 @@ version: 1
 options:
   fail-lazy: true
 
+
 matrix:
   myAttribute:
     - foo

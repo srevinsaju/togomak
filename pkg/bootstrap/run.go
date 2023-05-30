@@ -1,10 +1,16 @@
 package bootstrap
 
 import (
-	"cloud.google.com/go/cloudbuild/apiv1/v2"
 	goctx "context"
 	"errors"
 	"fmt"
+	"io/fs"
+	"path/filepath"
+	"strings"
+	"sync"
+	"time"
+
+	cloudbuild "cloud.google.com/go/cloudbuild/apiv1/v2"
 	"github.com/chartmuseum/storage"
 	"github.com/flosch/pongo2/v6"
 	"github.com/gobwas/glob"
@@ -15,11 +21,6 @@ import (
 	"github.com/srevinsaju/togomak/pkg/state"
 	"github.com/srevinsaju/togomak/pkg/templating"
 	"github.com/srevinsaju/togomak/pkg/ui"
-	"io/fs"
-	"path/filepath"
-	"strings"
-	"sync"
-	"time"
 )
 
 func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig) {
@@ -54,9 +55,23 @@ func SimpleRun(ctx *context.Context, cfg config.Config, data schema.SchemaConfig
 			stageCtx := ctx.AddChild("stage", stage.Id)
 
 			if len(cfg.RunStages) > 0 && !contains(cfg, l) {
-				ctx.Logger.Debugf("Skipping stage %s", l)
-				UnlockState(ctx, stage, true)
-				continue
+				var dependentRequired = false
+				if data.Options.Dependencies.AlwaysInclude {
+					// stageCtx.Logger.Infof("y:%v x:%v s:%v m:%v", stage.DependsOn, stage.Id, ctx.Graph.Dependents(stage.Id), cfg.RunStages)
+
+					for k := range ctx.Graph.Dependents(stage.Id) {
+						if contains(cfg, k) {
+							stageCtx.Logger.Infof("including stage because '%s' was explicitly specified", k)
+							dependentRequired = true
+							break
+						}
+					}
+				}
+				if !dependentRequired {
+					ctx.Logger.Debugf("Skipping stage %s", l)
+					UnlockState(ctx, stage, true)
+					continue
+				}
 			}
 
 			var state state.State

@@ -185,12 +185,17 @@ type RetriesConfig struct {
 	MaxBackoff int `yaml:"max-backoff"`
 }
 
+type OptionsDependenciesConfig struct {
+	AlwaysInclude bool `yaml:"always-include"`
+}
+
 type OptionsConfig struct {
-	Chdir    bool          `yaml:"chdir"`
-	Debug    bool          `yaml:"debug"`
-	FailLazy bool          `yaml:"fail-lazy"`
-	Summary  string        `yaml:"summary"`
-	Retries  RetriesConfig `yaml:"retries"`
+	Chdir        bool                      `yaml:"chdir"`
+	Debug        bool                      `yaml:"debug"`
+	FailLazy     bool                      `yaml:"fail-lazy"`
+	Summary      string                    `yaml:"summary"`
+	Retries      RetriesConfig             `yaml:"retries"`
+	Dependencies OptionsDependenciesConfig `yaml:"dependencies"`
 }
 
 type ParametersConfig struct {
