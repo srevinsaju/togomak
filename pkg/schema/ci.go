@@ -4,12 +4,12 @@ import (
 	"github.com/srevinsaju/togomak/pkg/context"
 )
 
+// RetryConfig allows specifying number of times a stage needs 
+// to be retried before it can be marked as failed
 type RetryConfig struct {
 	Enabled bool `yaml:"enabled,omitempty"`
 }
 
-// StageConfig is a block of definition for a stage to run.
-// Stage is a job which run internally, concurrently by default
 // to achieve a specific task.
 type StageConfig struct {
 

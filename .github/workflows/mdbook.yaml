@@ -1,0 +1,32 @@
+name: Generate docs
+
+on: 
+  push:
+    branches:
+      - "main"
+
+jobs:
+  docs:
+    name: Build and upload
+    runs-on: ubuntu-latest
+    steps:
+      # Install mdbook and requirements
+      - name: Install mdbook
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: mdbook
+
+      # Ebook generation
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Generate ebook from markdown
+        run: cd docs && mdbook build
+
+      # HTML publication as Github Page
+      - name: Publish HTML
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/book/html
