@@ -54,13 +54,12 @@ at the beginning of the execution of a stage. See [stages](./stages.md) for more
 `.default` is an optional attribute for the parameters block. If the parameter does 
 not have a default value, it will prompt the user over CLI for the values. 
 
-
-# Value resolution 
+## Value resolution 
 
 Parameter values can be passed in several ways. The following lists the precendence of 
 reading terraform parameter values:
 
-## CLI parameters
+### CLI parameters
 Togomak supports providing parameters inline through the CLI interface. 
 
 ```bash
@@ -71,21 +70,16 @@ or
 togomak -e HELLO=world
 ```
 
-## *Environment variables**: Togomak reads the value of `TOGOMAK__param__{param_name}`. For example: 
+### Environment variables
+Togomak reads the value of `TOGOMAK__param__{param_name}`. For example: 
 ```bash
 export TOGOMAK__param__HELLO=world
 togomak
 ```
 
-* **Interactively**: If the default value is unspecified, Togomak, by default prompts 
+### Interactively
+If the default value is unspecified, Togomak, by default prompts 
 for the value over a CLI interface, if standard input is accessible. 
-
-
-
-
-
-
-
 
 
 
