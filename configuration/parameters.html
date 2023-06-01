@@ -189,24 +189,24 @@ at the beginning of the execution of a stage. See <a href="./stages.html">stages
 <h2 id="parametersdefault"><a class="header" href="#parametersdefault"><code>.parameters[].default</code></a></h2>
 <p><code>.default</code> is an optional attribute for the parameters block. If the parameter does 
 not have a default value, it will prompt the user over CLI for the values. </p>
-<h1 id="value-resolution"><a class="header" href="#value-resolution">Value resolution</a></h1>
+<h2 id="value-resolution"><a class="header" href="#value-resolution">Value resolution</a></h2>
 <p>Parameter values can be passed in several ways. The following lists the precendence of 
 reading terraform parameter values:</p>
-<h2 id="cli-parameters"><a class="header" href="#cli-parameters">CLI parameters</a></h2>
+<h3 id="cli-parameters"><a class="header" href="#cli-parameters">CLI parameters</a></h3>
 <p>Togomak supports providing parameters inline through the CLI interface. </p>
 <pre><code class="language-bash">togomak --parameters &quot;YOUR_NAME=Jon Snow&quot;
 </code></pre>
 <p>or </p>
 <pre><code class="language-bash">togomak -e HELLO=world
 </code></pre>
-<h2 id="environment-variables-togomak-reads-the-value-of-togomak__param__param_name-for-example"><a class="header" href="#environment-variables-togomak-reads-the-value-of-togomak__param__param_name-for-example"><em>Environment variables</em>*: Togomak reads the value of <code>TOGOMAK__param__{param_name}</code>. For example:</a></h2>
+<h3 id="environment-variables"><a class="header" href="#environment-variables">Environment variables</a></h3>
+<p>Togomak reads the value of <code>TOGOMAK__param__{param_name}</code>. For example: </p>
 <pre><code class="language-bash">export TOGOMAK__param__HELLO=world
 togomak
 </code></pre>
-<ul>
-<li><strong>Interactively</strong>: If the default value is unspecified, Togomak, by default prompts 
-for the value over a CLI interface, if standard input is accessible. </li>
-</ul>
+<h3 id="interactively"><a class="header" href="#interactively">Interactively</a></h3>
+<p>If the default value is unspecified, Togomak, by default prompts 
+for the value over a CLI interface, if standard input is accessible. </p>
 
                     </main>
 
