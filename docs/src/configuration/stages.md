@@ -108,5 +108,20 @@ stages:
 A yaml array of parameters which needs to be passed to the docker container, or
 the command will be run on shell. 
 
+```yaml
+stages:
+    - id: world
+      args: ["echo", "hello", "world"]
+```
+or 
+```yaml
+stages:
+    - id: world
+      container: "python:latest"
+      args:
+      - "--version"
+```
+
+
 
 
