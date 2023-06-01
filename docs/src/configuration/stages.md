@@ -64,12 +64,49 @@ stages:
       script: echo "DEBUG=true" >> .env
 ```
 
+## `.stages[].name`
+Name of the stage. Will be pretty printed, and replaced in output before the stage 
+starts. Useful if the viewers of the build logs need more context on what's happening
+and if the `.id` of stage is not self-explanatory.
+
+## `.stages[].description`
+Description of the stage. A short blob of text which explains what the pipeline does. 
+
+> **Planned**: `.stages[].description` and `.stages[].name` may be used for `togomak-docs` 
+> which can be used for automatically generating Markdown docs explaining the pipeline workflow. 
+
+## `.stages[].container`
+Container name under which the `.stages[].script` or `.stages[].args` should be executed under. 
+If container name is unspecified, the code will run on the host, without containerization.
+In the case of backend providers other than the localhost provider, an applicable `busybox` 
+container image will be replaced. 
+
+```yaml
+stages:
+    - id: world
+      container: python:latest
+      script: |
+        python --version
+```
 
 
+## `.stages[].script`
+Blob text, which gets executed under the default shell of the container if defined under
+`.stages[].container` or, on the host's default shell. 
 
+```yaml
+stages: 
+    - id: world
+      script: |
+        echo "hello"
+```
 
+> **Note**: It is recommended to set `set -euo pipefail` on bash, or `set -eu` to not deal with 
+> ambigious build statuses. Read why `set -euo pipefail` might be necessary [here](https://coderwall.com/p/fkfaqq/safer-bash-scripts-with-set-euxo-pipefail)
 
-
+## `.stages[].args`
+A yaml array of parameters which needs to be passed to the docker container, or
+the command will be run on shell. 
 
 
 
