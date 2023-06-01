@@ -197,6 +197,53 @@ stages:
       if: {{ param.ENV == &quot;dev&quot; }}
       script: echo &quot;DEBUG=true&quot; &gt;&gt; .env
 </code></pre>
+<h2 id="stagesname"><a class="header" href="#stagesname"><code>.stages[].name</code></a></h2>
+<p>Name of the stage. Will be pretty printed, and replaced in output before the stage 
+starts. Useful if the viewers of the build logs need more context on what's happening
+and if the <code>.id</code> of stage is not self-explanatory.</p>
+<h2 id="stagesdescription"><a class="header" href="#stagesdescription"><code>.stages[].description</code></a></h2>
+<p>Description of the stage. A short blob of text which explains what the pipeline does. </p>
+<blockquote>
+<p><strong>Planned</strong>: <code>.stages[].description</code> and <code>.stages[].name</code> may be used for <code>togomak-docs</code> 
+which can be used for automatically generating Markdown docs explaining the pipeline workflow. </p>
+</blockquote>
+<h2 id="stagescontainer"><a class="header" href="#stagescontainer"><code>.stages[].container</code></a></h2>
+<p>Container name under which the <code>.stages[].script</code> or <code>.stages[].args</code> should be executed under. 
+If container name is unspecified, the code will run on the host, without containerization.
+In the case of backend providers other than the localhost provider, an applicable <code>busybox</code> 
+container image will be replaced. </p>
+<pre><code class="language-yaml">stages:
+    - id: world
+      container: python:latest
+      script: |
+        python --version
+</code></pre>
+<h2 id="stagesscript"><a class="header" href="#stagesscript"><code>.stages[].script</code></a></h2>
+<p>Blob text, which gets executed under the default shell of the container if defined under
+<code>.stages[].container</code> or, on the host's default shell. </p>
+<pre><code class="language-yaml">stages: 
+    - id: world
+      script: |
+        echo &quot;hello&quot;
+</code></pre>
+<blockquote>
+<p><strong>Note</strong>: It is recommended to set <code>set -euo pipefail</code> on bash, or <code>set -eu</code> to not deal with 
+ambigious build statuses. Read why <code>set -euo pipefail</code> might be necessary <a href="https://coderwall.com/p/fkfaqq/safer-bash-scripts-with-set-euxo-pipefail">here</a></p>
+</blockquote>
+<h2 id="stagesargs"><a class="header" href="#stagesargs"><code>.stages[].args</code></a></h2>
+<p>A yaml array of parameters which needs to be passed to the docker container, or
+the command will be run on shell. </p>
+<pre><code class="language-yaml">stages:
+    - id: world
+      args: [&quot;echo&quot;, &quot;hello&quot;, &quot;world&quot;]
+</code></pre>
+<p>or </p>
+<pre><code class="language-yaml">stages:
+    - id: world
+      container: &quot;python:latest&quot;
+      args:
+      - &quot;--version&quot;
+</code></pre>
 
                     </main>
 
