@@ -142,7 +142,7 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 			if err != nil {
 				panic(err)
 			}
-			cmd = exec.Command("podman",
+			cmd = exec.Command("docker",
 				"run", "--rm", "--entrypoint=sh",
 				"-v", fmt.Sprintf("%s:%s:Z", cwd, "/workspace"),
 				"-v", tempTargetRunDir+":/workspace.togomak.scripts:Z",
@@ -241,7 +241,7 @@ func RunStage(cfg config.Config, stageCtx *context.Context, stage schema.StageCo
 				"-w", "/workspace",
 				stage.Container}
 
-			cmd = exec.Command("podman",
+			cmd = exec.Command("docker",
 				append(dockerArgs, newArgs...)...)
 		}
 
