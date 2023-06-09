@@ -34,4 +34,5 @@ type Config struct {
 	Summary       int
 	Loggers       []string
 	Backend       string
+	TrackingServer string
 }

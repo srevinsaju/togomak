@@ -2,80 +2,59 @@ package log
 
 import (
 	"context"
-	"fmt"
 	"github.com/acarl005/stripansi"
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/pkg/meta"
 	"github.com/srevinsaju/togomak/pkg/x"
-	"google.golang.org/genproto/googleapis/api/monitoredres"
+	"github.com/srevinsaju/togomak/pkg/client/logging"
 	"os"
 )
-import "cloud.google.com/go/logging"
 
-var hostname string
-var googleCloudLoggerClient *logging.Client
+var togomakHostname string
+var togomakTrackingClient *logging.Client
 
-func GoogleCloudLoggerClient() (*logging.Client, error) {
-	if googleCloudLoggerClient != nil {
-		return googleCloudLoggerClient, nil
+type TrackingServerClientConfig struct {
+	URL string 
+
+}
+
+func TogomakTrackingClient(config TrackingServerClientConfig) (*logging.Client, error) {
+	if togomakTrackingClient != nil {
+		return togomakTrackingClient, nil
 	}
 	loggerContext := context.Background()
-	hostname = x.MustReturn(os.Hostname()).(string)
-	projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
-	if projectID == "" {
-		panic("GOOGLE_CLOUD_PROJECT environment variable is not set")
-	}
-
+	togomakHostname = x.MustReturn(os.Hostname()).(string)
+	
 	// initialize the client
-	client, err := logging.NewClient(loggerContext, projectID)
+	client, err := logging.NewClient(loggerContext, config.URL)
 	if err != nil {
 		return nil, err
 	}
-	googleCloudLoggerClient = client
-	return googleCloudLoggerClient, nil
+	togomakTrackingClient = client
+	return togomakTrackingClient, nil
 }
 
-type NormalHook struct {
+type TogomakHook struct {
+	TrackingServer string
 }
 
-func (h NormalHook) Fire(entry *logrus.Entry) error {
-	fmt.Println(entry.Message)
-	return nil
-}
-func (h NormalHook) Levels() []logrus.Level {
-	return logrus.AllLevels
-}
-
-type GoogleCloudLoggerHook struct {
-}
-
-func (h GoogleCloudLoggerHook) Fire(entry *logrus.Entry) error {
+func (h TogomakHook) Fire(entry *logrus.Entry) error {
 	// upload to google cloud logging
 	// using google cloud API
 	// https://cloud.google.com/logging/docs/reference/libraries#client-libraries-install-gow
-	client, err := GoogleCloudLoggerClient()
+	client, err := TogomakTrackingClient(TrackingServerClientConfig{
+		URL: h.TrackingServer,
+
+	})
 	if err != nil {
 		return err
 	}
-	logger := client.Logger(meta.AppName)
+	
+	logger := client.Logger()
 	if err != nil {
 		return err
 	}
-	severityLevel := logging.Default
-	switch entry.Level {
-	case logrus.DebugLevel:
-		severityLevel = logging.Debug
-	case logrus.InfoLevel:
-		severityLevel = logging.Info
-	case logrus.WarnLevel:
-		severityLevel = logging.Warning
-	case logrus.ErrorLevel:
-		severityLevel = logging.Error
-	case logrus.FatalLevel:
-		severityLevel = logging.Critical
-	case logrus.PanicLevel:
-		severityLevel = logging.Alert
-	}
+	
 	logger.Log(logging.Entry{
 		Payload: map[string]interface{}{
 			"message": stripansi.Strip(entry.Message),
@@ -84,9 +63,7 @@ func (h GoogleCloudLoggerHook) Fire(entry *logrus.Entry) error {
 			"version": meta.Version,
 			"host":    hostname,
 		},
-		Resource: &monitoredres.MonitoredResource{Type: "global"},
-		Trace:    "togomak",
-		Severity: severityLevel,
+		Severity: entry.Level.String(),
 		Labels: map[string]string{
 			"app":          meta.AppName,
 			"version":      meta.Version,
@@ -97,6 +74,6 @@ func (h GoogleCloudLoggerHook) Fire(entry *logrus.Entry) error {
 	return nil
 }
 
-func (h GoogleCloudLoggerHook) Levels() []logrus.Level {
+func (h TogomakHook) Levels() []logrus.Level {
 	return []logrus.Level{logrus.InfoLevel, logrus.WarnLevel, logrus.ErrorLevel, logrus.FatalLevel, logrus.PanicLevel}
 }

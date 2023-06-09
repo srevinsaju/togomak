@@ -82,6 +82,10 @@ func Orchestrator(cfg config.Config) {
 		log.AddHook(tlog.GoogleCloudLoggerHook{})
 	}
 
+	if cfg.TrackingServer != "" {
+		log.AddHook(tlog.TogomakHook{})
+	}
+
 	/// create context
 	ctx := &context.Context{
 		Logger: log.WithFields(log.Fields{}),
