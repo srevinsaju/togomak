@@ -35,8 +35,27 @@ func (s Stage) Run(ctx context.Context) diag.Diagnostics {
 	var diags diag.Diagnostics
 	var hclDiags hcl.Diagnostics
 	var err error
-
 	evalCtx := ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
+
+	paramsGo := map[string]cty.Value{}
+	if s.Use != nil && s.Use.Parameters != nil {
+		parameters, d := s.Use.Parameters.Value(evalCtx)
+		hclDiags = hclDiags.Extend(d)
+
+		for k, v := range parameters.AsValueMap() {
+			paramsGo[k] = v
+		}
+	}
+
+	evalCtx = evalCtx.NewChild()
+	evalCtx.Variables = map[string]cty.Value{
+		"this": cty.ObjectVal(map[string]cty.Value{
+			"name": cty.StringVal(s.Name),
+			"id":   cty.StringVal(s.Id),
+		}),
+		"param": cty.ObjectVal(paramsGo),
+	}
+
 	script, d := s.Script.Value(evalCtx)
 	hclDiags = hclDiags.Extend(d)
 	args, d := s.Args.Value(evalCtx)
@@ -60,6 +79,12 @@ func (s Stage) Run(ctx context.Context) diag.Diagnostics {
 				Detail:   err.Error(),
 			})
 		}
+		diags = diags.Append(diag.Diagnostic{
+			Severity: diag.SeverityError,
+			Summary:  "failed to evaluate HCL",
+			Detail:   hclDiags.Error(),
+			Source:   fmt.Sprintf("stage.%s:run", s.Id),
+		})
 	}
 
 	if hclDiags.HasErrors() || diags.HasErrors() {
@@ -126,10 +151,29 @@ func (s Stage) CanRun(ctx context.Context) (bool, diag.Diagnostics) {
 
 	var diags diag.Diagnostics
 	evalCtx := ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
+	hclWriter := ctx.Value(c.TogomakContextHclDiagWriter).(hcl.DiagnosticWriter)
+	var hclDiags hcl.Diagnostics
 
+	paramsGo := map[string]cty.Value{}
+	if s.Use != nil && s.Use.Parameters != nil {
+		parameters, d := s.Use.Parameters.Value(evalCtx)
+		hclDiags = hclDiags.Extend(d)
+
+		for k, v := range parameters.AsValueMap() {
+			paramsGo[k] = v
+		}
+	}
+
+	evalCtx = evalCtx.NewChild()
+	evalCtx.Variables = map[string]cty.Value{
+		"this": cty.ObjectVal(map[string]cty.Value{
+			"name": cty.StringVal(s.Name),
+			"id":   cty.StringVal(s.Id),
+		}),
+		"param": cty.ObjectVal(paramsGo),
+	}
 	v, hclDiags := s.Condition.Value(evalCtx)
 	if hclDiags.HasErrors() {
-		hclWriter := ctx.Value(c.TogomakContextHclDiagWriter).(hcl.DiagnosticWriter)
 		err := hclWriter.WriteDiagnostics(hclDiags)
 		if err != nil {
 			diags = append(diags, diag.Diagnostic{

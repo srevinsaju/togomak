@@ -4,10 +4,6 @@ import (
 	"fmt"
 )
 
-func (s Stage) Name() string {
-	return s.Id
-}
-
 func (s Stage) Description() string {
 	// TODO: implement
 	return ""

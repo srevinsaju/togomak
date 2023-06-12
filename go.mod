@@ -4,9 +4,11 @@ go 1.20
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.6
+	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.15.0
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/hcl/v2 v2.17.0
+	github.com/imdario/mergo v0.3.16
 	github.com/kendru/darwin/go/depgraph v0.0.0-20221105232959-877d6a81060c
 	github.com/moby/sys/mountinfo v0.6.2
 	github.com/sirupsen/logrus v1.9.0

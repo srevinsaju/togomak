@@ -24,12 +24,19 @@ type StageRetry struct {
 	MaxBackoff         int  `hcl:"max_backoff" json:"max_backoff"`
 }
 
+type StageUse struct {
+	Macro      hcl.Expression `hcl:"macro" json:"macro"`
+	Parameters hcl.Expression `hcl:"parameters,optional" json:"parameters"`
+}
+
 type Stage struct {
 	Id        string         `hcl:"id,label" json:"id"`
 	Condition hcl.Expression `hcl:"if,optional" json:"if"`
 	DependsOn hcl.Expression `hcl:"depends_on,optional" json:"depends_on"`
 	ForEach   hcl.Expression `hcl:"for_each,optional" json:"for_each"`
+	Use       *StageUse      `hcl:"use,block" json:"use"`
 
+	Name        string              `hcl:"name,optional" json:"name"`
 	Dir         hcl.Expression      `hcl:"dir,optional" json:"dir"`
 	Script      hcl.Expression      `hcl:"script,optional" json:"script"`
 	Args        hcl.Expression      `hcl:"args,optional" json:"args"`

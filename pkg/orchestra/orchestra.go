@@ -2,12 +2,16 @@ package orchestra
 
 import (
 	"context"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
+	"github.com/imdario/mergo"
+	"github.com/kendru/darwin/go/depgraph"
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/ci"
+	"github.com/srevinsaju/togomak/v1/pkg/diag"
 	"github.com/srevinsaju/togomak/v1/pkg/graph"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/pipeline"
@@ -171,11 +175,69 @@ func Orchestra(cfg Config) {
 	// --> parse the config file
 	// we will now read the pipeline from togomak.hcl
 	parser := hclparse.NewParser()
+	var diags diag.Diagnostics
 	dgwriter := hcl.NewDiagnosticTextWriter(logger.Writer(), parser.Files(), 0, true)
 	ctx = context.WithValue(ctx, c.TogomakContextHclDiagWriter, dgwriter)
 	pipe, hclDiags := pipeline.Read(ctx, parser)
 	if hclDiags.HasErrors() {
 		logger.Fatal(dgwriter.WriteDiagnostics(hclDiags))
+	}
+
+	for stageIdx, stage := range pipe.Stages {
+		if stage.Use == nil {
+			// this stage does not use a macro
+			continue
+		}
+		v := stage.Use.Macro.Variables()
+		if v == nil || len(v) == 0 {
+			// this stage does not use a macro
+			continue
+		}
+		if len(v) != 1 {
+			hclDiags = hclDiags.Append(&hcl.Diagnostic{
+				Severity:    hcl.DiagError,
+				Summary:     "invalid macro",
+				Detail:      fmt.Sprintf("stage.%s can only use a single macro", stage.Id),
+				EvalContext: hclContext,
+				Subject:     v[0].SourceRange().Ptr(),
+			})
+			logger.Fatal(dgwriter.WriteDiagnostics(hclDiags))
+		}
+		variable := v[0]
+		if variable.RootName() != ci.MacroBlock {
+			hclDiags = hclDiags.Append(&hcl.Diagnostic{
+				Severity:    hcl.DiagError,
+				Summary:     "invalid macro",
+				Detail:      fmt.Sprintf("stage.%s uses an invalid macro", stage.Id),
+				EvalContext: hclContext,
+				Subject:     v[0].SourceRange().Ptr(),
+			})
+			logger.Fatal(dgwriter.WriteDiagnostics(hclDiags))
+		}
+
+		macroName := variable[1].(hcl.TraverseAttr).Name
+		logger.Debugf("stage.%s uses macro.%s", stage.Id, macroName)
+		macroRunnable, d := ci.Resolve(ctx, pipe, fmt.Sprintf("macro.%s", macroName))
+		if d.HasErrors() {
+			d.Fatal(logger.WriterLevel(logrus.ErrorLevel))
+		}
+		macro := macroRunnable.(*ci.Macro)
+
+		oldStageId := stage.Id
+		oldStageName := stage.Name
+		oldStageDependsOn := stage.DependsOn
+
+		err = mergo.Merge(&stage, macro.Stage, mergo.WithOverride)
+
+		if err != nil {
+			panic(err)
+		}
+		stage := stage
+		stage.Id = oldStageId
+		stage.Name = oldStageName
+		stage.DependsOn = oldStageDependsOn
+
+		pipe.Stages[stageIdx] = stage
 	}
 
 	// --> validate the pipeline
@@ -184,9 +246,10 @@ func Orchestra(cfg Config) {
 	// --> generate a dependency graph
 	// we will now generate a dependency graph from the pipeline
 	// this will be used to generate the pipeline
-	depgraph, diags := graph.TopoSort(ctx, pipe)
+	var depGraph *depgraph.Graph
+	depGraph, diags = graph.TopoSort(ctx, pipe)
 	if diags.HasErrors() {
-		logger.Fatal(diags.Error())
+		diags.Fatal(logger.WriterLevel(logrus.ErrorLevel))
 	}
 
 	// --> run the pipeline
@@ -195,7 +258,7 @@ func Orchestra(cfg Config) {
 	var diagsMutex sync.Mutex
 	var wg sync.WaitGroup
 
-	for _, layer := range depgraph.TopoSortedLayers() {
+	for _, layer := range depGraph.TopoSortedLayers() {
 
 		for _, runnableId := range layer {
 			var runnable ci.Runnable

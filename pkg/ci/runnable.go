@@ -10,8 +10,9 @@ import (
 	"sync"
 )
 
+const ThisBlock = "this"
+
 type Runnable interface {
-	Name() string
 	Description() string
 	Identifier() string
 
@@ -73,8 +74,9 @@ func Resolve(ctx context.Context, pipe *Pipeline, id string) (Runnable, diag.Dia
 		diags = diags.Append(diag.Diagnostic{
 			Severity: diag.SeverityError,
 			Summary:  "Invalid identifier",
-			Detail:   fmt.Sprintf("Expected a valid identifier, got %s", id),
-			Source:   "resolve",
+			Detail:   fmt.Sprintf("Expected a valid identifier, got '%s'", id),
+
+			Source: "resolve",
 		})
 	}
 	if diags.HasErrors() {
@@ -84,19 +86,28 @@ func Resolve(ctx context.Context, pipe *Pipeline, id string) (Runnable, diag.Dia
 	switch blocks[0] {
 	case "provider":
 		return nil, diags.Append(diag.NewNotImplementedError("provider"))
-	case "stage":
+	case StageBlock:
 		stage, err := pipe.Stages.ById(blocks[1])
 		if err != nil {
 			diags = diags.Append(diag.NewError("resolve", err.Error()))
 		}
 		return stage, diags
-	case "data":
+	case DataBlock:
 		data, err := pipe.Data.ById(blocks[1], blocks[2])
 		if err != nil {
 			diags = diags.Append(diag.NewError("resolve", err.Error()))
 		}
 		return data, diags
-
+	case MacroBlock:
+		macro, err := pipe.Macros.ById(blocks[1])
+		if err != nil {
+			diags = diags.Append(diag.NewError("resolve", err.Error()))
+		}
+		return macro, diags
+	case ThisBlock:
+		return nil, nil
+	case ParamBlock:
+		return nil, nil
 	}
 
 	return nil, diags.Append(diag.Diagnostic{

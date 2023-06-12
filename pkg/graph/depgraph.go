@@ -85,6 +85,10 @@ func TopoSort(ctx context.Context, pipe *ci.Pipeline) (*depgraph.Graph, diag.Dia
 				// the stage block only has the id which is the second element
 				name := variable[1].(hcl.TraverseAttr).Name
 				parent = x.RenderBlock(ci.StageBlock, name)
+			case ci.ThisBlock:
+				continue
+			case ci.ParamBlock:
+				continue
 			}
 			_, d = ci.Resolve(ctx, pipe, parent)
 			diags = diags.Extend(d)

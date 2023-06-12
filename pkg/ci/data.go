@@ -6,10 +6,6 @@ import (
 
 const DataBlock = "data"
 
-func (d Data) Name() string {
-	return d.Id
-}
-
 func (d Data) Description() string {
 	return ""
 }

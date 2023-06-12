@@ -9,6 +9,7 @@ type Pipeline struct {
 
 	Stages        Stages        `hcl:"stage,block" json:"stages"`
 	Data          Datas         `hcl:"data,block" json:"data"`
+	Macros        Macros        `hcl:"macro,block" json:"macro"`
 	DataProviders DataProviders `hcl:"provider,block" json:"providers"`
 }
 
