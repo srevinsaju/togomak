@@ -84,7 +84,7 @@ func Orchestra(cfg Config) {
 			logger.Warn("received interrupt signal, cancelling the pipeline")
 			cancel()
 		case <-ctx.Done():
-			logger.Info("took %s to complete the pipeline", time.Since(ctx.Value(c.TogomakContextBootTime).(time.Time)))
+			logger.Infof("took %s to complete the pipeline", time.Since(ctx.Value(c.TogomakContextBootTime).(time.Time)))
 			return
 		}
 	}()

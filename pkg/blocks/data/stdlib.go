@@ -13,7 +13,7 @@ type Providers []Provider
 func (p Providers) GoString() string {
 	message := ""
 	for _, provider := range p {
-		message += fmt.Sprintf("%#s, ", provider.Name())
+		message += fmt.Sprintf("%s, ", provider.Name())
 	}
 	return message
 }
