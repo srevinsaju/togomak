@@ -3,6 +3,7 @@ package cache
 import (
 	"fmt"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
+	"github.com/srevinsaju/togomak/v1/pkg/x"
 	"os"
 	"path/filepath"
 )
@@ -15,7 +16,7 @@ func CleanCache(dir string) {
 		}
 		if info != nil && info.IsDir() {
 			fmt.Println("removing", path)
-			os.RemoveAll(path)
+			x.Must(os.RemoveAll(path))
 		}
 		return nil
 	})
