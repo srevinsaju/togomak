@@ -1,0 +1,10 @@
+[book]
+authors = ["Srevin Saju"]
+language = "en"
+multilingual = false
+src = "src"
+title = "togomak"
+
+[output.html]
+additional-js = ["js/terraform.js", "js/init.js"]
+
