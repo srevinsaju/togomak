@@ -83,7 +83,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="../introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="../features/introduction.html"><strong aria-hidden="true">2.</strong> Features</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../features/concurrency.html"><strong aria-hidden="true">2.1.</strong> Concurrency</a></li><li class="chapter-item expanded "><a href="../features/dependency.html"><strong aria-hidden="true">2.2.</strong> Dependency Resolution</a></li><li class="chapter-item expanded "><a href="../features/interpolation.html"><strong aria-hidden="true">2.3.</strong> Interpolation</a></li><li class="chapter-item expanded "><a href="../features/macros.html"><strong aria-hidden="true">2.4.</strong> Reusable Stages</a></li></ol></li><li class="chapter-item expanded "><a href="../configuration/introduction.html"><strong aria-hidden="true">3.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../configuration/togomak.html"><strong aria-hidden="true">3.1.</strong> Togomak</a></li><li class="chapter-item expanded "><a href="../configuration/stage.html"><strong aria-hidden="true">3.2.</strong> Stage</a></li><li class="chapter-item expanded "><a href="../configuration/data.html" class="active"><strong aria-hidden="true">3.3.</strong> Data</a></li><li class="chapter-item expanded "><a href="../configuration/macro.html"><strong aria-hidden="true">3.4.</strong> Macro</a></li></ol></li><li class="chapter-item expanded "><a href="../contrib/plugins/introduction.html"><strong aria-hidden="true">4.</strong> Plugins</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="../introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="../features/introduction.html"><strong aria-hidden="true">2.</strong> Features</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../features/concurrency.html"><strong aria-hidden="true">2.1.</strong> Concurrency</a></li><li class="chapter-item expanded "><a href="../features/dependency.html"><strong aria-hidden="true">2.2.</strong> Dependency Resolution</a></li><li class="chapter-item expanded "><a href="../features/interpolation.html"><strong aria-hidden="true">2.3.</strong> Interpolation</a></li><li class="chapter-item expanded "><a href="../features/macros.html"><strong aria-hidden="true">2.4.</strong> Reusable Stages</a></li></ol></li><li class="chapter-item expanded "><a href="../configuration/introduction.html"><strong aria-hidden="true">3.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../configuration/togomak.html"><strong aria-hidden="true">3.1.</strong> Togomak</a></li><li class="chapter-item expanded "><a href="../configuration/stage.html"><strong aria-hidden="true">3.2.</strong> Stage</a></li><li class="chapter-item expanded "><a href="../configuration/data.html" class="active"><strong aria-hidden="true">3.3.</strong> Data</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../configuration/data_env.html"><strong aria-hidden="true">3.3.1.</strong> data.env</a></li><li class="chapter-item expanded "><a href="../configuration/data_prompt.html"><strong aria-hidden="true">3.3.2.</strong> data.prompt</a></li><li class="chapter-item expanded "><a href="../configuration/data_file.html"><strong aria-hidden="true">3.3.3.</strong> data.file</a></li></ol></li><li class="chapter-item expanded "><a href="../configuration/macro.html"><strong aria-hidden="true">3.4.</strong> Macro</a></li></ol></li><li class="chapter-item expanded "><a href="../contrib/plugins/introduction.html"><strong aria-hidden="true">4.</strong> Plugins</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -145,6 +145,29 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="data"><a class="header" href="#data">Data</a></h1>
+<p>The <code>data</code> block allows fetching static data from different sources known 
+as <code>data_providers</code>. Common providers include examples like environment variables,
+file sources, or an external secrets manager, like Hashicorp Vault or Google 
+Secret Manager. </p>
+<p>A basic <code>data</code> block looks like this:</p>
+<pre><code class="language-hcl">data &quot;provider_name&quot; &quot;id&quot; {
+    ...
+    default = &quot;???&quot;
+}
+</code></pre>
+<p>Here, the data block uses the provider, <code>provider_name</code> to retrieve information.
+The retrieved value will be stored, and can be accessed <code>data.provider_name.id.value</code>.</p>
+<h2 id="data-providers"><a class="header" href="#data-providers">Data Providers</a></h2>
+<h3 id="built-in-providers"><a class="header" href="#built-in-providers">Built-in providers</a></h3>
+<p>Parameters for the <code>data</code> block depends on the type of the provider. 
+Supported buit-in providers are:</p>
+<ul>
+<li><a href="./data_env.html"><code>data.env</code></a>: Environment Variable Provider </li>
+<li><a href="./data_prompt.html"><code>data.prompt</code></a>: Interactive user CLI prompt </li>
+<li><a href="./data_file.html"><code>data.file</code></a>: Read data from a file</li>
+</ul>
+<p>Refer to the documentation by the provider type, for more information
+on the supported attributes.</p>
 
                     </main>
 
@@ -154,7 +177,7 @@
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next" href="../configuration/macro.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="../configuration/data_env.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -168,7 +191,7 @@
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next" href="../configuration/macro.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next" href="../configuration/data_env.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>

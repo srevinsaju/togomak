@@ -84,7 +84,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="features/introduction.html"><strong aria-hidden="true">2.</strong> Features</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="features/concurrency.html"><strong aria-hidden="true">2.1.</strong> Concurrency</a></li><li class="chapter-item expanded "><a href="features/dependency.html"><strong aria-hidden="true">2.2.</strong> Dependency Resolution</a></li><li class="chapter-item expanded "><a href="features/interpolation.html"><strong aria-hidden="true">2.3.</strong> Interpolation</a></li><li class="chapter-item expanded "><a href="features/macros.html"><strong aria-hidden="true">2.4.</strong> Reusable Stages</a></li></ol></li><li class="chapter-item expanded "><a href="configuration/introduction.html"><strong aria-hidden="true">3.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="configuration/togomak.html"><strong aria-hidden="true">3.1.</strong> Togomak</a></li><li class="chapter-item expanded "><a href="configuration/stage.html"><strong aria-hidden="true">3.2.</strong> Stage</a></li><li class="chapter-item expanded "><a href="configuration/data.html"><strong aria-hidden="true">3.3.</strong> Data</a></li><li class="chapter-item expanded "><a href="configuration/macro.html"><strong aria-hidden="true">3.4.</strong> Macro</a></li></ol></li><li class="chapter-item expanded "><a href="contrib/plugins/introduction.html"><strong aria-hidden="true">4.</strong> Plugins</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="features/introduction.html"><strong aria-hidden="true">2.</strong> Features</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="features/concurrency.html"><strong aria-hidden="true">2.1.</strong> Concurrency</a></li><li class="chapter-item expanded "><a href="features/dependency.html"><strong aria-hidden="true">2.2.</strong> Dependency Resolution</a></li><li class="chapter-item expanded "><a href="features/interpolation.html"><strong aria-hidden="true">2.3.</strong> Interpolation</a></li><li class="chapter-item expanded "><a href="features/macros.html"><strong aria-hidden="true">2.4.</strong> Reusable Stages</a></li></ol></li><li class="chapter-item expanded "><a href="configuration/introduction.html"><strong aria-hidden="true">3.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="configuration/togomak.html"><strong aria-hidden="true">3.1.</strong> Togomak</a></li><li class="chapter-item expanded "><a href="configuration/stage.html"><strong aria-hidden="true">3.2.</strong> Stage</a></li><li class="chapter-item expanded "><a href="configuration/data.html"><strong aria-hidden="true">3.3.</strong> Data</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="configuration/data_env.html"><strong aria-hidden="true">3.3.1.</strong> data.env</a></li><li class="chapter-item expanded "><a href="configuration/data_prompt.html"><strong aria-hidden="true">3.3.2.</strong> data.prompt</a></li><li class="chapter-item expanded "><a href="configuration/data_file.html"><strong aria-hidden="true">3.3.3.</strong> data.file</a></li></ol></li><li class="chapter-item expanded "><a href="configuration/macro.html"><strong aria-hidden="true">3.4.</strong> Macro</a></li></ol></li><li class="chapter-item expanded "><a href="contrib/plugins/introduction.html"><strong aria-hidden="true">4.</strong> Plugins</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -289,12 +289,84 @@ stage &quot;explode_water_balloon&quot; {
 }
 
 
-
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="togomak-1"><a class="header" href="#togomak-1">Togomak</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="stage"><a class="header" href="#stage">Stage</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="data"><a class="header" href="#data">Data</a></h1>
+<p>The <code>data</code> block allows fetching static data from different sources known 
+as <code>data_providers</code>. Common providers include examples like environment variables,
+file sources, or an external secrets manager, like Hashicorp Vault or Google 
+Secret Manager. </p>
+<p>A basic <code>data</code> block looks like this:</p>
+<pre><code class="language-hcl">data &quot;provider_name&quot; &quot;id&quot; {
+    ...
+    default = &quot;???&quot;
+}
+</code></pre>
+<p>Here, the data block uses the provider, <code>provider_name</code> to retrieve information.
+The retrieved value will be stored, and can be accessed <code>data.provider_name.id.value</code>.</p>
+<h2 id="data-providers"><a class="header" href="#data-providers">Data Providers</a></h2>
+<h3 id="built-in-providers"><a class="header" href="#built-in-providers">Built-in providers</a></h3>
+<p>Parameters for the <code>data</code> block depends on the type of the provider. 
+Supported buit-in providers are:</p>
+<ul>
+<li><a href="configuration/./data_env.html"><code>data.env</code></a>: Environment Variable Provider </li>
+<li><a href="configuration/./data_prompt.html"><code>data.prompt</code></a>: Interactive user CLI prompt </li>
+<li><a href="configuration/./data_file.html"><code>data.file</code></a>: Read data from a file</li>
+</ul>
+<p>Refer to the documentation by the provider type, for more information
+on the supported attributes.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="dataenv"><a class="header" href="#dataenv"><code>data.env</code></a></h1>
+<p>The <code>env</code> data provider fetches the variable from the environment
+before the execution of the pipeline happens. If the specified 
+environment variable is undefined, falls back to the <code>default</code>
+value specified in the <code>data.env</code> block, else returns an empty 
+string.</p>
+<h2 id="reading-an-environment-variable"><a class="header" href="#reading-an-environment-variable">Reading an environment variable</a></h2>
+<pre><code class="language-hcl">data &quot;env&quot; &quot;user&quot; {
+  key = &quot;USER&quot;
+  default = &quot;me&quot;
+}
+</code></pre>
+<h2 id="arguments-reference"><a class="header" href="#arguments-reference">Arguments Reference</a></h2>
+<ul>
+<li><a href="configuration/data_env.html#key"><code>key</code></a>: The environment variable key which needs to be fetched from <code>os.environ</code></li>
+<li><a href="configuration/data_env.html#default"><code>default</code></a>: Fallback definition, which will be returned if <code>os.environ[key]</code> is undefined. </li>
+</ul>
+<h2 id="attributes-reference"><a class="header" href="#attributes-reference">Attributes Reference</a></h2>
+<ul>
+<li>[<code>value</code>]: The value from the environment variable defined in <code>key</code></li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="dataprompt"><a class="header" href="#dataprompt"><code>data.prompt</code></a></h1>
+<p>If you interactively need to ask user for an input, you may use 
+the <code>prompt</code> data source. 
+The <code>prompt</code> data source interactively asks for the user 
+on the Command line interface, if the TTY supports it, or
+asks the user on the Web UI (not implemented yet).</p>
+<p>It is very likely that, depending on the execution engine, 
+<code>data.prompt</code> resources are placed at the beginning of the 
+topological sorted layer to prevent interference from other 
+running stages (in the case of CLIs), or in the case of 
+Web UIs to collect all data in the beginning of pipeline 
+execution, so that it can happen asynchronously. </p>
+<h2 id="prompting-a-user-for-response"><a class="header" href="#prompting-a-user-for-response">Prompting a user for response</a></h2>
+<pre><code class="language-hcl">data &quot;prompt&quot; &quot;name&quot; {
+    prompt = &quot;what is your name?&quot;
+    default = &quot;John Doe&quot;
+}
+</code></pre>
+<h2 id="argument-reference"><a class="header" href="#argument-reference">Argument Reference</a></h2>
+<ul>
+<li><a href="configuration/data_prompt.html#prompt"><code>prompt</code></a> - The data that the user will be prompted for (optional)</li>
+<li><a href="configuration/data_prompt.html#default"><code>default</code></a> - Fallback data which will be returned if the user did not enter anything, or if the 
+TTY is absent, or if any other UI provider is missing. (optional)</li>
+</ul>
+<h2 id="attributes-reference-1"><a class="header" href="#attributes-reference-1">Attributes Reference</a></h2>
+<ul>
+<li><a href="configuration/data_prompt.html#value"><code>value</code></a> - The response from the user, otherwise the <code>default</code> value will be returned.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="datafile"><a class="header" href="#datafile">data.file</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="macro"><a class="header" href="#macro">Macro</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="plugins"><a class="header" href="#plugins">Plugins</a></h1>
 
