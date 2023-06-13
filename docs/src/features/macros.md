@@ -13,5 +13,4 @@ in multiple stages later. Let's see how:
 
 ```tf
 {{#include ../../../examples/macros/togomak.hcl}}
-
 ```

@@ -35,7 +35,7 @@ stage "hello" {
 simple, isn't it?
 
 ### Documentation
-* We have a WIP [documentation](https://togomak.srev.in) (also available over [docs](./docs) directory)
+* We have a WIP [documentation](https://togomak.srev.in/v1) (also available over [docs](./docs) directory)
 * Check out the [examples](./examples) directory for examples
 * Check out the [tests](./tests) directory for more bizarre examples.
 
