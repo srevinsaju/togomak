@@ -11,7 +11,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-func (d Data) Prepare(ctx context.Context, skip bool) {
+func (d Data) Prepare(ctx context.Context, skip bool, overridden bool) {
 	return // no-op
 }
 

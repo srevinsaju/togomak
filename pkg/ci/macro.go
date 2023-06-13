@@ -25,6 +25,10 @@ func (m Macros) ById(id string) (*Macro, error) {
 	return nil, fmt.Errorf("data block with id %s not found", id)
 }
 
+func (m Macro) Type() string {
+	return MacroBlock
+}
+
 func (m Macro) Variables() []hcl.Traversal {
 	var traversal []hcl.Traversal
 	return traversal

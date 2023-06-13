@@ -27,6 +27,7 @@ func InitPipeline(dir string) {
 		if !allow {
 			os.Exit(1)
 		}
+		x.Must(os.Remove(path))
 	}
 
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0644)

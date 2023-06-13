@@ -29,12 +29,18 @@ type StageUse struct {
 	Parameters hcl.Expression `hcl:"parameters,optional" json:"parameters"`
 }
 
+type StageDaemon struct {
+	Enabled bool `hcl:"enabled" json:"enabled"`
+}
+
 type Stage struct {
 	Id        string         `hcl:"id,label" json:"id"`
 	Condition hcl.Expression `hcl:"if,optional" json:"if"`
 	DependsOn hcl.Expression `hcl:"depends_on,optional" json:"depends_on"`
 	ForEach   hcl.Expression `hcl:"for_each,optional" json:"for_each"`
 	Use       *StageUse      `hcl:"use,block" json:"use"`
+
+	Daemon *StageDaemon `hcl:"daemon,block" json:"daemon"`
 
 	Name        string              `hcl:"name,optional" json:"name"`
 	Dir         hcl.Expression      `hcl:"dir,optional" json:"dir"`

@@ -23,7 +23,7 @@ type Runnable interface {
 	CanRetry() bool
 
 	// Prepare is called before the runnable is run
-	Prepare(ctx context.Context, skip bool)
+	Prepare(ctx context.Context, skip bool, overridden bool)
 
 	// MaxRetries returns the maximum number of retries that is valid for
 	// this runnable
@@ -37,6 +37,8 @@ type Runnable interface {
 	RetryExponentialBackoff() bool
 
 	Variables() []hcl.Traversal
+
+	Type() string
 }
 
 type Runnables []Runnable

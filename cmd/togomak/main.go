@@ -116,6 +116,10 @@ func newConfigFromCliContext(ctx *cli.Context) orchestra.Config {
 		hostname = "localhost"
 	}
 
+	var stages []orchestra.ConfigPipelineStage
+	for _, stage := range ctx.Args().Slice() {
+		stages = append(stages, orchestra.NewConfigPipelineStage(stage))
+	}
 	cfg := orchestra.Config{
 		Owd:       owd,
 		Dir:       dir,
@@ -123,6 +127,7 @@ func newConfigFromCliContext(ctx *cli.Context) orchestra.Config {
 		Hostname:  hostname,
 		Verbosity: verboseCount,
 		Pipeline: orchestra.ConfigPipeline{
+			Stages:   stages,
 			FilePath: pipelineFilePath,
 			DryRun:   ctx.Bool("dry-run"),
 		},

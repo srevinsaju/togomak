@@ -13,7 +13,7 @@ import (
 	"os/exec"
 )
 
-func (s Stage) Prepare(ctx context.Context, skip bool) {
+func (s Stage) Prepare(ctx context.Context, skip bool, overridden bool) {
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger)
 	// show some user-friendly output on the details of the stage about to be run
 
@@ -22,6 +22,9 @@ func (s Stage) Prepare(ctx context.Context, skip bool) {
 		id = ui.Blue(s.Id)
 	} else {
 		id = fmt.Sprintf("%s %s", ui.Yellow(s.Id), ui.Grey("(skipped)"))
+	}
+	if overridden {
+		id = fmt.Sprintf("%s %s", id, ui.Bold("(overriden)"))
 	}
 	logger.Infof("[%s] %s", ui.Plus, id)
 }

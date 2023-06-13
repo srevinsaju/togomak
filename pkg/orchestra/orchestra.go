@@ -202,6 +202,9 @@ func Orchestra(cfg Config) {
 		logger.Fatal(dgwriter.WriteDiagnostics(hclDiags))
 	}
 
+	// whitelist all stages if unspecified
+	var stageStatuses ConfigPipelineStageList = cfg.Pipeline.Stages
+
 	// write the pipeline to the temporary directory
 	pipelineFilePath := filepath.Join(tmpDir, meta.ConfigFileName)
 	pipelineData := []byte{}
@@ -214,6 +217,7 @@ func Orchestra(cfg Config) {
 	}
 
 	for stageIdx, stage := range pipe.Stages {
+
 		if stage.Use == nil {
 			// this stage does not use a macro
 			continue
@@ -289,7 +293,6 @@ func Orchestra(cfg Config) {
 	var wg sync.WaitGroup
 
 	for _, layer := range depGraph.TopoSortedLayers() {
-
 		for _, runnableId := range layer {
 			var runnable ci.Runnable
 			var ok bool
@@ -297,6 +300,7 @@ func Orchestra(cfg Config) {
 			if runnableId == meta.RootStage {
 				continue
 			}
+
 			runnable, diags = ci.Resolve(ctx, pipe, runnableId)
 			if diags.HasErrors() {
 				logger.Fatal(diags.Error())
@@ -308,7 +312,26 @@ func Orchestra(cfg Config) {
 			if diags.HasErrors() {
 				logger.Fatal(diags.Error())
 			}
-			runnable.Prepare(ctx, !ok)
+
+			overriden := false
+			if runnable.Type() == ci.StageBlock {
+				stageStatus, stageStatusOk := stageStatuses.Get(runnableId)
+				if stageStatuses.HasOperationType(ConfigPipelineStageRunOperation) && !stageStatusOk {
+					// if this stage has not been requested, we will skip it
+					ok = false
+				}
+				
+				if stageStatusOk {
+					overriden = true
+					ok = ok || stageStatus.Operation == ConfigPipelineStageRunWhitelistOperation
+					if stageStatus.Operation == ConfigPipelineStageRunBlacklistOperation {
+						ok = false
+					}
+				}
+
+			}
+
+			runnable.Prepare(ctx, !ok, overriden)
 			if !ok {
 				logger.Debugf("skipping runnable %s, condition evaluated to false", runnableId)
 				continue

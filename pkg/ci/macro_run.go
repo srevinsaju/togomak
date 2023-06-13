@@ -5,7 +5,7 @@ import (
 	"github.com/srevinsaju/togomak/v1/pkg/diag"
 )
 
-func (m Macro) Prepare(ctx context.Context, skip bool) {
+func (m Macro) Prepare(ctx context.Context, skip bool, overridden bool) {
 	return // no-op
 }
 

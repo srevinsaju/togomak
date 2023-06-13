@@ -22,3 +22,7 @@ func (d Datas) ById(provider string, id string) (*Data, error) {
 	}
 	return nil, fmt.Errorf("data block with id %s not found", id)
 }
+
+func (d Data) Type() string {
+	return DataBlock
+}

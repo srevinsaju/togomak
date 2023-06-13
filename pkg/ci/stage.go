@@ -21,3 +21,7 @@ func (s Stages) ById(id string) (*Stage, error) {
 	}
 	return nil, fmt.Errorf("stage with id %s not found", id)
 }
+
+func (s Stage) Type() string {
+	return StageBlock
+}
