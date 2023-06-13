@@ -15,6 +15,7 @@ import (
 	"github.com/srevinsaju/togomak/v1/pkg/graph"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/pipeline"
+	"github.com/srevinsaju/togomak/v1/pkg/x"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
@@ -26,7 +27,7 @@ import (
 	"time"
 )
 
-func Orchestra(cfg Config) {
+func NewLogger(cfg Config) *logrus.Logger {
 	logger := logrus.New()
 	logger.SetFormatter(&logrus.TextFormatter{
 		FullTimestamp: false,
@@ -44,9 +45,10 @@ func Orchestra(cfg Config) {
 		logger.SetLevel(logrus.TraceLevel)
 		break
 	}
-	logger.Infof("%s (version=%s)", meta.AppName, meta.AppVersion)
+	return logger
+}
 
-	// --> set up the working directory
+func Chdir(cfg Config, logger *logrus.Logger) string {
 	cwd := cfg.Dir
 	if cwd == "" {
 		cwd = filepath.Dir(cfg.Pipeline.FilePath)
@@ -58,11 +60,26 @@ func Orchestra(cfg Config) {
 	if err != nil {
 		logger.Fatal(err)
 	}
+	return cwd
+}
+
+func Orchestra(cfg Config) {
+	// --> set up the logger
+	logger := NewLogger(cfg)
+	logger.Infof("%s (version=%s)", meta.AppName, meta.AppVersion)
+
+	// --> set up the working directory
+	cwd := Chdir(cfg, logger)
 
 	// --> set up the context
 	// we will now create a long-running background context
 	// and gather necessary data before reading the pipeline
 	pipelineId := uuid.New().String()
+	tmpDir := filepath.Join(meta.BuildDirPrefix, "pipelines", "tmp")
+	err := os.MkdirAll(tmpDir, 0755)
+	x.Must(err)
+	tmpDir, err = os.MkdirTemp(tmpDir, pipelineId)
+	x.Must(err)
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	ctx = context.WithValue(ctx, c.TogomakContextLogger, logger)
@@ -74,6 +91,7 @@ func Orchestra(cfg Config) {
 	ctx = context.WithValue(ctx, c.TogomakContextUsername, cfg.User)
 	ctx = context.WithValue(ctx, c.TogomakContextPipelineFilePath, cfg.Pipeline.FilePath)
 	ctx = context.WithValue(ctx, c.TogomakContextPipelineDryRun, cfg.Pipeline.DryRun)
+	ctx = context.WithValue(ctx, c.TogomakContextPipelineTmpDir, tmpDir)
 
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt)
@@ -158,8 +176,9 @@ func Orchestra(cfg Config) {
 			c.TogomakContextUsername: cty.StringVal(cfg.User),
 
 			"pipeline": cty.ObjectVal(map[string]cty.Value{
-				"id":   cty.StringVal(pipelineId),
-				"path": cty.StringVal(cfg.Pipeline.FilePath),
+				"id":     cty.StringVal(pipelineId),
+				"path":   cty.StringVal(cfg.Pipeline.FilePath),
+				"tmpDir": cty.StringVal(tmpDir),
 			}),
 
 			"togomak": cty.ObjectVal(map[string]cty.Value{
@@ -181,6 +200,17 @@ func Orchestra(cfg Config) {
 	pipe, hclDiags := pipeline.Read(ctx, parser)
 	if hclDiags.HasErrors() {
 		logger.Fatal(dgwriter.WriteDiagnostics(hclDiags))
+	}
+
+	// write the pipeline to the temporary directory
+	pipelineFilePath := filepath.Join(tmpDir, meta.ConfigFileName)
+	pipelineData := []byte{}
+	for _, f := range parser.Files() {
+		pipelineData = append(pipelineData, f.Bytes...)
+	}
+	err = os.WriteFile(pipelineFilePath, pipelineData, 0644)
+	if err != nil {
+		logger.Fatal(err)
 	}
 
 	for stageIdx, stage := range pipe.Stages {

@@ -1,7 +1,9 @@
 package ui
 
 import (
+	"fmt"
 	"github.com/fatih/color"
+	"os"
 )
 
 var Green = color.New(color.FgGreen).SprintFunc()
@@ -21,3 +23,12 @@ var FailLazy = Grey("fail-lazy")
 
 var True = Green("true")
 var False = Red("false")
+
+func Error(message string) {
+	fmt.Println(Red(message))
+	os.Exit(1)
+}
+
+func Success(message string, args ...interface{}) {
+	fmt.Println(Green(fmt.Sprintf(message, args...)))
+}
