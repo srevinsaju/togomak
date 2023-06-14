@@ -68,7 +68,7 @@ Contributions are welcome, and encouraged. Please check out the
 [contributing](CONTRIBUTING.md) guide for more information.
 
 ## License
-`togomak` is licensed under the [MIT License](LICENSE)
+`togomak` is licensed under the [MPL License v2.0](LICENSE)
 
 [hcl]: https://github.com/hashicorp/hcl
 [v0]: https://github.com/srevinsaju/togomak/tree/main

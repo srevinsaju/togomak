@@ -15,7 +15,7 @@ nfpms:
 - maintainer: Srevin Saju
   description: A CI/CD which works everywhere, even on your local environment.
   homepage: https://gitlab.com/srevinsaju/togomak
-  license: MIT
+  license: MPL-2.0
   formats:
   - deb
   - rpm
