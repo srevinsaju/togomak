@@ -8,7 +8,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/hashicorp/terraform/internal/lang/marks"
+	"github.com/srevinsaju/togomak/v1/pkg/third-party/hashicorp/terraform/lang/marks"
 	"github.com/zclconf/go-cty/cty"
 )
 

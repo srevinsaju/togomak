@@ -23,6 +23,7 @@ import (
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"sync"
@@ -220,9 +221,27 @@ func Orchestra(cfg Config) {
 			"uuid":             funcs.UUIDFunc,
 			"uuidv5":           funcs.UUIDV5Func,
 			"values":           stdlib.ValuesFunc,
-			"yamldecode":       ctyyaml.YAMLDecodeFunc,
-			"yamlencode":       ctyyaml.YAMLEncodeFunc,
-			"zipmap":           stdlib.ZipmapFunc,
+			"which": function.New(&function.Spec{
+				Params: []function.Parameter{
+					{
+						Name:             "executable",
+						AllowDynamicType: true,
+						Type:             cty.String,
+					},
+				},
+				Type: function.StaticReturnType(cty.String),
+				Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+					path, err := exec.LookPath(args[0].AsString())
+					if err != nil {
+						return cty.StringVal(""), err
+					}
+					return cty.StringVal(path), nil
+				},
+				Description: "Returns the absolute path to an executable in the current PATH.",
+			}),
+			"yamldecode": ctyyaml.YAMLDecodeFunc,
+			"yamlencode": ctyyaml.YAMLEncodeFunc,
+			"zipmap":     stdlib.ZipmapFunc,
 		},
 
 		Variables: map[string]cty.Value{
