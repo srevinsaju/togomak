@@ -65,7 +65,7 @@ togomak
 
 ## Contributing
 Contributions are welcome, and encouraged. Please check out the
-[contributing](CONTRIBUTING.md) guide for more information.
+[contributing](./docs/src/contributing.md) guide for more information.
 
 ## License
 `togomak` is licensed under the [MPL License v2.0](LICENSE)

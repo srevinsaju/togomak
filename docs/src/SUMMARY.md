@@ -22,4 +22,4 @@
 
 - [Plugins](./contrib/plugins/introduction.md)
 
-
+- [Contributing](./contributing.md)
