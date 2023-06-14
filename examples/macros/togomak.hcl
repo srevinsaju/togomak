@@ -13,7 +13,7 @@ stage "explode_party_poppers" {
     use {
         macro = macro.explode 
         parameters = {
-            item = "party_poppers"
+            item = "Party! 🎉"
         }
     }
 }
@@ -22,7 +22,7 @@ stage "explode_water_balloon" {
     use { 
         macro = macro.explode 
         parameters = {
-            item = "water_balloon"
+            item = "Balloon! 🎈"
         }
     }
 }
