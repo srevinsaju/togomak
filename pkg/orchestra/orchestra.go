@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/ext/tryfunc"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/imdario/mergo"
 	"github.com/kendru/darwin/go/depgraph"
@@ -15,11 +16,12 @@ import (
 	"github.com/srevinsaju/togomak/v1/pkg/graph"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/pipeline"
+	"github.com/srevinsaju/togomak/v1/pkg/third-party/hashicorp/terraform/lang/funcs"
 	"github.com/srevinsaju/togomak/v1/pkg/x"
+	ctyyaml "github.com/zclconf/go-cty-yaml"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
-	"io"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -110,59 +112,117 @@ func Orchestra(cfg Config) {
 	// --> set up HCL context
 	hclContext := &hcl.EvalContext{
 		Functions: map[string]function.Function{
-			"split":      stdlib.SplitFunc,
-			"join":       stdlib.JoinFunc,
-			"lower":      stdlib.LowerFunc,
-			"upper":      stdlib.UpperFunc,
-			"trim":       stdlib.TrimFunc,
-			"replace":    stdlib.ReplaceFunc,
-			"contains":   stdlib.ContainsFunc,
-			"regex":      stdlib.RegexFunc,
-			"regexall":   stdlib.RegexAllFunc,
-			"max":        stdlib.MaxFunc,
-			"min":        stdlib.MinFunc,
-			"ceil":       stdlib.CeilFunc,
-			"floor":      stdlib.FloorFunc,
-			"abs":        stdlib.AbsoluteFunc,
-			"format":     stdlib.FormatFunc,
-			"jsonencode": stdlib.JSONEncodeFunc,
-			"jsondecode": stdlib.JSONDecodeFunc,
-			"timeadd":    stdlib.TimeAddFunc,
-
-			"trimprefix": stdlib.TrimPrefixFunc,
-			"trimsuffix": stdlib.TrimSuffixFunc,
-			"coalesce":   stdlib.CoalesceFunc,
-			"title":      stdlib.TitleFunc,
-			"hasindex":   stdlib.HasIndexFunc,
-
-			"length": stdlib.LengthFunc,
-			"len":    stdlib.LengthFunc,
-
-			"keys":       stdlib.KeysFunc,
-			"values":     stdlib.ValuesFunc,
-			"merge":      stdlib.MergeFunc,
-			"setproduct": stdlib.SetProductFunc,
-			"setunion":   stdlib.SetUnionFunc,
-
-			"flatten": stdlib.FlattenFunc,
-			"file": function.New(&function.Spec{
-				Params: []function.Parameter{
-					{Name: "path", Type: cty.String},
-				},
-				Type: function.StaticReturnType(cty.String),
-				Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-					f, err := os.OpenFile(args[0].AsString(), os.O_RDONLY, 0644)
-					if err != nil {
-						return cty.NilVal, err
-					}
-					defer f.Close()
-					data, err := io.ReadAll(f)
-					if err != nil {
-						return cty.NilVal, err
-					}
-					return cty.StringVal(string(data)), nil
-				},
-			}),
+			"abs":              stdlib.AbsoluteFunc,
+			"abspath":          funcs.AbsPathFunc,
+			"alltrue":          funcs.AllTrueFunc,
+			"anytrue":          funcs.AnyTrueFunc,
+			"basename":         funcs.BasenameFunc,
+			"base64decode":     funcs.Base64DecodeFunc,
+			"base64encode":     funcs.Base64EncodeFunc,
+			"base64gzip":       funcs.Base64GzipFunc,
+			"base64sha256":     funcs.Base64Sha256Func,
+			"base64sha512":     funcs.Base64Sha512Func,
+			"bcrypt":           funcs.BcryptFunc,
+			"can":              tryfunc.CanFunc,
+			"ceil":             stdlib.CeilFunc,
+			"chomp":            stdlib.ChompFunc,
+			"coalesce":         funcs.CoalesceFunc,
+			"coalescelist":     stdlib.CoalesceListFunc,
+			"compact":          stdlib.CompactFunc,
+			"concat":           stdlib.ConcatFunc,
+			"contains":         stdlib.ContainsFunc,
+			"csvdecode":        stdlib.CSVDecodeFunc,
+			"dirname":          funcs.DirnameFunc,
+			"distinct":         stdlib.DistinctFunc,
+			"element":          stdlib.ElementFunc,
+			"endswith":         funcs.EndsWithFunc,
+			"chunklist":        stdlib.ChunklistFunc,
+			"file":             funcs.MakeFileFunc(cwd, false),
+			"fileexists":       funcs.MakeFileExistsFunc(cwd),
+			"fileset":          funcs.MakeFileSetFunc(cwd),
+			"filebase64":       funcs.MakeFileFunc(cwd, true),
+			"filebase64sha256": funcs.MakeFileBase64Sha256Func(cwd),
+			"filebase64sha512": funcs.MakeFileBase64Sha512Func(cwd),
+			"filemd5":          funcs.MakeFileMd5Func(cwd),
+			"filesha1":         funcs.MakeFileSha1Func(cwd),
+			"filesha256":       funcs.MakeFileSha256Func(cwd),
+			"filesha512":       funcs.MakeFileSha512Func(cwd),
+			"flatten":          stdlib.FlattenFunc,
+			"floor":            stdlib.FloorFunc,
+			"format":           stdlib.FormatFunc,
+			"formatdate":       stdlib.FormatDateFunc,
+			"formatlist":       stdlib.FormatListFunc,
+			"indent":           stdlib.IndentFunc,
+			"index":            funcs.IndexFunc, // stdlib.IndexFunc is not compatible
+			"join":             stdlib.JoinFunc,
+			"jsondecode":       stdlib.JSONDecodeFunc,
+			"jsonencode":       stdlib.JSONEncodeFunc,
+			"keys":             stdlib.KeysFunc,
+			"length":           funcs.LengthFunc,
+			"list":             funcs.ListFunc,
+			"log":              stdlib.LogFunc,
+			"lookup":           funcs.LookupFunc,
+			"lower":            stdlib.LowerFunc,
+			"map":              funcs.MapFunc,
+			"matchkeys":        funcs.MatchkeysFunc,
+			"max":              stdlib.MaxFunc,
+			"md5":              funcs.Md5Func,
+			"merge":            stdlib.MergeFunc,
+			"min":              stdlib.MinFunc,
+			"one":              funcs.OneFunc,
+			"parseint":         stdlib.ParseIntFunc,
+			"pathexpand":       funcs.PathExpandFunc,
+			"pow":              stdlib.PowFunc,
+			"range":            stdlib.RangeFunc,
+			"regex":            stdlib.RegexFunc,
+			"regexall":         stdlib.RegexAllFunc,
+			"replace":          funcs.ReplaceFunc,
+			"reverse":          stdlib.ReverseListFunc,
+			"rsadecrypt":       funcs.RsaDecryptFunc,
+			"sensitive":        funcs.SensitiveFunc,
+			"nonsensitive":     funcs.NonsensitiveFunc,
+			"setintersection":  stdlib.SetIntersectionFunc,
+			"setproduct":       stdlib.SetProductFunc,
+			"setsubtract":      stdlib.SetSubtractFunc,
+			"setunion":         stdlib.SetUnionFunc,
+			"sha1":             funcs.Sha1Func,
+			"sha256":           funcs.Sha256Func,
+			"sha512":           funcs.Sha512Func,
+			"signum":           stdlib.SignumFunc,
+			"slice":            stdlib.SliceFunc,
+			"sort":             stdlib.SortFunc,
+			"split":            stdlib.SplitFunc,
+			"startswith":       funcs.StartsWithFunc,
+			"strcontains":      funcs.StrContainsFunc,
+			"strrev":           stdlib.ReverseFunc,
+			"substr":           stdlib.SubstrFunc,
+			"sum":              funcs.SumFunc,
+			"textdecodebase64": funcs.TextDecodeBase64Func,
+			"textencodebase64": funcs.TextEncodeBase64Func,
+			"timestamp":        funcs.TimestampFunc,
+			"timeadd":          stdlib.TimeAddFunc,
+			"timecmp":          funcs.TimeCmpFunc,
+			"title":            stdlib.TitleFunc,
+			"tostring":         funcs.MakeToFunc(cty.String),
+			"tonumber":         funcs.MakeToFunc(cty.Number),
+			"tobool":           funcs.MakeToFunc(cty.Bool),
+			"toset":            funcs.MakeToFunc(cty.Set(cty.DynamicPseudoType)),
+			"tolist":           funcs.MakeToFunc(cty.List(cty.DynamicPseudoType)),
+			"tomap":            funcs.MakeToFunc(cty.Map(cty.DynamicPseudoType)),
+			"transpose":        funcs.TransposeFunc,
+			"trim":             stdlib.TrimFunc,
+			"trimprefix":       stdlib.TrimPrefixFunc,
+			"trimspace":        stdlib.TrimSpaceFunc,
+			"trimsuffix":       stdlib.TrimSuffixFunc,
+			"try":              tryfunc.TryFunc,
+			"upper":            stdlib.UpperFunc,
+			"urlencode":        funcs.URLEncodeFunc,
+			"uuid":             funcs.UUIDFunc,
+			"uuidv5":           funcs.UUIDV5Func,
+			"values":           stdlib.ValuesFunc,
+			"yamldecode":       ctyyaml.YAMLDecodeFunc,
+			"yamlencode":       ctyyaml.YAMLEncodeFunc,
+			"zipmap":           stdlib.ZipmapFunc,
 		},
 
 		Variables: map[string]cty.Value{
