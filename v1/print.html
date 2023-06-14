@@ -84,7 +84,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="features/introduction.html"><strong aria-hidden="true">2.</strong> Features</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="features/concurrency.html"><strong aria-hidden="true">2.1.</strong> Concurrency</a></li><li class="chapter-item expanded "><a href="features/dependency.html"><strong aria-hidden="true">2.2.</strong> Dependency Resolution</a></li><li class="chapter-item expanded "><a href="features/interpolation.html"><strong aria-hidden="true">2.3.</strong> Interpolation</a></li><li class="chapter-item expanded "><a href="features/macros.html"><strong aria-hidden="true">2.4.</strong> Reusable Stages</a></li></ol></li><li class="chapter-item expanded "><a href="cli/introduction.html"><strong aria-hidden="true">3.</strong> Command Line Interface</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="cli/usage.html"><strong aria-hidden="true">3.1.</strong> Usage</a></li><li class="chapter-item expanded "><a href="cli/options.html"><strong aria-hidden="true">3.2.</strong> Options</a></li><li class="chapter-item expanded "><a href="cli/examples.html"><strong aria-hidden="true">3.3.</strong> Examples</a></li></ol></li><li class="chapter-item expanded "><a href="configuration/introduction.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="configuration/togomak.html"><strong aria-hidden="true">4.1.</strong> Togomak</a></li><li class="chapter-item expanded "><a href="configuration/stage.html"><strong aria-hidden="true">4.2.</strong> Stage</a></li><li class="chapter-item expanded "><a href="configuration/data.html"><strong aria-hidden="true">4.3.</strong> Data</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="configuration/data_env.html"><strong aria-hidden="true">4.3.1.</strong> data.env</a></li><li class="chapter-item expanded "><a href="configuration/data_prompt.html"><strong aria-hidden="true">4.3.2.</strong> data.prompt</a></li><li class="chapter-item expanded "><a href="configuration/data_file.html"><strong aria-hidden="true">4.3.3.</strong> data.file</a></li></ol></li><li class="chapter-item expanded "><a href="configuration/macro.html"><strong aria-hidden="true">4.4.</strong> Macro</a></li></ol></li><li class="chapter-item expanded "><a href="contrib/plugins/introduction.html"><strong aria-hidden="true">5.</strong> Plugins</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="features/introduction.html"><strong aria-hidden="true">2.</strong> Features</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="features/concurrency.html"><strong aria-hidden="true">2.1.</strong> Concurrency</a></li><li class="chapter-item expanded "><a href="features/dependency.html"><strong aria-hidden="true">2.2.</strong> Dependency Resolution</a></li><li class="chapter-item expanded "><a href="features/interpolation.html"><strong aria-hidden="true">2.3.</strong> Interpolation</a></li><li class="chapter-item expanded "><a href="features/macros.html"><strong aria-hidden="true">2.4.</strong> Reusable Stages</a></li><li class="chapter-item expanded "><a href="features/daemonizing.html"><strong aria-hidden="true">2.5.</strong> Daemonizing</a></li></ol></li><li class="chapter-item expanded "><a href="cli/introduction.html"><strong aria-hidden="true">3.</strong> Command Line Interface</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="cli/usage.html"><strong aria-hidden="true">3.1.</strong> Usage</a></li></ol></li><li class="chapter-item expanded "><a href="configuration/introduction.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="configuration/togomak.html"><strong aria-hidden="true">4.1.</strong> Togomak</a></li><li class="chapter-item expanded "><a href="configuration/stage.html"><strong aria-hidden="true">4.2.</strong> Stage</a></li><li class="chapter-item expanded "><a href="configuration/data.html"><strong aria-hidden="true">4.3.</strong> Data</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="configuration/data_env.html"><strong aria-hidden="true">4.3.1.</strong> data.env</a></li><li class="chapter-item expanded "><a href="configuration/data_prompt.html"><strong aria-hidden="true">4.3.2.</strong> data.prompt</a></li><li class="chapter-item expanded "><a href="configuration/data_file.html"><strong aria-hidden="true">4.3.3.</strong> data.file</a></li></ol></li><li class="chapter-item expanded "><a href="configuration/macro.html"><strong aria-hidden="true">4.4.</strong> Macro</a></li></ol></li><li class="chapter-item expanded "><a href="contrib/plugins/introduction.html"><strong aria-hidden="true">5.</strong> Plugins</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -290,13 +290,292 @@ stage &quot;explode_water_balloon&quot; {
 
 
 </code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="daemonizing"><a class="header" href="#daemonizing">Daemonizing</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="command-line-interface"><a class="header" href="#command-line-interface">Command Line Interface</a></h1>
+<ul>
+<li><a href="cli/./cli/usage.html">Usage</a></li>
+<li><a href="cli/./cli/options.html">Options</a></li>
+<li><a href="cli/./cli/examples.html">Examples</a></li>
+</ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="usage"><a class="header" href="#usage">Usage</a></h1>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="options"><a class="header" href="#options">Options</a></h1>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="examples"><a class="header" href="#examples">Examples</a></h1>
+<h2 id="basic-usage"><a class="header" href="#basic-usage">Basic Usage</a></h2>
+<p>By default, <code>togomak</code> runs all stages 
+which evaluates their condition <code>stage.xxx.if</code> to 
+<code>true</code>. By default, all stages evaluate their
+condition to true, unless explicitly 
+specified. </p>
+<p>To simply run all stages which meet the criteria,
+just do</p>
+<pre><code class="language-bash">togomak 
+</code></pre>
+<p>and you should be good to go.</p>
+<p>If your togomak pipeline lives in a different
+directory, you could:</p>
+<pre><code class="language-bash">togomak -C path/to/different/dir
+</code></pre>
+<p>Similary, you can also explicitly specify 
+the path to <code>togomak.hcl</code> using the <code>-f</code> or 
+the <code>--file</code> parameter.</p>
+<h2 id="running-specific-stages"><a class="header" href="#running-specific-stages">Running specific stages</a></h2>
+<p>If you would like to run only specific 
+stages, instead of the entire pipeline,
+you could do something like this:</p>
+<pre><code class="language-bash">togomak stage1 stage2 
+</code></pre>
+<p>This would run both <code>stage1</code>, <code>stage2</code> and 
+all the dependencies of <code>stage1</code> and <code>stage2</code>.
+That means, if there were a stage <code>stage3</code>
+which depends on <code>stage1</code>, then <code>stage3</code> would
+also be included in the same pipeline.</p>
+<p>Now, you can also blacklist and whitelist 
+certain stages. Let us take the specific
+example of <code>togomak.hcl</code> which is used
+to build togomak itself, at the root of 
+this repository:</p>
+<pre><code class="language-hcl">togomak {
+  version = 1
+}
+
+
+stage &quot;fmt&quot; {
+  script = &quot;go fmt github.com/srevinsaju/togomak/v1/...&quot;
+}
+stage &quot;vet&quot; {
+  script = &quot;go vet github.com/srevinsaju/togomak/v1/...&quot;
+}
+stage &quot;build&quot; {
+  depends_on = [stage.fmt, stage.vet]
+  script = &quot;go build -v -o ./cmd/togomak/togomak github.com/srevinsaju/togomak/v1/cmd/togomak&quot;
+}
+stage &quot;install&quot; {
+  depends_on = [stage.build]
+  script = &quot;go install github.com/srevinsaju/togomak/v1/cmd/togomak&quot;
+}
+</code></pre>
+<p>In the above example, doing <code>togomak build</code>
+would run both <code>stage.build</code> and <code>stage.install</code>.</p>
+<p>However, if you would like to run only <code>stage.build</code>
+and not <code>stage.install</code>, you could do:</p>
+<pre><code class="language-bash">togomak build ^install
+</code></pre>
+<p>The <code>^</code> operator is used as a blacklist operator.
+Similarly, if you would like to add the <code>stage.fmt</code>
+along with the stages which run, you would do:</p>
+<pre><code class="language-bash">togomak build ^install +fmt
+</code></pre>
+<p>Here, the <code>+</code> operator, is used as a whitelist operator.
+You can add multiple <code>+{stage_name}</code> and <code>^{stage_name}</code>
+and togomak would run all the stages which meet the
+criteria.</p>
+<h3 id="running-a-specific-stage-alone"><a class="header" href="#running-a-specific-stage-alone">Running a specific stage alone</a></h3>
+<p>If you strictly want to run a single stage,
+and do not want to include its dependencies,
+or if you do not want to manually blacklist 
+all its dependencies, <code>togomak</code> has a 
+special stage called the <code>root</code> stage,
+which will run regardless of the whitelist or the 
+blacklist.</p>
+<p>So, if you would like to run only <code>stage.build</code>
+and not <code>stage.install</code>, you could do:</p>
+<pre><code class="language-bash">togomak root +build
+</code></pre>
+<p>This translates to:</p>
+<ul>
+<li>Run only the <code>root</code> stage (and its dependencies, which are <code>nil</code>)</li>
+<li>Whitelist <code>build</code> stage</li>
+</ul>
+<blockquote>
+<p>Adding multiple whitelist and blacklist entries
+for the same stage will take no effect. The first
+entry will be considered and the rest will be ignored.</p>
+</blockquote>
+<h2 id="daemonize-stages"><a class="header" href="#daemonize-stages">Daemonize stages</a></h2>
+<blockquote>
+<p>Experimental feature, use with caution.</p>
+</blockquote>
+<p>If you would like to run a stage in the background,
+you could do so by adding the <code>&amp;</code> operator to the
+stage name.</p>
+<pre><code class="language-bash">togomak &amp;build
+</code></pre>
+<p>This would run the <code>build</code> stage in the background,
+and will not wait for the build stage to complete
+before moving on to the next stage. However, 
+the <code>build</code> stage will be terminated once the last
+dependent of the <code>build</code> stage completes.</p>
+<p>Under the hood, the <code>build</code> stage will receive
+a <code>SIGTERM</code> signal, and will be given a grace period
+of 30 seconds to complete. If the stage does not
+terminate within the grace period, it will be
+forcefully killed (<code>SIGKILL</code>).</p>
+<p>The above feature is particularly useful for 
+running long running stages, such as a docker 
+service for performing integration tests.</p>
+<p>For extensive information about the daemonizing
+feature, refer to the <a href="cli/../features/daemonizing.html">daemonizing</a> 
+section.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="togomak-1"><a class="header" href="#togomak-1">Togomak</a></h1>
+<p>The <code>togomak</code> block is a mandatory 
+block for the file to be recognized as a valid
+<code>togomak</code> pipeline. </p>
+<pre><code class="language-hcl"># togomak.hcl
+
+togomak {
+    # ...
+    version = 1
+}
+</code></pre>
+<p>The above block, with <code>version</code> parameter 
+is required for any pipeline to be considered
+&quot;runnable&quot;.</p>
+<h2 id="arguments-reference"><a class="header" href="#arguments-reference">Arguments Reference</a></h2>
+<ul>
+<li><a href="configuration/togomak.html#version"><code>version</code></a> - The version of the Togomak pipeline file</li>
+</ul>
+<h2 id="attributes-reference"><a class="header" href="#attributes-reference">Attributes Reference</a></h2>
+<ul>
+<li><a href="configuration/togomak.html#version"><code>version</code></a> - The version of the Togomak runner executable</li>
+<li><a href="configuration/togomak.html#boot_time"><code>boot_time</code></a> - The time at which the Togomak runner executable was started</li>
+<li><a href="configuration/togomak.html#boot_time_unix"><code>boot_time_unix</code></a> - The time at which the Togomak runner executable was started, in unix format</li>
+<li><a href="configuration/togomak.html#pipeline_id"><code>pipeline_id</code></a> - The unique identifier for the pipeline run (uuid)</li>
+</ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="stage"><a class="header" href="#stage">Stage</a></h1>
+<p>A <code>stage</code> is considered as an atomic runnable
+unit. Multiple stages may be executed 
+concurrently. </p>
+<p>A stage can accept a script, a command and a set 
+of arguments, or a macro. </p>
+<h3 id="stage-with-script"><a class="header" href="#stage-with-script">Stage with Script</a></h3>
+<pre><code class="language-hcl"><span class="boring">togomak {
+</span><span class="boring">  version = 1
+</span><span class="boring">}
+</span><span class="boring">
+</span>stage &quot;script&quot; {
+  script = &quot;echo 'Hello World'&quot;
+}
+</code></pre>
+<h3 id="stage-with-command-and-arguments"><a class="header" href="#stage-with-command-and-arguments">Stage with Command and Arguments</a></h3>
+<pre><code class="language-hcl"><span class="boring">togomak {
+</span><span class="boring">  version = 1
+</span><span class="boring">}
+</span><span class="boring">
+</span>stage &quot;command&quot; {
+  args = [&quot;echo&quot;, &quot;Hello World&quot;]
+}
+</code></pre>
+<h3 id="stage-with-macro"><a class="header" href="#stage-with-macro">Stage with Macro</a></h3>
+<pre><code class="language-hcl"><span class="boring">togomak {
+</span><span class="boring">  version = 1
+</span><span class="boring">}
+</span><span class="boring">
+</span>macro &quot;echo&quot; {
+  stage &quot;echo&quot; {
+    args = [&quot;echo&quot;, &quot;Hello World&quot;]
+  }
+}
+
+stage &quot;macro&quot; {
+  use {
+    macro = macro.echo     
+  }
+}
+</code></pre>
+<h3 id="stage-with-dependencies"><a class="header" href="#stage-with-dependencies">Stage with Dependencies</a></h3>
+<pre><code class="language-hcl"><span class="boring">togomak {
+</span><span class="boring">  version = 1
+</span><span class="boring">}
+</span><span class="boring">
+</span>stage &quot;build&quot; {
+  script = &quot;echo 'Building'&quot;
+}
+
+stage &quot;install&quot; {
+  depends_on = [stage.build]
+  script = &quot;echo 'Installing'&quot;
+}
+</code></pre>
+<h3 id="stage-with-retry"><a class="header" href="#stage-with-retry">Stage with Retry</a></h3>
+<pre><code class="language-hcl"><span class="boring">togomak {
+</span><span class="boring">  version = 1
+</span><span class="boring">}
+</span><span class="boring">
+</span>stage &quot;build&quot; {
+  script = &lt;&lt;-EOT
+  echo this script will fail
+  exit 1
+  EOT
+  retry {
+    enabled = true
+    attempts = 3
+    exponential_backoff = true
+    min_backoff = 1
+    max_backoff = 10
+  }
+}
+</code></pre>
+<h2 id="arguments-reference-1"><a class="header" href="#arguments-reference-1">Arguments Reference</a></h2>
+<ul>
+<li>
+<p><a href="configuration/stage.html#name"><code>name</code></a> - The name of the stage</p>
+</li>
+<li>
+<p><a href="configuration/stage.html#if"><code>if</code></a> - The condition to be evaluated before running the stage</p>
+</li>
+<li>
+<p><a href="configuration/stage.html#use"><code>use</code></a> - Macro, or a provider that could be used. Structure is <a href="configuration/stage.html#use">documented below</a></p>
+</li>
+<li>
+<p><a href="configuration/stage.html#depends_on"><code>depends_on</code></a> - The stages which this stage depends on.</p>
+</li>
+<li>
+<p><a href="configuration/stage.html#container"><code>container</code></a> - The container to be used to run the stage. Structure is <a href="configuration/stage.html#container">documented below</a></p>
+</li>
+<li>
+<p><a href="configuration/stage.html#script"><code>script</code></a> - The script to be executed</p>
+</li>
+<li>
+<p><a href="configuration/stage.html#args"><code>args</code></a> - The command and arguments to be executed</p>
+</li>
+<li>
+<p><a href="configuration/stage.html#retry"><code>retry</code></a> - Stage retry configuration. Structure is <a href="configuration/stage.html#retry">documented below</a></p>
+</li>
+<li>
+<p><a href="configuration/stage.html#daemon"><code>daemon</code></a> - Daemon specific configuration. Structure is <a href="configuration/stage.html#daemon">documented below</a></p>
+</li>
+</ul>
+<hr />
+<p><a id="use"></a>
+The <code>use</code> block supports:</p>
+<ul>
+<li><a href="configuration/stage.html#macro"><code>macro</code></a> - The macro to be used</li>
+</ul>
+<hr />
+<p><a id="retry"></a>
+The <code>retry</code> block supports:</p>
+<ul>
+<li><a href="configuration/stage.html#enabled"><code>enabled</code></a> - Whether the stage should be retried, defaults to <code>false</code></li>
+<li><a href="configuration/stage.html#attempts"><code>attempts</code></a> - The number of times the stage should be retried</li>
+<li><a href="configuration/stage.html#exponential_backoff"><code>exponential_backoff</code></a> - Whether the backoff should be exponential</li>
+<li><a href="configuration/stage.html#min_backoff"><code>min_backoff</code></a> - The minimum backoff time (in seconds)</li>
+<li><a href="configuration/stage.html#max_backoff"><code>max_backoff</code></a> - The maximum backoff time (in seconds)</li>
+</ul>
+<hr />
+<p><a id="container"></a>
+The <code>container</code> block supports:</p>
+<ul>
+<li><a href="configuration/stage.html#image"><code>image</code></a> - The container image to be used</li>
+</ul>
+<hr />
+<p><a id="daemon"></a></p>
+<blockquote>
+<p>Daemonization is still wip, see <a href="configuration/../features/daemonizing.html">daemonization</a> for more information on availability </p>
+</blockquote>
+<p>The <code>daemon</code> block supports:</p>
+<ul>
+<li><a href="configuration/stage.html#enabled"><code>enabled</code></a> - Whether the stage should be run as a daemon, defaults to <code>false</code></li>
+<li><a href="configuration/stage.html#timeout"><code>timeout</code></a> - Time to wait until the stage is terminated, in seconds. Defaults to 0 (no timeout).</li>
+</ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="data"><a class="header" href="#data">Data</a></h1>
 <p>The <code>data</code> block allows fetching static data from different sources known 
 as <code>data_providers</code>. Common providers include examples like environment variables,
@@ -333,12 +612,12 @@ string.</p>
   default = &quot;me&quot;
 }
 </code></pre>
-<h2 id="arguments-reference"><a class="header" href="#arguments-reference">Arguments Reference</a></h2>
+<h2 id="arguments-reference-2"><a class="header" href="#arguments-reference-2">Arguments Reference</a></h2>
 <ul>
 <li><a href="configuration/data_env.html#key"><code>key</code></a>: The environment variable key which needs to be fetched from <code>os.environ</code></li>
 <li><a href="configuration/data_env.html#default"><code>default</code></a>: Fallback definition, which will be returned if <code>os.environ[key]</code> is undefined. </li>
 </ul>
-<h2 id="attributes-reference"><a class="header" href="#attributes-reference">Attributes Reference</a></h2>
+<h2 id="attributes-reference-1"><a class="header" href="#attributes-reference-1">Attributes Reference</a></h2>
 <ul>
 <li>[<code>value</code>]: The value from the environment variable defined in <code>key</code></li>
 </ul>
@@ -366,7 +645,7 @@ execution, so that it can happen asynchronously. </p>
 <li><a href="configuration/data_prompt.html#default"><code>default</code></a> - Fallback data which will be returned if the user did not enter anything, or if the 
 TTY is absent, or if any other UI provider is missing. (optional)</li>
 </ul>
-<h2 id="attributes-reference-1"><a class="header" href="#attributes-reference-1">Attributes Reference</a></h2>
+<h2 id="attributes-reference-2"><a class="header" href="#attributes-reference-2">Attributes Reference</a></h2>
 <ul>
 <li><a href="configuration/data_prompt.html#value"><code>value</code></a> - The response from the user, otherwise the <code>default</code> value will be returned.</li>
 </ul>

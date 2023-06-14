@@ -83,7 +83,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="../introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="../features/introduction.html"><strong aria-hidden="true">2.</strong> Features</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../features/concurrency.html"><strong aria-hidden="true">2.1.</strong> Concurrency</a></li><li class="chapter-item expanded "><a href="../features/dependency.html"><strong aria-hidden="true">2.2.</strong> Dependency Resolution</a></li><li class="chapter-item expanded "><a href="../features/interpolation.html"><strong aria-hidden="true">2.3.</strong> Interpolation</a></li><li class="chapter-item expanded "><a href="../features/macros.html"><strong aria-hidden="true">2.4.</strong> Reusable Stages</a></li></ol></li><li class="chapter-item expanded "><a href="../cli/introduction.html"><strong aria-hidden="true">3.</strong> Command Line Interface</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../cli/usage.html" class="active"><strong aria-hidden="true">3.1.</strong> Usage</a></li><li class="chapter-item expanded "><a href="../cli/options.html"><strong aria-hidden="true">3.2.</strong> Options</a></li><li class="chapter-item expanded "><a href="../cli/examples.html"><strong aria-hidden="true">3.3.</strong> Examples</a></li></ol></li><li class="chapter-item expanded "><a href="../configuration/introduction.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../configuration/togomak.html"><strong aria-hidden="true">4.1.</strong> Togomak</a></li><li class="chapter-item expanded "><a href="../configuration/stage.html"><strong aria-hidden="true">4.2.</strong> Stage</a></li><li class="chapter-item expanded "><a href="../configuration/data.html"><strong aria-hidden="true">4.3.</strong> Data</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../configuration/data_env.html"><strong aria-hidden="true">4.3.1.</strong> data.env</a></li><li class="chapter-item expanded "><a href="../configuration/data_prompt.html"><strong aria-hidden="true">4.3.2.</strong> data.prompt</a></li><li class="chapter-item expanded "><a href="../configuration/data_file.html"><strong aria-hidden="true">4.3.3.</strong> data.file</a></li></ol></li><li class="chapter-item expanded "><a href="../configuration/macro.html"><strong aria-hidden="true">4.4.</strong> Macro</a></li></ol></li><li class="chapter-item expanded "><a href="../contrib/plugins/introduction.html"><strong aria-hidden="true">5.</strong> Plugins</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="../introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="../features/introduction.html"><strong aria-hidden="true">2.</strong> Features</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../features/concurrency.html"><strong aria-hidden="true">2.1.</strong> Concurrency</a></li><li class="chapter-item expanded "><a href="../features/dependency.html"><strong aria-hidden="true">2.2.</strong> Dependency Resolution</a></li><li class="chapter-item expanded "><a href="../features/interpolation.html"><strong aria-hidden="true">2.3.</strong> Interpolation</a></li><li class="chapter-item expanded "><a href="../features/macros.html"><strong aria-hidden="true">2.4.</strong> Reusable Stages</a></li><li class="chapter-item expanded "><a href="../features/daemonizing.html"><strong aria-hidden="true">2.5.</strong> Daemonizing</a></li></ol></li><li class="chapter-item expanded "><a href="../cli/introduction.html"><strong aria-hidden="true">3.</strong> Command Line Interface</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../cli/usage.html" class="active"><strong aria-hidden="true">3.1.</strong> Usage</a></li></ol></li><li class="chapter-item expanded "><a href="../configuration/introduction.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../configuration/togomak.html"><strong aria-hidden="true">4.1.</strong> Togomak</a></li><li class="chapter-item expanded "><a href="../configuration/stage.html"><strong aria-hidden="true">4.2.</strong> Stage</a></li><li class="chapter-item expanded "><a href="../configuration/data.html"><strong aria-hidden="true">4.3.</strong> Data</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../configuration/data_env.html"><strong aria-hidden="true">4.3.1.</strong> data.env</a></li><li class="chapter-item expanded "><a href="../configuration/data_prompt.html"><strong aria-hidden="true">4.3.2.</strong> data.prompt</a></li><li class="chapter-item expanded "><a href="../configuration/data_file.html"><strong aria-hidden="true">4.3.3.</strong> data.file</a></li></ol></li><li class="chapter-item expanded "><a href="../configuration/macro.html"><strong aria-hidden="true">4.4.</strong> Macro</a></li></ol></li><li class="chapter-item expanded "><a href="../contrib/plugins/introduction.html"><strong aria-hidden="true">5.</strong> Plugins</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -145,6 +145,122 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="usage"><a class="header" href="#usage">Usage</a></h1>
+<h2 id="basic-usage"><a class="header" href="#basic-usage">Basic Usage</a></h2>
+<p>By default, <code>togomak</code> runs all stages 
+which evaluates their condition <code>stage.xxx.if</code> to 
+<code>true</code>. By default, all stages evaluate their
+condition to true, unless explicitly 
+specified. </p>
+<p>To simply run all stages which meet the criteria,
+just do</p>
+<pre><code class="language-bash">togomak 
+</code></pre>
+<p>and you should be good to go.</p>
+<p>If your togomak pipeline lives in a different
+directory, you could:</p>
+<pre><code class="language-bash">togomak -C path/to/different/dir
+</code></pre>
+<p>Similary, you can also explicitly specify 
+the path to <code>togomak.hcl</code> using the <code>-f</code> or 
+the <code>--file</code> parameter.</p>
+<h2 id="running-specific-stages"><a class="header" href="#running-specific-stages">Running specific stages</a></h2>
+<p>If you would like to run only specific 
+stages, instead of the entire pipeline,
+you could do something like this:</p>
+<pre><code class="language-bash">togomak stage1 stage2 
+</code></pre>
+<p>This would run both <code>stage1</code>, <code>stage2</code> and 
+all the dependencies of <code>stage1</code> and <code>stage2</code>.
+That means, if there were a stage <code>stage3</code>
+which depends on <code>stage1</code>, then <code>stage3</code> would
+also be included in the same pipeline.</p>
+<p>Now, you can also blacklist and whitelist 
+certain stages. Let us take the specific
+example of <code>togomak.hcl</code> which is used
+to build togomak itself, at the root of 
+this repository:</p>
+<pre><code class="language-hcl">togomak {
+  version = 1
+}
+
+
+stage &quot;fmt&quot; {
+  script = &quot;go fmt github.com/srevinsaju/togomak/v1/...&quot;
+}
+stage &quot;vet&quot; {
+  script = &quot;go vet github.com/srevinsaju/togomak/v1/...&quot;
+}
+stage &quot;build&quot; {
+  depends_on = [stage.fmt, stage.vet]
+  script = &quot;go build -v -o ./cmd/togomak/togomak github.com/srevinsaju/togomak/v1/cmd/togomak&quot;
+}
+stage &quot;install&quot; {
+  depends_on = [stage.build]
+  script = &quot;go install github.com/srevinsaju/togomak/v1/cmd/togomak&quot;
+}
+</code></pre>
+<p>In the above example, doing <code>togomak build</code>
+would run both <code>stage.build</code> and <code>stage.install</code>.</p>
+<p>However, if you would like to run only <code>stage.build</code>
+and not <code>stage.install</code>, you could do:</p>
+<pre><code class="language-bash">togomak build ^install
+</code></pre>
+<p>The <code>^</code> operator is used as a blacklist operator.
+Similarly, if you would like to add the <code>stage.fmt</code>
+along with the stages which run, you would do:</p>
+<pre><code class="language-bash">togomak build ^install +fmt
+</code></pre>
+<p>Here, the <code>+</code> operator, is used as a whitelist operator.
+You can add multiple <code>+{stage_name}</code> and <code>^{stage_name}</code>
+and togomak would run all the stages which meet the
+criteria.</p>
+<h3 id="running-a-specific-stage-alone"><a class="header" href="#running-a-specific-stage-alone">Running a specific stage alone</a></h3>
+<p>If you strictly want to run a single stage,
+and do not want to include its dependencies,
+or if you do not want to manually blacklist 
+all its dependencies, <code>togomak</code> has a 
+special stage called the <code>root</code> stage,
+which will run regardless of the whitelist or the 
+blacklist.</p>
+<p>So, if you would like to run only <code>stage.build</code>
+and not <code>stage.install</code>, you could do:</p>
+<pre><code class="language-bash">togomak root +build
+</code></pre>
+<p>This translates to:</p>
+<ul>
+<li>Run only the <code>root</code> stage (and its dependencies, which are <code>nil</code>)</li>
+<li>Whitelist <code>build</code> stage</li>
+</ul>
+<blockquote>
+<p>Adding multiple whitelist and blacklist entries
+for the same stage will take no effect. The first
+entry will be considered and the rest will be ignored.</p>
+</blockquote>
+<h2 id="daemonize-stages"><a class="header" href="#daemonize-stages">Daemonize stages</a></h2>
+<blockquote>
+<p>Experimental feature, use with caution.</p>
+</blockquote>
+<p>If you would like to run a stage in the background,
+you could do so by adding the <code>&amp;</code> operator to the
+stage name.</p>
+<pre><code class="language-bash">togomak &amp;build
+</code></pre>
+<p>This would run the <code>build</code> stage in the background,
+and will not wait for the build stage to complete
+before moving on to the next stage. However, 
+the <code>build</code> stage will be terminated once the last
+dependent of the <code>build</code> stage completes.</p>
+<p>Under the hood, the <code>build</code> stage will receive
+a <code>SIGTERM</code> signal, and will be given a grace period
+of 30 seconds to complete. If the stage does not
+terminate within the grace period, it will be
+forcefully killed (<code>SIGKILL</code>).</p>
+<p>The above feature is particularly useful for 
+running long running stages, such as a docker 
+service for performing integration tests.</p>
+<p>For extensive information about the daemonizing
+feature, refer to the <a href="../features/daemonizing.html">daemonizing</a> 
+section.</p>
 
                     </main>
 
@@ -154,7 +270,7 @@
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next" href="../cli/options.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="../configuration/introduction.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -168,7 +284,7 @@
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next" href="../cli/options.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next" href="../configuration/introduction.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>

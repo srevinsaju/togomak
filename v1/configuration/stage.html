@@ -83,7 +83,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="../introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="../features/introduction.html"><strong aria-hidden="true">2.</strong> Features</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../features/concurrency.html"><strong aria-hidden="true">2.1.</strong> Concurrency</a></li><li class="chapter-item expanded "><a href="../features/dependency.html"><strong aria-hidden="true">2.2.</strong> Dependency Resolution</a></li><li class="chapter-item expanded "><a href="../features/interpolation.html"><strong aria-hidden="true">2.3.</strong> Interpolation</a></li><li class="chapter-item expanded "><a href="../features/macros.html"><strong aria-hidden="true">2.4.</strong> Reusable Stages</a></li></ol></li><li class="chapter-item expanded "><a href="../cli/introduction.html"><strong aria-hidden="true">3.</strong> Command Line Interface</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../cli/usage.html"><strong aria-hidden="true">3.1.</strong> Usage</a></li><li class="chapter-item expanded "><a href="../cli/options.html"><strong aria-hidden="true">3.2.</strong> Options</a></li><li class="chapter-item expanded "><a href="../cli/examples.html"><strong aria-hidden="true">3.3.</strong> Examples</a></li></ol></li><li class="chapter-item expanded "><a href="../configuration/introduction.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../configuration/togomak.html"><strong aria-hidden="true">4.1.</strong> Togomak</a></li><li class="chapter-item expanded "><a href="../configuration/stage.html" class="active"><strong aria-hidden="true">4.2.</strong> Stage</a></li><li class="chapter-item expanded "><a href="../configuration/data.html"><strong aria-hidden="true">4.3.</strong> Data</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../configuration/data_env.html"><strong aria-hidden="true">4.3.1.</strong> data.env</a></li><li class="chapter-item expanded "><a href="../configuration/data_prompt.html"><strong aria-hidden="true">4.3.2.</strong> data.prompt</a></li><li class="chapter-item expanded "><a href="../configuration/data_file.html"><strong aria-hidden="true">4.3.3.</strong> data.file</a></li></ol></li><li class="chapter-item expanded "><a href="../configuration/macro.html"><strong aria-hidden="true">4.4.</strong> Macro</a></li></ol></li><li class="chapter-item expanded "><a href="../contrib/plugins/introduction.html"><strong aria-hidden="true">5.</strong> Plugins</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="../introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="../features/introduction.html"><strong aria-hidden="true">2.</strong> Features</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../features/concurrency.html"><strong aria-hidden="true">2.1.</strong> Concurrency</a></li><li class="chapter-item expanded "><a href="../features/dependency.html"><strong aria-hidden="true">2.2.</strong> Dependency Resolution</a></li><li class="chapter-item expanded "><a href="../features/interpolation.html"><strong aria-hidden="true">2.3.</strong> Interpolation</a></li><li class="chapter-item expanded "><a href="../features/macros.html"><strong aria-hidden="true">2.4.</strong> Reusable Stages</a></li><li class="chapter-item expanded "><a href="../features/daemonizing.html"><strong aria-hidden="true">2.5.</strong> Daemonizing</a></li></ol></li><li class="chapter-item expanded "><a href="../cli/introduction.html"><strong aria-hidden="true">3.</strong> Command Line Interface</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../cli/usage.html"><strong aria-hidden="true">3.1.</strong> Usage</a></li></ol></li><li class="chapter-item expanded "><a href="../configuration/introduction.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../configuration/togomak.html"><strong aria-hidden="true">4.1.</strong> Togomak</a></li><li class="chapter-item expanded "><a href="../configuration/stage.html" class="active"><strong aria-hidden="true">4.2.</strong> Stage</a></li><li class="chapter-item expanded "><a href="../configuration/data.html"><strong aria-hidden="true">4.3.</strong> Data</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../configuration/data_env.html"><strong aria-hidden="true">4.3.1.</strong> data.env</a></li><li class="chapter-item expanded "><a href="../configuration/data_prompt.html"><strong aria-hidden="true">4.3.2.</strong> data.prompt</a></li><li class="chapter-item expanded "><a href="../configuration/data_file.html"><strong aria-hidden="true">4.3.3.</strong> data.file</a></li></ol></li><li class="chapter-item expanded "><a href="../configuration/macro.html"><strong aria-hidden="true">4.4.</strong> Macro</a></li></ol></li><li class="chapter-item expanded "><a href="../contrib/plugins/introduction.html"><strong aria-hidden="true">5.</strong> Plugins</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -145,6 +145,141 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="stage"><a class="header" href="#stage">Stage</a></h1>
+<p>A <code>stage</code> is considered as an atomic runnable
+unit. Multiple stages may be executed 
+concurrently. </p>
+<p>A stage can accept a script, a command and a set 
+of arguments, or a macro. </p>
+<h3 id="stage-with-script"><a class="header" href="#stage-with-script">Stage with Script</a></h3>
+<pre><code class="language-hcl"><span class="boring">togomak {
+</span><span class="boring">  version = 1
+</span><span class="boring">}
+</span><span class="boring">
+</span>stage &quot;script&quot; {
+  script = &quot;echo 'Hello World'&quot;
+}
+</code></pre>
+<h3 id="stage-with-command-and-arguments"><a class="header" href="#stage-with-command-and-arguments">Stage with Command and Arguments</a></h3>
+<pre><code class="language-hcl"><span class="boring">togomak {
+</span><span class="boring">  version = 1
+</span><span class="boring">}
+</span><span class="boring">
+</span>stage &quot;command&quot; {
+  args = [&quot;echo&quot;, &quot;Hello World&quot;]
+}
+</code></pre>
+<h3 id="stage-with-macro"><a class="header" href="#stage-with-macro">Stage with Macro</a></h3>
+<pre><code class="language-hcl"><span class="boring">togomak {
+</span><span class="boring">  version = 1
+</span><span class="boring">}
+</span><span class="boring">
+</span>macro &quot;echo&quot; {
+  stage &quot;echo&quot; {
+    args = [&quot;echo&quot;, &quot;Hello World&quot;]
+  }
+}
+
+stage &quot;macro&quot; {
+  use {
+    macro = macro.echo     
+  }
+}
+</code></pre>
+<h3 id="stage-with-dependencies"><a class="header" href="#stage-with-dependencies">Stage with Dependencies</a></h3>
+<pre><code class="language-hcl"><span class="boring">togomak {
+</span><span class="boring">  version = 1
+</span><span class="boring">}
+</span><span class="boring">
+</span>stage &quot;build&quot; {
+  script = &quot;echo 'Building'&quot;
+}
+
+stage &quot;install&quot; {
+  depends_on = [stage.build]
+  script = &quot;echo 'Installing'&quot;
+}
+</code></pre>
+<h3 id="stage-with-retry"><a class="header" href="#stage-with-retry">Stage with Retry</a></h3>
+<pre><code class="language-hcl"><span class="boring">togomak {
+</span><span class="boring">  version = 1
+</span><span class="boring">}
+</span><span class="boring">
+</span>stage &quot;build&quot; {
+  script = &lt;&lt;-EOT
+  echo this script will fail
+  exit 1
+  EOT
+  retry {
+    enabled = true
+    attempts = 3
+    exponential_backoff = true
+    min_backoff = 1
+    max_backoff = 10
+  }
+}
+</code></pre>
+<h2 id="arguments-reference"><a class="header" href="#arguments-reference">Arguments Reference</a></h2>
+<ul>
+<li>
+<p><a href="#name"><code>name</code></a> - The name of the stage</p>
+</li>
+<li>
+<p><a href="#if"><code>if</code></a> - The condition to be evaluated before running the stage</p>
+</li>
+<li>
+<p><a href="#use"><code>use</code></a> - Macro, or a provider that could be used. Structure is <a href="#use">documented below</a></p>
+</li>
+<li>
+<p><a href="#depends_on"><code>depends_on</code></a> - The stages which this stage depends on.</p>
+</li>
+<li>
+<p><a href="#container"><code>container</code></a> - The container to be used to run the stage. Structure is <a href="#container">documented below</a></p>
+</li>
+<li>
+<p><a href="#script"><code>script</code></a> - The script to be executed</p>
+</li>
+<li>
+<p><a href="#args"><code>args</code></a> - The command and arguments to be executed</p>
+</li>
+<li>
+<p><a href="#retry"><code>retry</code></a> - Stage retry configuration. Structure is <a href="#retry">documented below</a></p>
+</li>
+<li>
+<p><a href="#daemon"><code>daemon</code></a> - Daemon specific configuration. Structure is <a href="#daemon">documented below</a></p>
+</li>
+</ul>
+<hr />
+<p><a id="use"></a>
+The <code>use</code> block supports:</p>
+<ul>
+<li><a href="#macro"><code>macro</code></a> - The macro to be used</li>
+</ul>
+<hr />
+<p><a id="retry"></a>
+The <code>retry</code> block supports:</p>
+<ul>
+<li><a href="#enabled"><code>enabled</code></a> - Whether the stage should be retried, defaults to <code>false</code></li>
+<li><a href="#attempts"><code>attempts</code></a> - The number of times the stage should be retried</li>
+<li><a href="#exponential_backoff"><code>exponential_backoff</code></a> - Whether the backoff should be exponential</li>
+<li><a href="#min_backoff"><code>min_backoff</code></a> - The minimum backoff time (in seconds)</li>
+<li><a href="#max_backoff"><code>max_backoff</code></a> - The maximum backoff time (in seconds)</li>
+</ul>
+<hr />
+<p><a id="container"></a>
+The <code>container</code> block supports:</p>
+<ul>
+<li><a href="#image"><code>image</code></a> - The container image to be used</li>
+</ul>
+<hr />
+<p><a id="daemon"></a></p>
+<blockquote>
+<p>Daemonization is still wip, see <a href="../features/daemonizing.html">daemonization</a> for more information on availability </p>
+</blockquote>
+<p>The <code>daemon</code> block supports:</p>
+<ul>
+<li><a href="#enabled"><code>enabled</code></a> - Whether the stage should be run as a daemon, defaults to <code>false</code></li>
+<li><a href="#timeout"><code>timeout</code></a> - Time to wait until the stage is terminated, in seconds. Defaults to 0 (no timeout).</li>
+</ul>
 
                     </main>
 
