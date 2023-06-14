@@ -19,11 +19,19 @@ type ConfigPipelineStage struct {
 	Operation ConfigPipelineStageOperation
 }
 
+func (c ConfigPipelineStage) RunnableId() string {
+	return fmt.Sprintf("stage.%s", c.Id)
+}
+
+func (c ConfigPipelineStage) Identifier() string {
+	return c.RunnableId()
+}
+
 type ConfigPipelineStageList []ConfigPipelineStage
 
 func (c ConfigPipelineStageList) Get(runnableId string) (ConfigPipelineStage, bool) {
 	for _, stage := range c {
-		if runnableId == fmt.Sprintf("stage.%s", stage.Id) {
+		if runnableId == stage.Identifier() {
 			return stage, true
 		}
 	}

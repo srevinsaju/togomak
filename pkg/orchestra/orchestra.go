@@ -231,7 +231,7 @@ func Orchestra(cfg Config) {
 			hclDiags = hclDiags.Append(&hcl.Diagnostic{
 				Severity:    hcl.DiagError,
 				Summary:     "invalid macro",
-				Detail:      fmt.Sprintf("stage.%s can only use a single macro", stage.Id),
+				Detail:      fmt.Sprintf("%s can only use a single macro", stage.Identifier()),
 				EvalContext: hclContext,
 				Subject:     v[0].SourceRange().Ptr(),
 			})
@@ -242,7 +242,7 @@ func Orchestra(cfg Config) {
 			hclDiags = hclDiags.Append(&hcl.Diagnostic{
 				Severity:    hcl.DiagError,
 				Summary:     "invalid macro",
-				Detail:      fmt.Sprintf("stage.%s uses an invalid macro", stage.Id),
+				Detail:      fmt.Sprintf("%s uses an invalid macro", stage.Identifier()),
 				EvalContext: hclContext,
 				Subject:     v[0].SourceRange().Ptr(),
 			})
@@ -313,16 +313,40 @@ func Orchestra(cfg Config) {
 				logger.Fatal(diags.Error())
 			}
 
-			overriden := false
+			// region: requested stages, whitelisting and blacklisting
+			overridden := false
 			if runnable.Type() == ci.StageBlock {
 				stageStatus, stageStatusOk := stageStatuses.Get(runnableId)
+
+				// when a particular stage is explicitly requested, for example
+				// in the pipeline containing the following stages
+				// - hello_1
+				// - hello_2
+				// - hello_3
+				// - hello_4 (depends on hello_1)
+				// if 'hello_1' is explicitly requested, we will run 'hello_4' as well
 				if stageStatuses.HasOperationType(ConfigPipelineStageRunOperation) && !stageStatusOk {
-					// if this stage has not been requested, we will skip it
-					ok = false
+					isDependentOfRequestedStage := false
+					for _, ss := range stageStatuses {
+						if ss.Operation == ConfigPipelineStageRunOperation {
+							if depGraph.DependsOn(runnableId, ss.RunnableId()) {
+								isDependentOfRequestedStage = true
+								break
+							}
+						}
+					}
+
+					// if this stage is not dependent on the requested stage, we will skip it
+					if !isDependentOfRequestedStage {
+						ok = false
+					}
 				}
-				
+
 				if stageStatusOk {
-					overriden = true
+					// overridden status is shown on the build pipeline if the
+					// stage is explicitly whitelisted or blacklisted
+					// using the ^ or + prefix
+					overridden = true
 					ok = ok || stageStatus.Operation == ConfigPipelineStageRunWhitelistOperation
 					if stageStatus.Operation == ConfigPipelineStageRunBlacklistOperation {
 						ok = false
@@ -330,8 +354,9 @@ func Orchestra(cfg Config) {
 				}
 
 			}
+			// endregion: requested stages, whitelisting and blacklisting
 
-			runnable.Prepare(ctx, !ok, overriden)
+			runnable.Prepare(ctx, !ok, overridden)
 			if !ok {
 				logger.Debugf("skipping runnable %s, condition evaluated to false", runnableId)
 				continue
