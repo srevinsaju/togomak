@@ -1,3 +1,7 @@
 .idea/
 cmd/togomak/togomak
 cmd/togomak/*.hcl
+.togomak/pipelines/
+examples/*/.togomak/
+cmd/togomak/.togomak/
+docs/book/

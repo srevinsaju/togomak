@@ -7,10 +7,9 @@
     - [Dependency Resolution](./features/dependency.md)
     - [Interpolation](./features/interpolation.md)
     - [Reusable Stages](./features/macros.md)
+    - [Daemonizing](./features/daemonizing.md)
 - [Command Line Interface](./cli/introduction.md)
     - [Usage](./cli/usage.md)
-    - [Options](./cli/options.md)
-    - [Examples](./cli/examples.md)
 
 - [Configuration](./configuration/introduction.md)
     - [Togomak](./configuration/togomak.md)
