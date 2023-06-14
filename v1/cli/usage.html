@@ -198,6 +198,14 @@ stage &quot;install&quot; {
   depends_on = [stage.build]
   script = &quot;go install github.com/srevinsaju/togomak/v1/cmd/togomak&quot;
 }
+
+stage &quot;docs_serve&quot; {
+  daemon {
+    enabled = true
+  }
+  if = false 
+  script = &quot;cd docs &amp;&amp; mdbook serve&quot;
+}
 </code></pre>
 <p>In the above example, doing <code>togomak build</code>
 would run both <code>stage.build</code> and <code>stage.install</code>.</p>
