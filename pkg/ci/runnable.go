@@ -36,6 +36,9 @@ type Runnable interface {
 	// exponentially increasing
 	RetryExponentialBackoff() bool
 
+	// IsDaemon returns true if the runnable is a daemon
+	IsDaemon() bool
+
 	Variables() []hcl.Traversal
 
 	Type() string

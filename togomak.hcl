@@ -17,3 +17,11 @@ stage "install" {
   depends_on = [stage.build]
   script = "go install github.com/srevinsaju/togomak/v1/cmd/togomak"
 }
+
+stage "docs_serve" {
+  daemon {
+    enabled = true
+  }
+  if = false 
+  script = "cd docs && mdbook serve"
+}

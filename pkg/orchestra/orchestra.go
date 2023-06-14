@@ -291,6 +291,7 @@ func Orchestra(cfg Config) {
 
 	var diagsMutex sync.Mutex
 	var wg sync.WaitGroup
+	var daemonWg sync.WaitGroup
 
 	for _, layer := range depGraph.TopoSortedLayers() {
 		for _, runnableId := range layer {
@@ -362,8 +363,11 @@ func Orchestra(cfg Config) {
 				continue
 			}
 
-			// TODO: implement daemon kinds here
-			wg.Add(1)
+			if runnable.IsDaemon() {
+				daemonWg.Add(1)
+			} else {
+				wg.Add(1)
+			}
 
 			go func(runnableId string) {
 				stageDiags := runnable.Run(ctx)
@@ -372,8 +376,8 @@ func Orchestra(cfg Config) {
 					return
 				}
 				logger.Warn(stageDiags.Error())
-				logger.Infof("retrying runnable %s", runnableId)
 				if runnable.CanRetry() {
+					logger.Infof("retrying runnable %s", runnableId)
 					retryCount := 0
 					retryMinBackOff := time.Duration(runnable.MinRetryBackoff()) * time.Second
 					retryMaxBackOff := time.Duration(runnable.MaxRetryBackoff()) * time.Second
@@ -410,7 +414,12 @@ func Orchestra(cfg Config) {
 				diagsMutex.Lock()
 				diags = diags.Extend(stageDiags)
 				diagsMutex.Unlock()
-				wg.Done()
+				if runnable.IsDaemon() {
+					daemonWg.Done()
+				} else {
+					wg.Done()
+				}
+
 			}(runnableId)
 
 			if cfg.Pipeline.DryRun {
@@ -418,6 +427,7 @@ func Orchestra(cfg Config) {
 				// wait for the runnable to finish
 				// disable concurrency
 				wg.Wait()
+				daemonWg.Wait()
 			}
 		}
 		wg.Wait()
@@ -427,5 +437,7 @@ func Orchestra(cfg Config) {
 		}
 
 	}
+
+	daemonWg.Wait()
 
 }

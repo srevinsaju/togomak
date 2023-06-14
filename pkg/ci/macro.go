@@ -33,3 +33,7 @@ func (m Macro) Variables() []hcl.Traversal {
 	var traversal []hcl.Traversal
 	return traversal
 }
+
+func (m Macro) IsDaemon() bool {
+	return false
+}

@@ -26,3 +26,7 @@ func (d Datas) ById(provider string, id string) (*Data, error) {
 func (d Data) Type() string {
 	return DataBlock
 }
+
+func (d Data) IsDaemon() bool {
+	return false
+}

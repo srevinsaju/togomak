@@ -25,3 +25,7 @@ func (s Stages) ById(id string) (*Stage, error) {
 func (s Stage) Type() string {
 	return StageBlock
 }
+
+func (s Stage) IsDaemon() bool {
+	return s.Daemon != nil && s.Daemon.Enabled
+}

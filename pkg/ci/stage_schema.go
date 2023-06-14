@@ -31,6 +31,7 @@ type StageUse struct {
 
 type StageDaemon struct {
 	Enabled bool `hcl:"enabled" json:"enabled"`
+	Timeout int  `hcl:"timeout,optional" json:"timeout"`
 }
 
 type Stage struct {
@@ -41,6 +42,7 @@ type Stage struct {
 	Use       *StageUse      `hcl:"use,block" json:"use"`
 
 	Daemon *StageDaemon `hcl:"daemon,block" json:"daemon"`
+	Retry  *StageRetry  `hcl:"retry,block" json:"retry"`
 
 	Name        string              `hcl:"name,optional" json:"name"`
 	Dir         hcl.Expression      `hcl:"dir,optional" json:"dir"`
@@ -48,5 +50,4 @@ type Stage struct {
 	Args        hcl.Expression      `hcl:"args,optional" json:"args"`
 	Container   *StageContainer     `hcl:"container,block" json:"container"`
 	Environment []*StageEnvironment `hcl:"env,block" json:"environment"`
-	Retry       *StageRetry         `hcl:"retry,block" json:"retry"`
 }
