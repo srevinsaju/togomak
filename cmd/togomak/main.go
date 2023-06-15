@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/mattn/go-isatty"
 	"github.com/srevinsaju/togomak/v1/pkg/cache"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
@@ -11,11 +12,19 @@ import (
 
 var verboseCount = 0
 
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
 func main() {
+	meta.AppVersion = version
 	app := cli.NewApp()
 	app.Name = meta.AppName
 	app.Description = meta.AppDescription
 	app.Action = run
+	app.Version = fmt.Sprintf("%s (%s, %s)", version, commit, date)
 
 	app.Commands = []*cli.Command{
 		{
