@@ -55,6 +55,21 @@ func main() {
 			Usage:   "path to the pipeline file",
 		},
 		&cli.BoolFlag{
+			Name:   "child",
+			Usage:  "run the pipeline as a child process (advanced)",
+			Hidden: true,
+		},
+		&cli.StringFlag{
+			Name:   "parent",
+			Usage:  "the parent process id (advanced)",
+			Hidden: true,
+		},
+		&cli.StringSliceFlag{
+			Name:   "parent-param",
+			Usage:  "parameter passed to child togomak process (advanced)",
+			Hidden: true,
+		},
+		&cli.BoolFlag{
 			Name:    "ci",
 			Aliases: []string{"unattended", "no-prompt", "no-interactive"},
 			Usage:   "do not prompt for responses, or wait for user responses. run in auto-pilot",
@@ -129,12 +144,18 @@ func newConfigFromCliContext(ctx *cli.Context) orchestra.Config {
 		stages = append(stages, orchestra.NewConfigPipelineStage(stage))
 	}
 	cfg := orchestra.Config{
-		Owd:        owd,
-		Dir:        dir,
+		Owd: owd,
+		Dir: dir,
+
+		Child:        ctx.Bool("child"),
+		Parent:       ctx.String("parent"),
+		ParentParams: ctx.StringSlice("parent-param"),
+
 		Unattended: ctx.Bool("ci"),
-		User:       os.Getenv("USER"),
-		Hostname:   hostname,
-		Verbosity:  verboseCount,
+
+		User:      os.Getenv("USER"),
+		Hostname:  hostname,
+		Verbosity: verboseCount,
 		Pipeline: orchestra.ConfigPipeline{
 			Stages:   stages,
 			FilePath: pipelineFilePath,

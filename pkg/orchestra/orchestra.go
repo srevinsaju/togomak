@@ -3,6 +3,7 @@ package orchestra
 import (
 	"context"
 	"fmt"
+	"github.com/alessio/shellescape"
 	"github.com/google/uuid"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/ext/tryfunc"
@@ -26,6 +27,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -33,7 +35,8 @@ import (
 func NewLogger(cfg Config) *logrus.Logger {
 	logger := logrus.New()
 	logger.SetFormatter(&logrus.TextFormatter{
-		FullTimestamp: false,
+		FullTimestamp:    false,
+		DisableTimestamp: cfg.Child,
 	})
 	switch cfg.Verbosity {
 	case -1:
@@ -47,6 +50,15 @@ func NewLogger(cfg Config) *logrus.Logger {
 	default:
 		logger.SetLevel(logrus.TraceLevel)
 		break
+	}
+	if cfg.Child {
+		logger.SetFormatter(&logrus.TextFormatter{
+			DisableTimestamp:          true,
+			DisableColors:             false,
+			EnvironmentOverrideColors: false,
+			ForceColors:               true,
+			ForceQuote:                false,
+		})
 	}
 	return logger
 }
@@ -69,7 +81,9 @@ func Chdir(cfg Config, logger *logrus.Logger) string {
 func Orchestra(cfg Config) {
 	// --> set up the logger
 	logger := NewLogger(cfg)
-	logger.Infof("%s (version=%s)", meta.AppName, meta.AppVersion)
+	if !cfg.Child {
+		logger.Infof("%s (version=%s)", meta.AppName, meta.AppVersion)
+	}
 
 	// --> set up the working directory
 	cwd := Chdir(cfg, logger)
@@ -109,6 +123,25 @@ func Orchestra(cfg Config) {
 			return
 		}
 	}()
+
+	// region: external parameters
+	paramsGo := make(map[string]cty.Value)
+	if cfg.Child {
+
+		m := make(map[string]string)
+		for _, e := range os.Environ() {
+			if i := strings.Index(e, "="); i >= 0 {
+				if strings.HasPrefix(e[:i], ci.TogomakParamEnvVarPrefix) {
+					m[e[:i]] = e[i+1:]
+				}
+			}
+		}
+		for k, v := range m {
+			if ci.TogomakParamEnvVarRegex.MatchString(k) {
+				paramsGo[ci.TogomakParamEnvVarRegex.FindStringSubmatch(k)[1]] = cty.StringVal(v)
+			}
+		}
+	}
 
 	// --> set up HCL context
 	hclContext := &hcl.EvalContext{
@@ -260,6 +293,8 @@ func Orchestra(cfg Config) {
 				"tmpDir": cty.StringVal(tmpDir),
 			}),
 
+			"param": cty.ObjectVal(paramsGo),
+
 			"togomak": cty.ObjectVal(map[string]cty.Value{
 				"version":        cty.StringVal(meta.AppVersion),
 				"boot_time":      cty.StringVal(time.Now().Format(time.RFC3339)),
@@ -340,7 +375,24 @@ func Orchestra(cfg Config) {
 		oldStageName := stage.Name
 		oldStageDependsOn := stage.DependsOn
 
-		err = mergo.Merge(&stage, macro.Stage, mergo.WithOverride)
+		if macro.Source != "" {
+			executable, err := os.Executable()
+			if err != nil {
+				panic(err)
+			}
+			parent := shellescape.Quote(stage.Id)
+			stage.Args = hcl.StaticExpr(
+				cty.ListVal([]cty.Value{
+					cty.StringVal(executable),
+					cty.StringVal("--child"),
+					cty.StringVal("--dir"), cty.StringVal(cwd),
+					cty.StringVal("--file"), cty.StringVal(macro.Source),
+					cty.StringVal("--parent"), cty.StringVal(parent),
+				}), hcl.Range{Filename: "memory"})
+
+		} else {
+			err = mergo.Merge(&stage, macro.Stage, mergo.WithOverride)
+		}
 
 		if err != nil {
 			panic(err)
@@ -384,14 +436,15 @@ func Orchestra(cfg Config) {
 
 			runnable, diags = ci.Resolve(ctx, pipe, runnableId)
 			if diags.HasErrors() {
-				logger.Fatal(diags.Error())
+				diags.Fatal(logger.WriterLevel(logrus.ErrorLevel))
 				return
 			}
 			logger.Debugf("runnable %s is %T", runnableId, runnable)
 
 			ok, diags = runnable.CanRun(ctx)
 			if diags.HasErrors() {
-				logger.Fatal(diags.Error())
+				diags.Fatal(logger.WriterLevel(logrus.ErrorLevel))
+				return
 			}
 
 			// region: requested stages, whitelisting and blacklisting
@@ -437,7 +490,12 @@ func Orchestra(cfg Config) {
 			}
 			// endregion: requested stages, whitelisting and blacklisting
 
-			runnable.Prepare(ctx, !ok, overridden)
+			d := runnable.Prepare(ctx, !ok, overridden)
+			if d.HasErrors() {
+				diags.Fatal(logger.WriterLevel(logrus.ErrorLevel))
+				return
+			}
+
 			if !ok {
 				logger.Debugf("skipping runnable %s, condition evaluated to false", runnableId)
 				continue

@@ -9,11 +9,11 @@ import (
 const MacroBlock = "macro"
 const ParamBlock = "param"
 
-func (m Macro) Description() string {
+func (m *Macro) Description() string {
 	return ""
 }
 
-func (m Macro) Identifier() string {
+func (m *Macro) Identifier() string {
 	return m.Id
 }
 
@@ -26,23 +26,23 @@ func (m Macros) ById(id string) (*Macro, error) {
 	return nil, fmt.Errorf("data block with id %s not found", id)
 }
 
-func (m Macro) Type() string {
+func (m *Macro) Type() string {
 	return MacroBlock
 }
 
-func (m Macro) Variables() []hcl.Traversal {
+func (m *Macro) Variables() []hcl.Traversal {
 	var traversal []hcl.Traversal
 	return traversal
 }
 
-func (m Macro) IsDaemon() bool {
+func (m *Macro) IsDaemon() bool {
 	return false
 }
 
-func (m Macro) Terminate() diag.Diagnostics {
+func (m *Macro) Terminate() diag.Diagnostics {
 	return nil
 }
 
-func (m Macro) Kill() diag.Diagnostics {
+func (m *Macro) Kill() diag.Diagnostics {
 	return nil
 }

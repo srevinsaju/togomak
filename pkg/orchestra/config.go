@@ -75,7 +75,10 @@ type Config struct {
 	Owd string
 	Dir string
 
-	Unattended bool
+	Unattended   bool
+	Child        bool
+	Parent       string
+	ParentParams []string
 
 	User     string
 	Hostname string

@@ -1,21 +1,21 @@
 package ci
 
-func (m Macro) CanRetry() bool {
+func (m *Macro) CanRetry() bool {
 	return false
 }
 
-func (m Macro) MaxRetries() int {
+func (m *Macro) MaxRetries() int {
 	return 0
 }
 
-func (m Macro) MinRetryBackoff() int {
+func (m *Macro) MinRetryBackoff() int {
 	return 0
 }
-func (m Macro) MaxRetryBackoff() int {
+func (m *Macro) MaxRetryBackoff() int {
 	return 0
 }
 
-func (m Macro) RetryExponentialBackoff() bool {
+func (m *Macro) RetryExponentialBackoff() bool {
 	return false
 
 }

@@ -23,7 +23,7 @@ type Runnable interface {
 	CanRetry() bool
 
 	// Prepare is called before the runnable is run
-	Prepare(ctx context.Context, skip bool, overridden bool)
+	Prepare(ctx context.Context, skip bool, overridden bool) diag.Diagnostics
 
 	// MaxRetries returns the maximum number of retries that is valid for
 	// this runnable

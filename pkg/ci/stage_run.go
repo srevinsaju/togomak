@@ -11,9 +11,15 @@ import (
 	"github.com/zclconf/go-cty/cty"
 	"os"
 	"os/exec"
+	"regexp"
 )
 
-func (s *Stage) Prepare(ctx context.Context, skip bool, overridden bool) {
+const TogomakParamEnvVarPrefix = "TOGOMAK__param__"
+
+var TogomakParamEnvVarRegexExpression = fmt.Sprintf("%s([a-zA-Z0-9_]+)", TogomakParamEnvVarPrefix)
+var TogomakParamEnvVarRegex = regexp.MustCompile(TogomakParamEnvVarRegexExpression)
+
+func (s *Stage) Prepare(ctx context.Context, skip bool, overridden bool) diag.Diagnostics {
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger)
 	// show some user-friendly output on the details of the stage about to be run
 
@@ -27,6 +33,7 @@ func (s *Stage) Prepare(ctx context.Context, skip bool, overridden bool) {
 		id = fmt.Sprintf("%s %s", id, ui.Bold("(overriden)"))
 	}
 	logger.Infof("[%s] %s", ui.Plus, id)
+	return nil
 }
 
 func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
@@ -44,12 +51,20 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 	if s.Use != nil && s.Use.Parameters != nil {
 		parameters, d := s.Use.Parameters.Value(evalCtx)
 		hclDiags = hclDiags.Extend(d)
-
-		for k, v := range parameters.AsValueMap() {
-			paramsGo[k] = v
+		if !parameters.IsNull() {
+			for k, v := range parameters.AsValueMap() {
+				paramsGo[k] = v
+			}
 		}
 	}
 
+	oldParam, ok := evalCtx.Variables["param"]
+	if ok {
+		oldParamMap := oldParam.AsValueMap()
+		for k, v := range oldParamMap {
+			paramsGo[k] = v
+		}
+	}
 	evalCtx = evalCtx.NewChild()
 	evalCtx.Variables = map[string]cty.Value{
 		"this": cty.ObjectVal(map[string]cty.Value{
@@ -103,13 +118,27 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 
 		envStrings = append(envStrings, envParsed)
 	}
+	if s.Use != nil && s.Use.Parameters != nil {
+		for k, v := range paramsGo {
+			envParsed := fmt.Sprintf("%s%s=%s", TogomakParamEnvVarPrefix, k, v.AsString())
+			if isDryRun {
+				fmt.Println(ui.Blue("export"), envParsed)
+			}
+
+			envStrings = append(envStrings, envParsed)
+		}
+	}
 
 	runArgs := make([]string, 0)
 	runCommand := "sh"
 	if script.Type() == cty.String {
 		runArgs = append(runArgs, "-c", script.AsString())
 	} else if args.Type() == cty.List(cty.String) {
-		for _, a := range args.AsValueSlice() {
+		runCommand = args.AsValueSlice()[0].AsString()
+		for i, a := range args.AsValueSlice() {
+			if i == 0 {
+				continue
+			}
 			runArgs = append(runArgs, a.AsString())
 		}
 	} else {
@@ -121,7 +150,6 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 		return diags
 	}
 	logger.Tracef("container=%s", container)
-
 	cmd := exec.CommandContext(ctx, runCommand, runArgs...)
 	cmd.Stdout = logger.Writer()
 	cmd.Stderr = logger.WriterLevel(logrus.WarnLevel)
@@ -162,9 +190,10 @@ func (s *Stage) CanRun(ctx context.Context) (bool, diag.Diagnostics) {
 	if s.Use != nil && s.Use.Parameters != nil {
 		parameters, d := s.Use.Parameters.Value(evalCtx)
 		hclDiags = hclDiags.Extend(d)
-
-		for k, v := range parameters.AsValueMap() {
-			paramsGo[k] = v
+		if !parameters.IsNull() {
+			for k, v := range parameters.AsValueMap() {
+				paramsGo[k] = v
+			}
 		}
 	}
 
