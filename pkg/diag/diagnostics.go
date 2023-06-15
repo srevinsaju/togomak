@@ -78,11 +78,11 @@ func (d Diagnostics) HasWarnings() bool {
 }
 
 func NewNotImplementedError(source string) Diagnostic {
-	return NewError(source, "not implemented")
+	return NewError(source, "Runtime Error", "not implemented")
 }
 
-func NewError(source, message string) Diagnostic {
-	return NewDiagnostic(SeverityError, message, "", source)
+func NewError(source, summary, message string) Diagnostic {
+	return NewDiagnostic(SeverityError, summary, message, source)
 }
 
 func (d Diagnostics) NewHclWriteDiagnosticsError(source string, err error) Diagnostics {
@@ -120,5 +120,6 @@ func (d Diagnostics) Write(writer io.Writer) {
 
 func (d Diagnostics) Fatal(writer io.Writer) {
 	d.Write(writer)
+	writer.Write([]byte("\n"))
 	os.Exit(1)
 }

@@ -17,5 +17,4 @@ func (m *Macro) MaxRetryBackoff() int {
 
 func (m *Macro) RetryExponentialBackoff() bool {
 	return false
-
 }

@@ -330,6 +330,14 @@ func Orchestra(cfg Config) {
 		logger.Fatal(err)
 	}
 
+	/// we will first expand all local blocks
+	locals, d := pipe.Locals.Expand()
+	if d.HasErrors() {
+		d.Fatal(logger.WriterLevel(logrus.ErrorLevel))
+	}
+	pipe.Local = locals
+
+	// expand stages using macros
 	for stageIdx, stage := range pipe.Stages {
 
 		if stage.Use == nil {
@@ -414,6 +422,7 @@ func Orchestra(cfg Config) {
 	var depGraph *depgraph.Graph
 	depGraph, diags = graph.TopoSort(ctx, pipe)
 	if diags.HasErrors() {
+
 		diags.Fatal(logger.WriterLevel(logrus.ErrorLevel))
 	}
 

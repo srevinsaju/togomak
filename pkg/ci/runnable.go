@@ -76,6 +76,7 @@ func (r Runnables) Run(ctx context.Context) diag.Diagnostics {
 }
 
 func Resolve(ctx context.Context, pipe *Pipeline, id string) (Runnable, diag.Diagnostics) {
+	summaryErr := "Resolution failed"
 	var diags diag.Diagnostics
 	blocks := strings.Split(id, ".")
 	if len(blocks) != 2 && len(blocks) != 3 {
@@ -97,21 +98,30 @@ func Resolve(ctx context.Context, pipe *Pipeline, id string) (Runnable, diag.Dia
 	case StageBlock:
 		stage, err := pipe.Stages.ById(blocks[1])
 		if err != nil {
-			diags = diags.Append(diag.NewError("resolve", err.Error()))
+			diags = diags.Append(diag.NewError("resolve", summaryErr, err.Error()))
 		}
 		return stage, diags
 	case DataBlock:
 		data, err := pipe.Data.ById(blocks[1], blocks[2])
 		if err != nil {
-			diags = diags.Append(diag.NewError("resolve", err.Error()))
+			diags = diags.Append(diag.NewError("resolve", summaryErr, err.Error()))
 		}
 		return data, diags
 	case MacroBlock:
 		macro, err := pipe.Macros.ById(blocks[1])
 		if err != nil {
-			diags = diags.Append(diag.NewError("resolve", err.Error()))
+			diags = diags.Append(diag.NewError("resolve", summaryErr, err.Error()))
 		}
 		return macro, diags
+	case LocalBlock:
+		local, err := pipe.Local.ById(blocks[1])
+		if err != nil {
+			diags = diags.Append(diag.NewError("resolve", summaryErr, err.Error()))
+		}
+		return local, diags
+	case LocalsBlock:
+		panic("locals block cannot be resolved")
+
 	case ThisBlock:
 		return nil, nil
 	case ParamBlock:

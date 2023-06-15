@@ -23,7 +23,7 @@ func (m Macros) ById(id string) (*Macro, error) {
 			return &macro, nil
 		}
 	}
-	return nil, fmt.Errorf("data block with id %s not found", id)
+	return nil, fmt.Errorf("macro block with id %s not found", id)
 }
 
 func (m *Macro) Type() string {
