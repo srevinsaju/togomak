@@ -84,7 +84,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="features/introduction.html"><strong aria-hidden="true">2.</strong> Features</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="features/concurrency.html"><strong aria-hidden="true">2.1.</strong> Concurrency</a></li><li class="chapter-item expanded "><a href="features/dependency.html"><strong aria-hidden="true">2.2.</strong> Dependency Resolution</a></li><li class="chapter-item expanded "><a href="features/interpolation.html"><strong aria-hidden="true">2.3.</strong> Interpolation</a></li><li class="chapter-item expanded "><a href="features/macros.html"><strong aria-hidden="true">2.4.</strong> Reusable Stages</a></li><li class="chapter-item expanded "><a href="features/daemonizing.html"><strong aria-hidden="true">2.5.</strong> Daemonizing</a></li></ol></li><li class="chapter-item expanded "><a href="cli/introduction.html"><strong aria-hidden="true">3.</strong> Command Line Interface</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="cli/usage.html"><strong aria-hidden="true">3.1.</strong> Usage</a></li></ol></li><li class="chapter-item expanded "><a href="configuration/introduction.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="configuration/togomak.html"><strong aria-hidden="true">4.1.</strong> Togomak</a></li><li class="chapter-item expanded "><a href="configuration/stage.html"><strong aria-hidden="true">4.2.</strong> Stage</a></li><li class="chapter-item expanded "><a href="configuration/data.html"><strong aria-hidden="true">4.3.</strong> Data</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="configuration/data_env.html"><strong aria-hidden="true">4.3.1.</strong> data.env</a></li><li class="chapter-item expanded "><a href="configuration/data_prompt.html"><strong aria-hidden="true">4.3.2.</strong> data.prompt</a></li><li class="chapter-item expanded "><a href="configuration/data_file.html"><strong aria-hidden="true">4.3.3.</strong> data.file</a></li></ol></li><li class="chapter-item expanded "><a href="configuration/macro.html"><strong aria-hidden="true">4.4.</strong> Macro</a></li></ol></li><li class="chapter-item expanded "><a href="contrib/plugins/introduction.html"><strong aria-hidden="true">5.</strong> Plugins</a></li><li class="chapter-item expanded "><a href="contributing.html"><strong aria-hidden="true">6.</strong> Contributing</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="features/introduction.html"><strong aria-hidden="true">2.</strong> Features</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="features/concurrency.html"><strong aria-hidden="true">2.1.</strong> Concurrency</a></li><li class="chapter-item expanded "><a href="features/dependency.html"><strong aria-hidden="true">2.2.</strong> Dependency Resolution</a></li><li class="chapter-item expanded "><a href="features/interpolation.html"><strong aria-hidden="true">2.3.</strong> Interpolation</a></li><li class="chapter-item expanded "><a href="features/macros.html"><strong aria-hidden="true">2.4.</strong> Reusable Stages</a></li><li class="chapter-item expanded "><a href="features/daemonizing.html"><strong aria-hidden="true">2.5.</strong> Daemonizing</a></li></ol></li><li class="chapter-item expanded "><a href="cli/introduction.html"><strong aria-hidden="true">3.</strong> Command Line Interface</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="cli/usage.html"><strong aria-hidden="true">3.1.</strong> Usage</a></li></ol></li><li class="chapter-item expanded "><a href="configuration/introduction.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="configuration/togomak.html"><strong aria-hidden="true">4.1.</strong> Togomak</a></li><li class="chapter-item expanded "><a href="configuration/stage.html"><strong aria-hidden="true">4.2.</strong> Stage</a></li><li class="chapter-item expanded "><a href="configuration/locals.html"><strong aria-hidden="true">4.3.</strong> Locals</a></li><li class="chapter-item expanded "><a href="configuration/data.html"><strong aria-hidden="true">4.4.</strong> Data</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="configuration/data_env.html"><strong aria-hidden="true">4.4.1.</strong> data.env</a></li><li class="chapter-item expanded "><a href="configuration/data_prompt.html"><strong aria-hidden="true">4.4.2.</strong> data.prompt</a></li><li class="chapter-item expanded "><a href="configuration/data_file.html"><strong aria-hidden="true">4.4.3.</strong> data.file</a></li></ol></li><li class="chapter-item expanded "><a href="configuration/macro.html"><strong aria-hidden="true">4.5.</strong> Macro</a></li></ol></li><li class="chapter-item expanded "><a href="contrib/plugins/introduction.html"><strong aria-hidden="true">5.</strong> Plugins</a></li><li class="chapter-item expanded "><a href="contributing.html"><strong aria-hidden="true">6.</strong> Contributing</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -584,6 +584,7 @@ The <code>container</code> block supports:</p>
 <li><a href="configuration/stage.html#enabled"><code>enabled</code></a> - Whether the stage should be run as a daemon, defaults to <code>false</code></li>
 <li><a href="configuration/stage.html#timeout"><code>timeout</code></a> - Time to wait until the stage is terminated, in seconds. Defaults to 0 (no timeout).</li>
 </ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="locals"><a class="header" href="#locals">Locals</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="data"><a class="header" href="#data">Data</a></h1>
 <p>The <code>data</code> block allows fetching static data from different sources known 
 as <code>data_providers</code>. Common providers include examples like environment variables,
@@ -659,6 +660,52 @@ TTY is absent, or if any other UI provider is missing. (optional)</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="datafile"><a class="header" href="#datafile">data.file</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="macro"><a class="header" href="#macro">Macro</a></h1>
+<p>Macros are reusable stages. If you would like to reuse the same stage multiple times 
+in the same pipeline, with optionally different parameters, <code>macros</code> are the right 
+thing for you.</p>
+<h3 id="example-usage"><a class="header" href="#example-usage">Example usage</a></h3>
+<pre><code class="language-tf">togomak {
+  version = 1
+}
+
+macro &quot;explode&quot; {
+    stage &quot;explode&quot; {
+        script = &quot;echo This is an exploding stage! BOOM! ${param.item}&quot;
+    }
+}
+
+
+stage &quot;explode_party_poppers&quot; {
+    use {
+        macro = macro.explode 
+        parameters = {
+            item = &quot;Party! 🎉&quot;
+        }
+    }
+}
+
+stage &quot;explode_water_balloon&quot; {
+    use { 
+        macro = macro.explode 
+        parameters = {
+            item = &quot;Balloon! 🎈&quot;
+        }
+    }
+}
+
+
+</code></pre>
+<h2 id="argument-reference-1"><a class="header" href="#argument-reference-1">Argument reference</a></h2>
+<ul>
+<li><a href="configuration/macro.html#stage"><code>stage</code></a> - The stage that will be reused, optional. Structure <a href="configuration/macro.html#stage">documented below</a></li>
+<li><a href="configuration/macro.html#source"><code>source</code></a> - Path to a different togomak file, which will be recursively invoked.</li>
+</ul>
+<hr />
+<p><a href="configuration/stage"></a>
+The <code>stage</code> block supports:</p>
+<ul>
+<li>All features under the <a href="configuration/../stage.html"><code>stage</code></a>, except <code>id</code>, <code>name</code>, <code>description</code></li>
+</ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="plugins"><a class="header" href="#plugins">Plugins</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="contributing"><a class="header" href="#contributing">Contributing</a></h1>
 <p>Contributions are welcome, and encouraged. 
