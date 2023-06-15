@@ -15,6 +15,7 @@
 - [Configuration](./configuration/introduction.md)
     - [Togomak](./configuration/togomak.md)
     - [Stage](./configuration/stage.md)
+    - [Locals](./configuration/locals.md)
     - [Data](./configuration/data.md)
         - [`data.env`](./configuration/data_env.md)
         - [`data.prompt`](./configuration/data_prompt.md)
