@@ -1,6 +1,9 @@
 package ci
 
-import "github.com/hashicorp/hcl/v2"
+import (
+	"github.com/hashicorp/hcl/v2"
+	"os/exec"
+)
 
 const StageBlock = "stage"
 
@@ -50,4 +53,6 @@ type Stage struct {
 	Args        hcl.Expression      `hcl:"args,optional" json:"args"`
 	Container   *StageContainer     `hcl:"container,block" json:"container"`
 	Environment []*StageEnvironment `hcl:"env,block" json:"environment"`
+
+	process *exec.Cmd
 }

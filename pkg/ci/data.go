@@ -2,6 +2,7 @@ package ci
 
 import (
 	"fmt"
+	"github.com/srevinsaju/togomak/v1/pkg/diag"
 )
 
 const DataBlock = "data"
@@ -29,4 +30,12 @@ func (d Data) Type() string {
 
 func (d Data) IsDaemon() bool {
 	return false
+}
+
+func (d Data) Terminate() diag.Diagnostics {
+	return nil
+}
+
+func (d Data) Kill() diag.Diagnostics {
+	return nil
 }

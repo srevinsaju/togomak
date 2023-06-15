@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/mattn/go-isatty"
 	"github.com/srevinsaju/togomak/v1/pkg/cache"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/orchestra"
@@ -52,6 +53,13 @@ func main() {
 			Name:    "file",
 			Aliases: []string{"f"},
 			Usage:   "path to the pipeline file",
+		},
+		&cli.BoolFlag{
+			Name:    "ci",
+			Aliases: []string{"unattended", "no-prompt", "no-interactive"},
+			Usage:   "do not prompt for responses, or wait for user responses. run in auto-pilot",
+			EnvVars: []string{"CI", "TOGOMAK_CI", "TOGOMAK_UNATTENDED"},
+			Value:   !isatty.IsTerminal(os.Stdin.Fd()),
 		},
 		&cli.StringFlag{
 			Name:    "dir",
@@ -121,11 +129,12 @@ func newConfigFromCliContext(ctx *cli.Context) orchestra.Config {
 		stages = append(stages, orchestra.NewConfigPipelineStage(stage))
 	}
 	cfg := orchestra.Config{
-		Owd:       owd,
-		Dir:       dir,
-		User:      os.Getenv("USER"),
-		Hostname:  hostname,
-		Verbosity: verboseCount,
+		Owd:        owd,
+		Dir:        dir,
+		Unattended: ctx.Bool("ci"),
+		User:       os.Getenv("USER"),
+		Hostname:   hostname,
+		Verbosity:  verboseCount,
 		Pipeline: orchestra.ConfigPipeline{
 			Stages:   stages,
 			FilePath: pipelineFilePath,

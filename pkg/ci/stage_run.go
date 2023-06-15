@@ -13,7 +13,7 @@ import (
 	"os/exec"
 )
 
-func (s Stage) Prepare(ctx context.Context, skip bool, overridden bool) {
+func (s *Stage) Prepare(ctx context.Context, skip bool, overridden bool) {
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger)
 	// show some user-friendly output on the details of the stage about to be run
 
@@ -29,7 +29,7 @@ func (s Stage) Prepare(ctx context.Context, skip bool, overridden bool) {
 	logger.Infof("[%s] %s", ui.Plus, id)
 }
 
-func (s Stage) Run(ctx context.Context) diag.Diagnostics {
+func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 	hclDgWriter := ctx.Value(c.TogomakContextHclDiagWriter).(hcl.DiagnosticWriter)
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField(StageBlock, s.Id)
 	logger.Debugf("running %s.%s", StageBlock, s.Id)
@@ -126,6 +126,7 @@ func (s Stage) Run(ctx context.Context) diag.Diagnostics {
 	cmd.Stdout = logger.Writer()
 	cmd.Stderr = logger.WriterLevel(logrus.WarnLevel)
 	cmd.Env = append(envStrings, os.Environ()...)
+	s.process = cmd
 
 	logger.Trace("running command:", cmd.String())
 
@@ -148,7 +149,7 @@ func (s Stage) Run(ctx context.Context) diag.Diagnostics {
 	return nil
 }
 
-func (s Stage) CanRun(ctx context.Context) (bool, diag.Diagnostics) {
+func (s *Stage) CanRun(ctx context.Context) (bool, diag.Diagnostics) {
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField("stage", s.Id)
 	logger.Debugf("checking if stage.%s can run", s.Id)
 

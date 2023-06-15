@@ -104,7 +104,7 @@ func (d Diagnostics) NewHclWriteDiagnosticsError(source string, err error) Diagn
 	return diags
 }
 
-func (d Diagnostics) Fatal(writer io.Writer) {
+func (d Diagnostics) Write(writer io.Writer) {
 	for i, diag := range d {
 		_, err := fmt.Fprintf(writer, "%s: %s\n\t%s\n\tsource: %s\n\n",
 			ui.Red(fmt.Sprintf("diagnostic %d", i+1)),
@@ -116,6 +116,9 @@ func (d Diagnostics) Fatal(writer io.Writer) {
 			panic(err)
 		}
 	}
-	os.Exit(1)
+}
 
+func (d Diagnostics) Fatal(writer io.Writer) {
+	d.Write(writer)
+	os.Exit(1)
 }

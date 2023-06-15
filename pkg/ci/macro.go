@@ -3,6 +3,7 @@ package ci
 import (
 	"fmt"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/srevinsaju/togomak/v1/pkg/diag"
 )
 
 const MacroBlock = "macro"
@@ -36,4 +37,12 @@ func (m Macro) Variables() []hcl.Traversal {
 
 func (m Macro) IsDaemon() bool {
 	return false
+}
+
+func (m Macro) Terminate() diag.Diagnostics {
+	return nil
+}
+
+func (m Macro) Kill() diag.Diagnostics {
+	return nil
 }

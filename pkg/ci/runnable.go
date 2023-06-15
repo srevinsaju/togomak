@@ -42,6 +42,9 @@ type Runnable interface {
 	Variables() []hcl.Traversal
 
 	Type() string
+
+	Terminate() diag.Diagnostics
+	Kill() diag.Diagnostics
 }
 
 type Runnables []Runnable

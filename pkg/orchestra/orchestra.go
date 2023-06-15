@@ -371,6 +371,7 @@ func Orchestra(cfg Config) {
 	var diagsMutex sync.Mutex
 	var wg sync.WaitGroup
 	var daemonWg sync.WaitGroup
+	var hasDaemons bool
 
 	for _, layer := range depGraph.TopoSortedLayers() {
 		for _, runnableId := range layer {
@@ -443,6 +444,7 @@ func Orchestra(cfg Config) {
 			}
 
 			if runnable.IsDaemon() {
+				hasDaemons = true
 				daemonWg.Add(1)
 			} else {
 				wg.Add(1)
@@ -512,7 +514,18 @@ func Orchestra(cfg Config) {
 		wg.Wait()
 
 		if diags.HasErrors() {
-			diags.Fatal(logger.WriterLevel(logrus.ErrorLevel))
+			diags.Write(logger.WriterLevel(logrus.ErrorLevel))
+			if hasDaemons && !cfg.Pipeline.DryRun && !cfg.Unattended {
+				logger.Info("pipeline failed, waiting for daemons to shut down")
+				logger.Info("hit Ctrl+C to force stop them")
+				// wait for daemons to stop
+				daemonWg.Wait()
+			} else if hasDaemons && !cfg.Pipeline.DryRun {
+				logger.Info("pipeline failed, waiting for daemons to shut down...")
+				// wait for daemons to stop
+				cancel()
+			}
+
 		}
 
 	}

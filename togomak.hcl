@@ -22,6 +22,6 @@ stage "docs_serve" {
   daemon {
     enabled = true
   }
-  if = false 
+  if = false
   script = "cd docs && mdbook serve"
 }

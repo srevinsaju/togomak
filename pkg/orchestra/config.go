@@ -75,6 +75,8 @@ type Config struct {
 	Owd string
 	Dir string
 
+	Unattended bool
+
 	User     string
 	Hostname string
 

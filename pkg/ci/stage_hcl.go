@@ -8,7 +8,7 @@ func (e *StageEnvironment) Variables() []hcl.Traversal {
 	return traversal
 }
 
-func (s Stage) Variables() []hcl.Traversal {
+func (s *Stage) Variables() []hcl.Traversal {
 	var traversal []hcl.Traversal
 	traversal = append(traversal, s.DependsOn.Variables()...)
 	traversal = append(traversal, s.ForEach.Variables()...)
