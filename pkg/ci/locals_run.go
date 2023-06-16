@@ -7,6 +7,7 @@ import (
 	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/diag"
 	"github.com/zclconf/go-cty/cty"
+	"sync"
 )
 
 func (l *Local) Run(ctx context.Context) diag.Diagnostics {
@@ -15,11 +16,13 @@ func (l *Local) Run(ctx context.Context) diag.Diagnostics {
 	logger.Debugf("running %s.%s", LocalBlock, l.Key)
 	hclContext := ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
 	hcDiagWriter := ctx.Value(c.TogomakContextHclDiagWriter).(hcl.DiagnosticWriter)
+	muLocals := ctx.Value(c.TogomakContextMutexLocals).(*sync.Mutex)
 	var hcDiags hcl.Diagnostics
 	var diags diag.Diagnostics
 
 	// region: mutating the data map
 	// TODO: move it to a dedicated helper function
+	muLocals.Lock()
 	locals := hclContext.Variables[LocalBlock]
 	var localMutated map[string]cty.Value
 	if locals.IsNull() {
@@ -31,6 +34,7 @@ func (l *Local) Run(ctx context.Context) diag.Diagnostics {
 	hcDiags = hcDiags.Extend(d)
 	localMutated[l.Key] = v
 	hclContext.Variables[LocalBlock] = cty.ObjectVal(localMutated)
+	muLocals.Unlock()
 	// endregion
 
 	if hcDiags.HasErrors() {

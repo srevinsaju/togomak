@@ -9,6 +9,7 @@ import (
 	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/diag"
 	"github.com/zclconf/go-cty/cty"
+	"sync"
 )
 
 func (d Data) Prepare(ctx context.Context, skip bool, overridden bool) diag.Diagnostics {
@@ -21,25 +22,13 @@ func (d Data) Run(ctx context.Context) diag.Diagnostics {
 	logger.Debugf("running %s.%s.%s", DataBlock, d.Provider, d.Id)
 	hclContext := ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
 	hcDiagWriter := ctx.Value(c.TogomakContextHclDiagWriter).(hcl.DiagnosticWriter)
+	muData := ctx.Value(c.TogomakContextMutexData).(*sync.Mutex)
 	var hcDiags hcl.Diagnostics
 	var diags diag.Diagnostics
 
 	// region: mutating the data map
 	// TODO: move it to a dedicated helper function
-	data := hclContext.Variables["data"]
-	var dataMutated map[string]cty.Value
-	if data.IsNull() {
-		dataMutated = make(map[string]cty.Value)
-	} else {
-		dataMutated = data.AsValueMap()
-	}
-	provider := dataMutated[d.Provider]
-	var providerMutated map[string]cty.Value
-	if provider.IsNull() {
-		providerMutated = make(map[string]cty.Value)
-	} else {
-		providerMutated = provider.AsValueMap()
-	}
+
 	// -> update r.Value accordingly
 	var validProvider bool
 	var value string
@@ -68,9 +57,26 @@ func (d Data) Run(ctx context.Context) diag.Diagnostics {
 	for k, v := range attr {
 		m[k] = v
 	}
+
+	muData.Lock()
+	data := hclContext.Variables[DataBlock]
+	var dataMutated map[string]cty.Value
+	if data.IsNull() {
+		dataMutated = make(map[string]cty.Value)
+	} else {
+		dataMutated = data.AsValueMap()
+	}
+	provider := dataMutated[d.Provider]
+	var providerMutated map[string]cty.Value
+	if provider.IsNull() {
+		providerMutated = make(map[string]cty.Value)
+	} else {
+		providerMutated = provider.AsValueMap()
+	}
 	providerMutated[d.Id] = cty.ObjectVal(m)
 	dataMutated[d.Provider] = cty.ObjectVal(providerMutated)
-	hclContext.Variables["data"] = cty.ObjectVal(dataMutated)
+	hclContext.Variables[DataBlock] = cty.ObjectVal(dataMutated)
+	muData.Unlock()
 	// endregion
 
 	if hcDiags.HasErrors() {
