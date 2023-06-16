@@ -3,5 +3,5 @@ togomak {
 }
 
 stage "echo" {
-  script = "echo hello ${param.target}"
+  script = "echo Begin the synchronization! ${param.target} engage! 🚀"
 }

@@ -14,12 +14,15 @@ stage "hello_phase" {
   use {
     macro = macro.hello
     parameters = {
-      target = "world"
+      target = "eva-01"
     }
   }
 }
 
 stage "bye_phase" {
+  depends_on = [
+    stage.hello_phase
+  ]
   use {
     macro = macro.bye
     parameters = {

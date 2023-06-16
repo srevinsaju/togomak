@@ -3,10 +3,11 @@ togomak {
 }
 
 locals {
-  target = "from togomak"
+  nerv_headquarters = "Tokyo-3"
+  pilot_name = "Shinji"
 }
 
-stage "example" {
-  name   = "example"
-  script = "echo hello ${local.target}"
+stage "eva01_synchronization" {
+  name   = "Eva-01 Synchronization Tests"
+  script = "echo ${local.pilot_name} is now running synchronization tests at ${local.nerv_headquarters}"
 }

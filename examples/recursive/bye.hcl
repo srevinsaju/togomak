@@ -3,5 +3,5 @@ togomak {
 }
 
 stage "echo" {
-  script = "echo bye ${param.target}"
+  script = "echo Farewell, ${param.target}. Until we meet again in instrumetality!"
 }

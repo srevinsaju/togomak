@@ -2,20 +2,20 @@ togomak {
   version = 1
 }
 
-data "git" "repo" {
+data "git" "eva01_source" {
   url = "https://github.com/srevinsaju/togomak"
   depth = 1
   files = ["togomak.hcl"]
 }
 
-macro "togomak" {
-  files = data.git.repo.files 
+macro "gendo_brain" {
+  files = data.git.eva01_source.files 
 }
 
-stage "example" {
-  name   = "example"
+stage "build_eva01" {
+  name   = "Building eva unit"
   use {
-    macro = macro.togomak
+    macro = macro.gendo_brain
   }
 
 }

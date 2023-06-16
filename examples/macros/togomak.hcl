@@ -4,25 +4,34 @@ togomak {
 
 macro "explode" {
     stage "explode" {
-        script = "echo This is an exploding stage! BOOM! ${param.item}"
+        script = <<-EOT
+        for i in $(seq 1 10); do
+          sleep 0.1
+          echo "${param.eva}: Loading $i..."
+        done
+
+        echo "${param.eva}: entry plug connected! pilot ${param.pilot} synchronized! 🤖"
+        EOT
     }
 }
 
 
-stage "explode_party_poppers" {
+stage "entry_plug_eva01" {
     use {
         macro = macro.explode 
         parameters = {
-            item = "Party! 🎉"
+            pilot = "Shinji Ikari 🙅‍♂️"
+            eva = "01"
         }
     }
 }
 
-stage "explode_water_balloon" {
+stage "entry_plug_eva02" {
     use { 
         macro = macro.explode 
         parameters = {
-            item = "Balloon! 🎈"
+            pilot = "Asuka Langley Soryu 🙅‍♀️"
+            eva = "02"
         }
     }
 }
