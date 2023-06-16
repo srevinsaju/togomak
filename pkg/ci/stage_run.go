@@ -3,7 +3,9 @@ package ci
 import (
 	"context"
 	"fmt"
+	"github.com/alessio/shellescape"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/imdario/mergo"
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/diag"
@@ -11,6 +13,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 )
 
@@ -36,6 +39,168 @@ func (s *Stage) Prepare(ctx context.Context, skip bool, overridden bool) diag.Di
 	return nil
 }
 
+func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
+
+	if s.Use == nil {
+		// this stage does not use a macro
+		return s, nil
+	}
+	hclContext := ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
+	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField(StageBlock, s.Id).WithField(MacroBlock, true)
+	pipe := ctx.Value(c.TogomakContextPipeline).(*Pipeline)
+	cwd := ctx.Value(c.TogomakContextCwd).(string)
+	tmpDir := ctx.Value(c.TogomakContextTempDir).(string)
+	logger.Debugf("running %s.%s.%s", StageBlock, s.Id, MacroBlock)
+
+	var hclDiags hcl.Diagnostics
+	var err error
+
+	v := s.Use.Macro.Variables()
+	if v == nil || len(v) == 0 {
+		// this stage does not use a macro
+		return s, hclDiags
+	}
+
+	if len(v) != 1 {
+		hclDiags = hclDiags.Append(&hcl.Diagnostic{
+			Severity:    hcl.DiagError,
+			Summary:     "invalid macro",
+			Detail:      fmt.Sprintf("%s can only use a single macro", s.Identifier()),
+			EvalContext: hclContext,
+			Subject:     v[0].SourceRange().Ptr(),
+		})
+		return s, hclDiags
+	}
+	variable := v[0]
+	if variable.RootName() != MacroBlock {
+		hclDiags = hclDiags.Append(&hcl.Diagnostic{
+			Severity:    hcl.DiagError,
+			Summary:     "invalid macro",
+			Detail:      fmt.Sprintf("%s uses an invalid macro, got '%s'", s.Identifier(), variable.RootName()),
+			EvalContext: hclContext,
+			Subject:     v[0].SourceRange().Ptr(),
+		})
+		return s, hclDiags
+	}
+
+	macroName := variable[1].(hcl.TraverseAttr).Name
+	logger.Debugf("stage.%s uses macro.%s", s.Id, macroName)
+	macroRunnable, d := Resolve(ctx, pipe, fmt.Sprintf("macro.%s", macroName))
+	if d.HasErrors() {
+		d.Fatal(logger.WriterLevel(logrus.ErrorLevel))
+	}
+	macro := macroRunnable.(*Macro)
+
+	oldStageId := s.Id
+	oldStageName := s.Name
+	oldStageDependsOn := s.DependsOn
+
+	if macro.Source != "" {
+		executable, err := os.Executable()
+		if err != nil {
+			panic(err)
+		}
+		parent := shellescape.Quote(s.Id)
+		s.Args = hcl.StaticExpr(
+			cty.ListVal([]cty.Value{
+				cty.StringVal(executable),
+				cty.StringVal("--child"),
+				cty.StringVal("--dir"), cty.StringVal(cwd),
+				cty.StringVal("--file"), cty.StringVal(macro.Source),
+				cty.StringVal("--parent"), cty.StringVal(parent),
+			}), hcl.Range{Filename: "memory"})
+
+	} else if macro.Stage != nil {
+		logger.Debugf("merging %s with %s", s.Identifier(), macro.Identifier())
+		err = mergo.Merge(s, macro.Stage, mergo.WithOverride)
+
+	} else {
+		f, d := macro.Files.Value(hclContext)
+		if d.HasErrors() {
+			return s, hclDiags.Extend(d)
+		}
+		if !f.IsNull() {
+			files := f.AsValueMap()
+			logger.Debugf("using %d files from %s", len(files), macro.Identifier())
+			err = os.MkdirAll(filepath.Join(tmpDir, s.Id), 0755)
+			if err != nil {
+				return s, hclDiags.Append(&hcl.Diagnostic{
+					Severity:    hcl.DiagError,
+					Summary:     "failed to create temporary directory",
+					Detail:      fmt.Sprintf("failed to create temporary directory for stage %s", s.Id),
+					Subject:     variable.SourceRange().Ptr(),
+					EvalContext: hclContext,
+				})
+			}
+
+			defaultExecutionPath := ""
+			lastExecutionPath := ""
+
+			for fName, fContent := range files {
+				lastExecutionPath = filepath.Join(tmpDir, s.Id, fName)
+				if filepath.Base(fName) == "togomak.hcl" {
+					defaultExecutionPath = filepath.Join(tmpDir, s.Id, fName)
+				}
+				// write the file content to the temporary directory
+				// and then add it to the stage
+				fpath := filepath.Join(tmpDir, s.Id, fName)
+				logger.Debugf("writing %s to %s", fName, fpath)
+				err = os.WriteFile(fpath, []byte(fContent.AsString()), 0644)
+				if err != nil {
+					// TODO: move to diagnostics
+					return s, hclDiags.Append(&hcl.Diagnostic{
+						Severity:    hcl.DiagError,
+						Summary:     "invalid macro",
+						Detail:      fmt.Sprintf("%s uses a macro with an invalid file %s", s.Identifier(), fName),
+						EvalContext: hclContext,
+						Subject:     variable.SourceRange().Ptr(),
+					})
+				}
+			}
+			if defaultExecutionPath == "" {
+				if len(files) == 1 {
+					defaultExecutionPath = lastExecutionPath
+				}
+			}
+			if defaultExecutionPath == "" {
+				hclDiags = hclDiags.Append(&hcl.Diagnostic{
+					Severity:    hcl.DiagError,
+					Summary:     "invalid macro",
+					Detail:      fmt.Sprintf("%s uses a macro without a default execution file. include a file named togomak.hcl to avoid this error", s.Identifier()),
+					EvalContext: hclContext,
+					Subject:     variable.SourceRange().Ptr(),
+				})
+				return s, hclDiags
+			}
+
+			executable, err := os.Executable()
+			if err != nil {
+				panic(err)
+			}
+			parent := shellescape.Quote(s.Id)
+			s.Args = hcl.StaticExpr(
+				cty.ListVal([]cty.Value{
+					cty.StringVal(executable),
+					cty.StringVal("--child"),
+					cty.StringVal("--dir"), cty.StringVal(cwd),
+					cty.StringVal("--file"), cty.StringVal(defaultExecutionPath),
+					cty.StringVal("--parent"), cty.StringVal(parent),
+				}), hcl.Range{Filename: "memory"})
+
+		}
+	}
+
+	if err != nil {
+		panic(err)
+	}
+	s.Id = oldStageId
+	s.Name = oldStageName
+	s.DependsOn = oldStageDependsOn
+
+	return s, nil
+
+}
+
 func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 	hclDgWriter := ctx.Value(c.TogomakContextHclDiagWriter).(hcl.DiagnosticWriter)
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField(StageBlock, s.Id)
@@ -46,6 +211,10 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 	var hclDiags hcl.Diagnostics
 	var err error
 	evalCtx := ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
+
+	// expand stages using macros
+	s, d := s.expandMacros(ctx)
+	hclDiags = hclDiags.Extend(d)
 
 	paramsGo := map[string]cty.Value{}
 	if s.Use != nil && s.Use.Parameters != nil {

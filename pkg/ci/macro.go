@@ -32,6 +32,8 @@ func (m *Macro) Type() string {
 
 func (m *Macro) Variables() []hcl.Traversal {
 	var traversal []hcl.Traversal
+
+	traversal = append(traversal, m.Files.Variables()...)
 	return traversal
 }
 

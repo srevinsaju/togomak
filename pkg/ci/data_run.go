@@ -43,13 +43,15 @@ func (d Data) Run(ctx context.Context) diag.Diagnostics {
 	// -> update r.Value accordingly
 	var validProvider bool
 	var value string
+	var attr map[string]cty.Value
 	for _, pr := range dataBlock.DefaultProviders {
 		if pr.Name() == d.Provider {
 			validProvider = true
 			provide := pr.New()
 			provide.SetContext(ctx)
 			diags = diags.Extend(provide.DecodeBody(d.Body))
-			value = provide.Value()
+			value = provide.Value(ctx)
+			attr = provide.Attributes(ctx)
 			break
 		}
 	}
@@ -61,10 +63,12 @@ func (d Data) Run(ctx context.Context) diag.Diagnostics {
 		})
 		return diags
 	}
-
-	providerMutated[d.Id] = cty.ObjectVal(map[string]cty.Value{
-		"value": cty.StringVal(value),
-	})
+	m := make(map[string]cty.Value)
+	m["value"] = cty.StringVal(value)
+	for k, v := range attr {
+		m[k] = v
+	}
+	providerMutated[d.Id] = cty.ObjectVal(m)
 	dataMutated[d.Provider] = cty.ObjectVal(providerMutated)
 	hclContext.Variables["data"] = cty.ObjectVal(dataMutated)
 	// endregion

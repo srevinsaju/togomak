@@ -94,11 +94,18 @@ func (e *PromptProvider) Schema() *hcl.BodySchema {
 	}
 }
 
+func (e *PromptProvider) Attributes(ctx context.Context) map[string]cty.Value {
+	return map[string]cty.Value{
+		"prompt":  cty.StringVal(e.promptParsed),
+		"default": cty.StringVal(e.def),
+	}
+}
+
 func (e *PromptProvider) Initialized() bool {
 	return e.initialized
 }
 
-func (e *PromptProvider) Value() string {
+func (e *PromptProvider) Value(ctx context.Context) string {
 	if !e.initialized {
 		panic("provider not initialized")
 	}

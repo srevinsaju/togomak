@@ -6,6 +6,7 @@ var DefaultProviders = Providers{
 	&EnvProvider{},
 	&PromptProvider{},
 	// FileProvider{},
+	&GitProvider{},
 }
 
 type Providers []Provider

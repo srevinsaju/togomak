@@ -2,13 +2,10 @@ package orchestra
 
 import (
 	"context"
-	"fmt"
-	"github.com/alessio/shellescape"
 	"github.com/google/uuid"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/ext/tryfunc"
 	"github.com/hashicorp/hcl/v2/hclparse"
-	"github.com/imdario/mergo"
 	"github.com/kendru/darwin/go/depgraph"
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
@@ -99,6 +96,7 @@ func Orchestra(cfg Config) {
 	x.Must(err)
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
+	ctx = context.WithValue(ctx, c.TogomakContextTempDir, tmpDir)
 	ctx = context.WithValue(ctx, c.TogomakContextLogger, logger)
 	ctx = context.WithValue(ctx, c.TogomakContextBootTime, time.Now())
 	ctx = context.WithValue(ctx, c.TogomakContextPipelineId, pipelineId)
@@ -337,81 +335,8 @@ func Orchestra(cfg Config) {
 	}
 	pipe.Local = locals
 
-	// expand stages using macros
-	for stageIdx, stage := range pipe.Stages {
-
-		if stage.Use == nil {
-			// this stage does not use a macro
-			continue
-		}
-		v := stage.Use.Macro.Variables()
-		if v == nil || len(v) == 0 {
-			// this stage does not use a macro
-			continue
-		}
-		if len(v) != 1 {
-			hclDiags = hclDiags.Append(&hcl.Diagnostic{
-				Severity:    hcl.DiagError,
-				Summary:     "invalid macro",
-				Detail:      fmt.Sprintf("%s can only use a single macro", stage.Identifier()),
-				EvalContext: hclContext,
-				Subject:     v[0].SourceRange().Ptr(),
-			})
-			logger.Fatal(dgwriter.WriteDiagnostics(hclDiags))
-		}
-		variable := v[0]
-		if variable.RootName() != ci.MacroBlock {
-			hclDiags = hclDiags.Append(&hcl.Diagnostic{
-				Severity:    hcl.DiagError,
-				Summary:     "invalid macro",
-				Detail:      fmt.Sprintf("%s uses an invalid macro", stage.Identifier()),
-				EvalContext: hclContext,
-				Subject:     v[0].SourceRange().Ptr(),
-			})
-			logger.Fatal(dgwriter.WriteDiagnostics(hclDiags))
-		}
-
-		macroName := variable[1].(hcl.TraverseAttr).Name
-		logger.Debugf("stage.%s uses macro.%s", stage.Id, macroName)
-		macroRunnable, d := ci.Resolve(ctx, pipe, fmt.Sprintf("macro.%s", macroName))
-		if d.HasErrors() {
-			d.Fatal(logger.WriterLevel(logrus.ErrorLevel))
-		}
-		macro := macroRunnable.(*ci.Macro)
-
-		oldStageId := stage.Id
-		oldStageName := stage.Name
-		oldStageDependsOn := stage.DependsOn
-
-		if macro.Source != "" {
-			executable, err := os.Executable()
-			if err != nil {
-				panic(err)
-			}
-			parent := shellescape.Quote(stage.Id)
-			stage.Args = hcl.StaticExpr(
-				cty.ListVal([]cty.Value{
-					cty.StringVal(executable),
-					cty.StringVal("--child"),
-					cty.StringVal("--dir"), cty.StringVal(cwd),
-					cty.StringVal("--file"), cty.StringVal(macro.Source),
-					cty.StringVal("--parent"), cty.StringVal(parent),
-				}), hcl.Range{Filename: "memory"})
-
-		} else {
-			err = mergo.Merge(&stage, macro.Stage, mergo.WithOverride)
-		}
-
-		if err != nil {
-			panic(err)
-		}
-		stage := stage
-		stage.Id = oldStageId
-		stage.Name = oldStageName
-		stage.DependsOn = oldStageDependsOn
-
-		pipe.Stages[stageIdx] = stage
-	}
+	// store the pipe in the context
+	ctx = context.WithValue(ctx, c.TogomakContextPipeline, pipe)
 
 	// --> validate the pipeline
 	// TODO: validate the pipeline

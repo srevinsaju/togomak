@@ -8,6 +8,10 @@ import (
 func (d Data) Variables() []hcl.Traversal {
 	var traversal []hcl.Traversal
 	provider := dataBlock.DefaultProviders.Get(d.Provider)
+	// TODO: this will panic, if the provider is not found
+	if provider == nil {
+		panic("provider not found")
+	}
 	provide := provider.New()
 	traversal = append(traversal, dataBlock.Variables(provide, d.Body)...)
 	return traversal

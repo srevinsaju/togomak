@@ -45,6 +45,13 @@ func (e *EnvProvider) New() Provider {
 	}
 }
 
+func (e *EnvProvider) Attributes(ctx context.Context) map[string]cty.Value {
+	return map[string]cty.Value{
+		"key":     cty.StringVal(e.keyParsed),
+		"default": cty.StringVal(e.def),
+	}
+}
+
 func (e *EnvProvider) Url() string {
 	return "embedded::togomak.srev.in/providers/data/env"
 }
@@ -101,7 +108,7 @@ func (e *EnvProvider) DecodeBody(body hcl.Body) diag.Diagnostics {
 
 }
 
-func (e *EnvProvider) Value() string {
+func (e *EnvProvider) Value(ctx context.Context) string {
 	if !e.initialized {
 		panic("provider not initialized")
 	}
@@ -110,5 +117,4 @@ func (e *EnvProvider) Value() string {
 		return v
 	}
 	return e.def
-
 }

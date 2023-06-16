@@ -15,14 +15,13 @@ func (s *Stage) Variables() []hcl.Traversal {
 	traversal = append(traversal, s.Script.Variables()...)
 	traversal = append(traversal, s.Args.Variables()...)
 
-	// we leave out the "use" attribute since we will evaluate it separately
+	if s.Use != nil {
+		traversal = append(traversal, s.Use.Macro.Variables()...)
+		traversal = append(traversal, s.Use.Parameters.Variables()...)
+	}
 
 	for _, env := range s.Environment {
 		traversal = append(traversal, env.Variables()...)
-	}
-
-	if s.Use != nil && s.Use.Parameters != nil {
-		traversal = append(traversal, s.Use.Parameters.Variables()...)
 	}
 	return traversal
 }
