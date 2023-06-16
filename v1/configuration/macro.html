@@ -148,7 +148,16 @@
 <p>Macros are reusable stages. If you would like to reuse the same stage multiple times 
 in the same pipeline, with optionally different parameters, <code>macros</code> are the right 
 thing for you.</p>
-<h3 id="example-usage"><a class="header" href="#example-usage">Example usage</a></h3>
+<p>You may use <code>macro</code> in three ways:</p>
+<ul>
+<li><strong>Inline stages</strong> (<code>stage</code> block): The stage is defined in the macro block, and re-used multiple times</li>
+<li><strong>External files</strong> (<code>source</code> argument): Path to an external single pipeline located on the filesystem, which will
+be passed to an internal togomak child process, which will independently run the single file as a separate stage. 
+See <a href="../features/macros.html">Reusable Stages section</a> for more information.</li>
+<li><strong>Pipeline content</strong> (<code>files</code> argument): A map containing files inline, which will be used by togomak, to create 
+another child process which will run the contents of the file, as an independant stage. </li>
+</ul>
+<h3 id="example-usage-inline-stages"><a class="header" href="#example-usage-inline-stages">Example usage (Inline stages)</a></h3>
 <pre><code class="language-tf">togomak {
   version = 1
 }
@@ -193,6 +202,7 @@ stage &quot;entry_plug_eva02&quot; {
 <ul>
 <li><a href="#stage"><code>stage</code></a> - The stage that will be reused, optional. Structure <a href="#stage">documented below</a></li>
 <li><a href="#source"><code>source</code></a> - Path to a different togomak file, which will be recursively invoked.</li>
+<li><a href="#files"><code>files</code></a> - a map containing key value pairs of file paths to file content. Map <a href="#files">documented below</a></li>
 </ul>
 <hr />
 <p><a href="stage"></a>
@@ -200,6 +210,23 @@ The <code>stage</code> block supports:</p>
 <ul>
 <li>All features under the <a href="../stage.html"><code>stage</code></a>, except <code>id</code>, <code>name</code>, <code>description</code></li>
 </ul>
+<hr />
+<p><a href="files"></a>
+The <code>files</code> is a map, which accepts data in the format of key-value pairs, where the &quot;key&quot; is the path to the file 
+and the &quot;value&quot; is the content of the file. </p>
+<p>For example,</p>
+<pre><code class="language-hcl">files = {
+    &quot;togomak.hcl&quot; = &lt;&lt;-EOT
+    togomak {
+        version = 1
+    }
+    stage &quot;hello&quot; {
+        script = &quot;echo hello world&quot;
+    }
+    EOT,
+    ...
+}
+</code></pre>
 
                     </main>
 
