@@ -265,25 +265,34 @@ in multiple stages later. Let's see how:</p>
 
 macro &quot;explode&quot; {
     stage &quot;explode&quot; {
-        script = &quot;echo This is an exploding stage! BOOM! ${param.item}&quot;
+        script = &lt;&lt;-EOT
+        for i in $(seq 1 10); do
+          sleep 0.1
+          echo &quot;${param.eva}: Loading $i...&quot;
+        done
+
+        echo &quot;${param.eva}: entry plug connected! pilot ${param.pilot} synchronized! 🤖&quot;
+        EOT
     }
 }
 
 
-stage &quot;explode_party_poppers&quot; {
+stage &quot;entry_plug_eva01&quot; {
     use {
         macro = macro.explode 
         parameters = {
-            item = &quot;Party! 🎉&quot;
+            pilot = &quot;Shinji Ikari 🙅‍♂️&quot;
+            eva = &quot;01&quot;
         }
     }
 }
 
-stage &quot;explode_water_balloon&quot; {
+stage &quot;entry_plug_eva02&quot; {
     use { 
         macro = macro.explode 
         parameters = {
-            item = &quot;Balloon! 🎈&quot;
+            pilot = &quot;Asuka Langley Soryu 🙅‍♀️&quot;
+            eva = &quot;02&quot;
         }
     }
 }
@@ -585,6 +594,33 @@ The <code>container</code> block supports:</p>
 <li><a href="configuration/stage.html#timeout"><code>timeout</code></a> - Time to wait until the stage is terminated, in seconds. Defaults to 0 (no timeout).</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="locals"><a class="header" href="#locals">Locals</a></h1>
+<p>If you plan to use a specific variable several times in your pipeline, you may use 
+a <code>locals {}</code> block. </p>
+<p>A simple usage may be shown below</p>
+<pre><code class="language-hcl">locals {
+    var1 = 1
+    var2 = &quot;hello&quot;
+    var3 = {
+        apple = 2
+        orange = 3
+    }
+}
+</code></pre>
+<p>When referring to them in stages, use <code>local.&lt;variable_name&gt;</code>, for example:</p>
+<pre><code class="language-hcl">togomak {
+  version = 1
+}
+
+locals {
+  nerv_headquarters = &quot;Tokyo-3&quot;
+  pilot_name = &quot;Shinji&quot;
+}
+
+stage &quot;eva01_synchronization&quot; {
+  name   = &quot;Eva-01 Synchronization Tests&quot;
+  script = &quot;echo ${local.pilot_name} is now running synchronization tests at ${local.nerv_headquarters}&quot;
+}
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="data"><a class="header" href="#data">Data</a></h1>
 <p>The <code>data</code> block allows fetching static data from different sources known 
 as <code>data_providers</code>. Common providers include examples like environment variables,
@@ -670,25 +706,34 @@ thing for you.</p>
 
 macro &quot;explode&quot; {
     stage &quot;explode&quot; {
-        script = &quot;echo This is an exploding stage! BOOM! ${param.item}&quot;
+        script = &lt;&lt;-EOT
+        for i in $(seq 1 10); do
+          sleep 0.1
+          echo &quot;${param.eva}: Loading $i...&quot;
+        done
+
+        echo &quot;${param.eva}: entry plug connected! pilot ${param.pilot} synchronized! 🤖&quot;
+        EOT
     }
 }
 
 
-stage &quot;explode_party_poppers&quot; {
+stage &quot;entry_plug_eva01&quot; {
     use {
         macro = macro.explode 
         parameters = {
-            item = &quot;Party! 🎉&quot;
+            pilot = &quot;Shinji Ikari 🙅‍♂️&quot;
+            eva = &quot;01&quot;
         }
     }
 }
 
-stage &quot;explode_water_balloon&quot; {
+stage &quot;entry_plug_eva02&quot; {
     use { 
         macro = macro.explode 
         parameters = {
-            item = &quot;Balloon! 🎈&quot;
+            pilot = &quot;Asuka Langley Soryu 🙅‍♀️&quot;
+            eva = &quot;02&quot;
         }
     }
 }

@@ -145,6 +145,33 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="locals"><a class="header" href="#locals">Locals</a></h1>
+<p>If you plan to use a specific variable several times in your pipeline, you may use 
+a <code>locals {}</code> block. </p>
+<p>A simple usage may be shown below</p>
+<pre><code class="language-hcl">locals {
+    var1 = 1
+    var2 = &quot;hello&quot;
+    var3 = {
+        apple = 2
+        orange = 3
+    }
+}
+</code></pre>
+<p>When referring to them in stages, use <code>local.&lt;variable_name&gt;</code>, for example:</p>
+<pre><code class="language-hcl">togomak {
+  version = 1
+}
+
+locals {
+  nerv_headquarters = &quot;Tokyo-3&quot;
+  pilot_name = &quot;Shinji&quot;
+}
+
+stage &quot;eva01_synchronization&quot; {
+  name   = &quot;Eva-01 Synchronization Tests&quot;
+  script = &quot;echo ${local.pilot_name} is now running synchronization tests at ${local.nerv_headquarters}&quot;
+}
+</code></pre>
 
                     </main>
 
