@@ -76,6 +76,7 @@ type Config struct {
 	Dir string
 
 	Unattended   bool
+	Ci           bool
 	Child        bool
 	Parent       string
 	ParentParams []string

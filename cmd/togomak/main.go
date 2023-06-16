@@ -79,11 +79,17 @@ func main() {
 			Hidden: true,
 		},
 		&cli.BoolFlag{
-			Name:    "ci",
-			Aliases: []string{"unattended", "no-prompt", "no-interactive"},
+			Name:    "unattended",
+			Aliases: []string{"no-prompt", "no-interactive"},
 			Usage:   "do not prompt for responses, or wait for user responses. run in auto-pilot",
-			EnvVars: []string{"CI", "TOGOMAK_CI", "TOGOMAK_UNATTENDED"},
+			EnvVars: []string{"TOGOMAK_UNATTENDED"},
 			Value:   !isatty.IsTerminal(os.Stdin.Fd()),
+		},
+		&cli.BoolFlag{
+			Name:    "ci",
+			Usage:   "run in CI mode",
+			EnvVars: []string{"CI", "TOGOMAK_CI"},
+			Value:   false,
 		},
 		&cli.StringFlag{
 			Name:    "dir",
@@ -160,7 +166,8 @@ func newConfigFromCliContext(ctx *cli.Context) orchestra.Config {
 		Parent:       ctx.String("parent"),
 		ParentParams: ctx.StringSlice("parent-param"),
 
-		Unattended: ctx.Bool("ci"),
+		Ci:         ctx.Bool("ci"),
+		Unattended: ctx.Bool("unattended") || ctx.Bool("ci"),
 
 		User:      os.Getenv("USER"),
 		Hostname:  hostname,

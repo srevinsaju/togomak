@@ -303,6 +303,8 @@ func Orchestra(cfg Config) {
 				"boot_time":      cty.StringVal(time.Now().Format(time.RFC3339)),
 				"boot_time_unix": cty.NumberIntVal(time.Now().Unix()),
 				"pipeline_id":    cty.StringVal(pipelineId),
+				"ci":             cty.BoolVal(cfg.Ci),
+				"unattended":     cty.BoolVal(cfg.Unattended),
 			}),
 		},
 	}
