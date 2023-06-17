@@ -84,7 +84,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="features/introduction.html"><strong aria-hidden="true">2.</strong> Features</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="features/concurrency.html"><strong aria-hidden="true">2.1.</strong> Concurrency</a></li><li class="chapter-item expanded "><a href="features/dependency.html"><strong aria-hidden="true">2.2.</strong> Dependency Resolution</a></li><li class="chapter-item expanded "><a href="features/interpolation.html"><strong aria-hidden="true">2.3.</strong> Interpolation</a></li><li class="chapter-item expanded "><a href="features/macros.html"><strong aria-hidden="true">2.4.</strong> Reusable Stages</a></li><li class="chapter-item expanded "><a href="features/daemonizing.html"><strong aria-hidden="true">2.5.</strong> Daemonizing</a></li></ol></li><li class="chapter-item expanded "><a href="cli/introduction.html"><strong aria-hidden="true">3.</strong> Command Line Interface</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="cli/usage.html"><strong aria-hidden="true">3.1.</strong> Usage</a></li></ol></li><li class="chapter-item expanded "><a href="configuration/introduction.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="configuration/togomak.html"><strong aria-hidden="true">4.1.</strong> Togomak</a></li><li class="chapter-item expanded "><a href="configuration/stage.html"><strong aria-hidden="true">4.2.</strong> Stage</a></li><li class="chapter-item expanded "><a href="configuration/locals.html"><strong aria-hidden="true">4.3.</strong> Locals</a></li><li class="chapter-item expanded "><a href="configuration/data.html"><strong aria-hidden="true">4.4.</strong> Data</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="configuration/data_env.html"><strong aria-hidden="true">4.4.1.</strong> data.env</a></li><li class="chapter-item expanded "><a href="configuration/data_prompt.html"><strong aria-hidden="true">4.4.2.</strong> data.prompt</a></li><li class="chapter-item expanded "><a href="configuration/data_file.html"><strong aria-hidden="true">4.4.3.</strong> data.file</a></li></ol></li><li class="chapter-item expanded "><a href="configuration/macro.html"><strong aria-hidden="true">4.5.</strong> Macro</a></li></ol></li><li class="chapter-item expanded "><a href="contrib/plugins/introduction.html"><strong aria-hidden="true">5.</strong> Plugins</a></li><li class="chapter-item expanded "><a href="contributing.html"><strong aria-hidden="true">6.</strong> Contributing</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="features/introduction.html"><strong aria-hidden="true">2.</strong> Features</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="features/concurrency.html"><strong aria-hidden="true">2.1.</strong> Concurrency</a></li><li class="chapter-item expanded "><a href="features/dependency.html"><strong aria-hidden="true">2.2.</strong> Dependency Resolution</a></li><li class="chapter-item expanded "><a href="features/interpolation.html"><strong aria-hidden="true">2.3.</strong> Interpolation</a></li><li class="chapter-item expanded "><a href="features/macros.html"><strong aria-hidden="true">2.4.</strong> Reusable Stages</a></li><li class="chapter-item expanded "><a href="features/daemonizing.html"><strong aria-hidden="true">2.5.</strong> Daemonizing</a></li><li class="chapter-item expanded "><a href="features/docker.html"><strong aria-hidden="true">2.6.</strong> Container Support</a></li></ol></li><li class="chapter-item expanded "><a href="cli/introduction.html"><strong aria-hidden="true">3.</strong> Command Line Interface</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="cli/usage.html"><strong aria-hidden="true">3.1.</strong> Usage</a></li></ol></li><li class="chapter-item expanded "><a href="configuration/introduction.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="configuration/togomak.html"><strong aria-hidden="true">4.1.</strong> Togomak</a></li><li class="chapter-item expanded "><a href="configuration/stage.html"><strong aria-hidden="true">4.2.</strong> Stage</a></li><li class="chapter-item expanded "><a href="configuration/locals.html"><strong aria-hidden="true">4.3.</strong> Locals</a></li><li class="chapter-item expanded "><a href="configuration/data.html"><strong aria-hidden="true">4.4.</strong> Data</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="configuration/data_env.html"><strong aria-hidden="true">4.4.1.</strong> data.env</a></li><li class="chapter-item expanded "><a href="configuration/data_prompt.html"><strong aria-hidden="true">4.4.2.</strong> data.prompt</a></li><li class="chapter-item expanded "><a href="configuration/data_file.html"><strong aria-hidden="true">4.4.3.</strong> data.file</a></li></ol></li><li class="chapter-item expanded "><a href="configuration/macro.html"><strong aria-hidden="true">4.5.</strong> Macro</a></li></ol></li><li class="chapter-item expanded "><a href="contrib/plugins/introduction.html"><strong aria-hidden="true">5.</strong> Plugins</a></li><li class="chapter-item expanded "><a href="contributing.html"><strong aria-hidden="true">6.</strong> Contributing</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -300,12 +300,94 @@ stage &quot;entry_plug_eva02&quot; {
 
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="daemonizing"><a class="header" href="#daemonizing">Daemonizing</a></h1>
+<p>Sometimes, you might want to run a stage in the background, for example, 
+an HTTP API server, and continue with multiple integrations tests on 
+the same HTTP API server. In another scenario, you might just want 
+two live reloading servers for two frontends running in parallel.
+Or, maybe you just need a <code>postgres</code> database docker container running.
+In these cases, <code>togomak</code> takes care of all the process management 
+required for handling these daemon-like long-running process.</p>
+<p>Here is a sample use case, directly from <code>togomak</code>'s <code>togomak.hcl</code></p>
+<pre><code class="language-hcl">togomak {
+  version = 1
+}
+
+
+stage &quot;fmt&quot; {
+  script = &quot;go fmt github.com/srevinsaju/togomak/v1/...&quot;
+}
+stage &quot;vet&quot; {
+  script = &quot;go vet github.com/srevinsaju/togomak/v1/...&quot;
+}
+stage &quot;build&quot; {
+  depends_on = [stage.fmt, stage.vet]
+  script = &quot;go build -v -o ./cmd/togomak/togomak github.com/srevinsaju/togomak/v1/cmd/togomak&quot;
+}
+stage &quot;install&quot; {
+  depends_on = [stage.build]
+  script = &quot;go install github.com/srevinsaju/togomak/v1/cmd/togomak&quot;
+}
+
+stage &quot;docs_serve&quot; {
+  daemon {
+    enabled = true
+  }
+  if = false
+  script = &quot;cd docs &amp;&amp; mdbook serve&quot;
+}
+</code></pre>
+<p>In the above togomak configuration file, the <code>mdbook</code> generator, which 
+is used for writing this documentation is allowed to run as a daemon 
+process. Similarly, it is possible to have multiple processes running 
+as well.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="container-support"><a class="header" href="#container-support">Container Support</a></h1>
+<blockquote>
+<p><code>podman</code> execution engine is not supported. <code>togomak</code> uses the <code>docker/client</code> SDK
+to directly interact with the running docker daemon. </p>
+</blockquote>
+<p>Togomak has integrated docker container support, a sample usage would be as follows:</p>
+<pre><code class="language-hcl">togomak {
+  version = 1
+}
+
+stage &quot;example&quot; {
+  container {
+    image = &quot;ubuntu&quot;
+  }
+  script = &lt;&lt;-EOT
+  #!/usr/bin/env bash
+  apt update &amp;&amp; apt install -y neofetch
+  neofetch
+  EOT
+}
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="command-line-interface"><a class="header" href="#command-line-interface">Command Line Interface</a></h1>
 <ul>
 <li><a href="cli/./cli/usage.html">Usage</a></li>
-<li><a href="cli/./cli/options.html">Options</a></li>
-<li><a href="cli/./cli/examples.html">Examples</a></li>
 </ul>
+<p>Togomak, internally features three modes of execution:</p>
+<ul>
+<li><code>ci</code> (<code>--ci</code>)</li>
+<li><code>unattended</code> (<code>--unattended</code>)</li>
+<li>Normal execution</li>
+</ul>
+<p>In <code>unattended</code> mode, all prompts and interactive options will be disabled. 
+<code>ci</code> mode is same as unattended mode, but however, a separate variable will
+be defined in the pipeline <code>togomak.ci</code>, which can be used later to run 
+specific stages on CI, and only run certain stages on the user side. </p>
+<p>The <code>ci</code> mode is implicit on popular CICD providers like Jenkins, GitHub or 
+GitLab CI, etc. It requires one of the environment variables: <code>CI</code>, <code>TOGOMAK_CI</code>
+or the CLI flag <code>--ci</code> for it to be enabled.</p>
+<p>In the normal execution mode, prompts will pass through the pipeline execution, 
+and it will wait indefinitely until the user enters the value.
+Similarly, Interrupts will be enabled on the normal execution mode.</p>
+<p>On the first <code>Ctrl + C</code> recevied from the user in the normal execution mode, 
+it will send <code>SIGTERM</code> to child stages, or will stop the docker container, in the 
+case of docker container engines. The deadline in most cases would be 10 seconds.</p>
+<p>If a second <code>Ctrl + C</code> is received within the above deadline time, the child processes
+will be sent <code>SIGKILL</code> signal. In the case of docker containers, no action will be
+taken. This means that, it is possible that containers might be left dangling.
+Similarly, it is possible to have zombie processes.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="usage"><a class="header" href="#usage">Usage</a></h1>
 <h2 id="basic-usage"><a class="header" href="#basic-usage">Basic Usage</a></h2>
 <p>By default, <code>togomak</code> runs all stages 
@@ -422,7 +504,7 @@ the <code>build</code> stage will be terminated once the last
 dependent of the <code>build</code> stage completes.</p>
 <p>Under the hood, the <code>build</code> stage will receive
 a <code>SIGTERM</code> signal, and will be given a grace period
-of 30 seconds to complete. If the stage does not
+of 10 seconds to complete. If the stage does not
 terminate within the grace period, it will be
 forcefully killed (<code>SIGKILL</code>).</p>
 <p>The above feature is particularly useful for 
@@ -456,6 +538,7 @@ is required for any pipeline to be considered
 <li><a href="configuration/togomak.html#boot_time"><code>boot_time</code></a> - The time at which the Togomak runner executable was started</li>
 <li><a href="configuration/togomak.html#boot_time_unix"><code>boot_time_unix</code></a> - The time at which the Togomak runner executable was started, in unix format</li>
 <li><a href="configuration/togomak.html#pipeline_id"><code>pipeline_id</code></a> - The unique identifier for the pipeline run (uuid)</li>
+<li><a href="configuration/togomak.html#pipeline_id"><code>ci</code></a> - Returns <code>true</code> if togomak is running on a CI environment, like GitHub Actions or Jenkins, etc.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="stage"><a class="header" href="#stage">Stage</a></h1>
 <p>A <code>stage</code> is considered as an atomic runnable
@@ -529,6 +612,22 @@ stage &quot;install&quot; {
     min_backoff = 1
     max_backoff = 10
   }
+}
+</code></pre>
+<h2 id="stage-with-containers"><a class="header" href="#stage-with-containers">Stage with Containers</a></h2>
+<pre><code class="language-hcl">togomak {
+  version = 1
+}
+
+stage &quot;example&quot; {
+  container {
+    image = &quot;ubuntu&quot;
+  }
+  script = &lt;&lt;-EOT
+  #!/usr/bin/env bash
+  apt update &amp;&amp; apt install -y neofetch
+  neofetch
+  EOT
 }
 </code></pre>
 <h2 id="arguments-reference-1"><a class="header" href="#arguments-reference-1">Arguments Reference</a></h2>
