@@ -2,7 +2,6 @@ package orchestra
 
 import (
 	"context"
-	"fmt"
 	"github.com/google/uuid"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/ext/tryfunc"
@@ -59,7 +58,6 @@ func NewContextWithTogomak(cfg Config) (Togomak, context.Context) {
 	// --> set up the working directory
 	cwd := Chdir(cfg, logger)
 	x.Must(err)
-	fmt.Println(cwd)
 
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, c.TogomakContextTempDir, tmpDir)
@@ -253,7 +251,7 @@ func NewContextWithTogomak(cfg Config) (Togomak, context.Context) {
 		hclDiagWriter: diagnosticTextWriter,
 		parser:        parser,
 		ectx:          hclContext,
-		tempDir:       "",
+		tempDir:       tmpDir,
 	}
 
 	return t, ctx

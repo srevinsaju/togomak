@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/ci"
+	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"path/filepath"
 )
 
@@ -14,7 +15,7 @@ func Read(ctx context.Context, parser *hclparse.Parser) (*ci.Pipeline, hcl.Diagn
 
 	filePath := ctx.Value(c.TogomakContextPipelineFilePath).(string)
 	if filePath == "" {
-		filePath = "togomak.hcl"
+		filePath = meta.ConfigFileName
 	}
 	owd := ctx.Value(c.TogomakContextOwd).(string)
 

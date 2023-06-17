@@ -308,7 +308,6 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 			runArgs = append(runArgs, a.AsString())
 		}
 	} else if s.Container == nil {
-		fmt.Println(args.Type())
 		// if the container is not null, we may rely on internal args or entrypoint scripts
 		diags = diags.Append(diag.Diagnostic{
 			Severity: diag.SeverityError,
