@@ -4,6 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/alessio/shellescape"
+	"github.com/docker/docker/api/types"
+	dockerContainer "github.com/docker/docker/api/types/container"
+	dockerClient "github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/imdario/mergo"
 	"github.com/sirupsen/logrus"
@@ -11,6 +15,7 @@ import (
 	"github.com/srevinsaju/togomak/v1/pkg/diag"
 	"github.com/srevinsaju/togomak/v1/pkg/ui"
 	"github.com/zclconf/go-cty/cty"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -255,7 +260,6 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 		hclDiags = hclDiags.Extend(d)
 		environment[env.Name] = v
 	}
-	container := s.Container
 
 	if hclDiags.HasErrors() {
 		err := hclDgWriter.WriteDiagnostics(hclDiags)
@@ -287,6 +291,7 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 
 		envStrings = append(envStrings, envParsed)
 	}
+
 	if s.Use != nil && s.Use.Parameters != nil {
 		for k, v := range paramsGo {
 			envParsed := fmt.Sprintf("%s%s=%s", TogomakParamEnvVarPrefix, k, v.AsString())
@@ -300,6 +305,10 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 
 	runArgs := make([]string, 0)
 	runCommand := "sh"
+
+	// emptyCommands - specifies if both args and scripts were unset
+	emptyCommands := false
+
 	if script.Type() == cty.String {
 		runArgs = append(runArgs, "-c", script.AsString())
 	} else if args.Type() == cty.List(cty.String) {
@@ -310,40 +319,164 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 			}
 			runArgs = append(runArgs, a.AsString())
 		}
-	} else {
+	} else if s.Container == nil {
+		// if the container is not null, we may rely on internal args or entrypoint scripts
 		diags = diags.Append(diag.Diagnostic{
 			Severity: diag.SeverityError,
 			Summary:  "script or args must be a string",
 			Detail:   fmt.Sprintf("the provided script or args, was not recognized as a valid string. received script='''%s''', args='''%s'''", script, args),
 		})
 		return diags
+	} else {
+		emptyCommands = true
 	}
-	logger.Tracef("container=%s", container)
+
 	cmd := exec.CommandContext(ctx, runCommand, runArgs...)
 	cmd.Stdout = logger.Writer()
 	cmd.Stderr = logger.WriterLevel(logrus.WarnLevel)
 	cmd.Env = append(envStrings, os.Environ()...)
-	s.process = cmd
 
-	logger.Trace("running command:", cmd.String())
+	if s.Container == nil {
 
-	if !isDryRun {
-		err = cmd.Run()
+		s.process = cmd
+
+		logger.Trace("running command:", cmd.String())
+
+		if !isDryRun {
+			err = cmd.Run()
+		} else {
+			fmt.Println(cmd.String())
+		}
+
 	} else {
-		fmt.Println(cmd.String())
-	}
+		logger := logger.WithField("🐳", "")
+		cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
+		if err != nil {
+			panic(err)
+		}
+		defer cli.Close()
+		// check if image exists
+		logger.Debugf("checking if image %s exists", s.Container.Image)
+		_, _, err = cli.ImageInspectWithRaw(ctx, s.Container.Image)
+		if err != nil {
+			logger.Infof("image %s does not exist, pulling...", s.Container.Image)
+			reader, err := cli.ImagePull(ctx, s.Container.Image, types.ImagePullOptions{})
+			if err != nil {
+				panic(err)
+			}
 
+			pb := ui.NewProgressWriter(reader, logger.Writer(), fmt.Sprintf("pulling image %s", s.Container.Image))
+			defer pb.Close()
+			defer reader.Close()
+			io.Copy(pb, reader)
+
+		}
+
+		var containerArgs []string
+		if !emptyCommands {
+			containerArgs = cmd.Args
+		}
+		resp, err := cli.ContainerCreate(ctx, &dockerContainer.Config{
+			Image:        s.Container.Image,
+			Cmd:          containerArgs,
+			Tty:          true,
+			AttachStdout: true,
+			AttachStderr: true,
+			AttachStdin:  s.Container.Stdin,
+			OpenStdin:    s.Container.Stdin,
+			StdinOnce:    s.Container.Stdin,
+			Env:          envStrings,
+		}, nil, nil, nil, "")
+		if err != nil {
+			panic(err)
+		}
+
+		if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
+			panic(err)
+		}
+		s.ContainerId = resp.ID
+
+		statusCh, errCh := cli.ContainerWait(ctx, resp.ID, dockerContainer.WaitConditionNextExit)
+
+		go func() {
+			c, err := cli.ContainerInspect(ctx, resp.ID)
+			if err != nil {
+				panic(err)
+			}
+
+			responseBody, err := cli.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{
+				ShowStdout: true, ShowStderr: true,
+				Follow: true,
+			})
+			if err != nil {
+				diags = diags.Append(diag.Diagnostic{
+					Severity: diag.SeverityError,
+					Summary:  "failed to get container logs",
+					Detail:   err.Error(),
+				})
+				diags.Write(logger.WriterLevel(logrus.ErrorLevel))
+				return
+			}
+			defer responseBody.Close()
+
+			if c.Config.Tty {
+				_, err = io.Copy(os.Stdout, responseBody)
+			} else {
+				_, err = stdcopy.StdCopy(os.Stdout, os.Stderr, responseBody)
+			}
+			if err != nil && err != io.EOF {
+				if err == context.Canceled {
+					return
+				}
+				diags = diags.Append(diag.Diagnostic{
+					Severity: diag.SeverityError,
+					Summary:  "failed to copy container logs",
+					Detail:   err.Error(),
+				})
+			}
+		}()
+
+		select {
+		case err := <-errCh:
+			if err != nil {
+				if ctx.Err() == context.Canceled {
+					return diags
+				}
+				diags = diags.Append(diag.Diagnostic{
+					Severity: diag.SeverityError,
+					Summary:  "docker run exited",
+					Detail:   err.Error(),
+					Source:   dockerContainerSourceFmt(s.ContainerId),
+				})
+				return diags
+			}
+		case <-statusCh:
+		}
+
+		err = cli.ContainerRemove(ctx, resp.ID, types.ContainerRemoveOptions{
+			RemoveVolumes: true,
+		})
+		if err != nil {
+			diags = diags.Append(diag.Diagnostic{
+				Severity: diag.SeverityWarning,
+				Summary:  "failed to remove docker container",
+				Detail:   err.Error(),
+			})
+			return diags
+		}
+
+	}
 	if err != nil {
 		diags = diags.Append(diag.Diagnostic{
 			Severity: diag.SeverityError,
 			Summary:  "failed to run command",
 			Detail:   err.Error(),
-			Source:   fmt.Sprintf("stage.%s", s.Id),
+			Source:   s.Identifier(),
 		})
 		return diags
 	}
 
-	return nil
+	return diags
 }
 
 func (s *Stage) CanRun(ctx context.Context) (bool, diag.Diagnostics) {
@@ -401,4 +534,39 @@ func (s *Stage) CanRun(ctx context.Context) (bool, diag.Diagnostics) {
 	}
 
 	return true, diags
+}
+
+func dockerContainerSourceFmt(containerId string) string {
+	return fmt.Sprintf("docker: container=%s", containerId)
+}
+
+func (s *Stage) Terminate() diag.Diagnostics {
+	var diags diag.Diagnostics
+	if s.Container != nil && s.ContainerId != "" {
+		ctx := context.Background()
+
+		cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
+		if err != nil {
+			diags = diags.Append(diag.Diagnostic{
+				Severity: diag.SeverityError,
+				Summary:  "failed to create docker client",
+				Detail:   err.Error(),
+				Source:   dockerContainerSourceFmt(s.ContainerId),
+			})
+		}
+		err = cli.ContainerStop(ctx, s.ContainerId, dockerContainer.StopOptions{})
+		if err != nil {
+			diags = diags.Append(diag.Diagnostic{
+				Severity: diag.SeverityError,
+				Summary:  "failed to stop container",
+				Detail:   err.Error(),
+				Source:   dockerContainerSourceFmt(s.ContainerId),
+			})
+		}
+	}
+	return diags
+}
+
+func (s *Stage) Kill() diag.Diagnostics {
+	return nil
 }

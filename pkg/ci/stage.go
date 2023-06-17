@@ -2,7 +2,6 @@ package ci
 
 import (
 	"fmt"
-	"github.com/srevinsaju/togomak/v1/pkg/diag"
 )
 
 func (s *Stage) Description() string {
@@ -20,14 +19,6 @@ func (s *Stage) Type() string {
 
 func (s *Stage) IsDaemon() bool {
 	return s.Daemon != nil && s.Daemon.Enabled
-}
-
-func (s *Stage) Terminate() diag.Diagnostics {
-	return nil
-}
-
-func (s *Stage) Kill() diag.Diagnostics {
-	return nil
 }
 
 func (s Stages) ById(id string) (*Stage, error) {

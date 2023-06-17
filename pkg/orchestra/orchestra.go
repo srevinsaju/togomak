@@ -2,6 +2,7 @@ package orchestra
 
 import (
 	"context"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/ext/tryfunc"
@@ -15,6 +16,7 @@ import (
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/pipeline"
 	"github.com/srevinsaju/togomak/v1/pkg/third-party/hashicorp/terraform/lang/funcs"
+	"github.com/srevinsaju/togomak/v1/pkg/ui"
 	"github.com/srevinsaju/togomak/v1/pkg/x"
 	ctyyaml "github.com/zclconf/go-cty-yaml"
 	"github.com/zclconf/go-cty/cty"
@@ -31,6 +33,7 @@ import (
 
 func NewLogger(cfg Config) *logrus.Logger {
 	logger := logrus.New()
+	logger.SetOutput(os.Stdout)
 	logger.SetFormatter(&logrus.TextFormatter{
 		FullTimestamp:    false,
 		DisableTimestamp: cfg.Child,
@@ -43,7 +46,6 @@ func NewLogger(cfg Config) *logrus.Logger {
 	case 1:
 		logger.SetLevel(logrus.DebugLevel)
 		break
-	case 2:
 	default:
 		logger.SetLevel(logrus.TraceLevel)
 		break
@@ -112,20 +114,6 @@ func Orchestra(cfg Config) {
 	ctx = context.WithValue(ctx, c.TogomakContextMutexData, &sync.Mutex{})
 	ctx = context.WithValue(ctx, c.TogomakContextMutexLocals, &sync.Mutex{})
 	ctx = context.WithValue(ctx, c.TogomakContextMutexMacro, &sync.Mutex{})
-
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Interrupt)
-
-	go func() {
-		select {
-		case <-ch:
-			logger.Warn("received interrupt signal, cancelling the pipeline")
-			cancel()
-		case <-ctx.Done():
-			logger.Infof("took %s to complete the pipeline", time.Since(ctx.Value(c.TogomakContextBootTime).(time.Time)))
-			return
-		}
-	}()
 
 	// region: external parameters
 	paramsGo := make(map[string]cty.Value)
@@ -366,6 +354,56 @@ func Orchestra(cfg Config) {
 	var daemonWg sync.WaitGroup
 	var hasDaemons bool
 
+	// region: interrupt handler
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt)
+
+	var runnables []ci.Runnable
+
+	go func(ctx context.Context, cancel context.CancelFunc) {
+		select {
+		case <-ch:
+			var diags diag.Diagnostics
+			logger.Warn("received interrupt signal, cancelling the pipeline")
+			logger.Warn("stopping running operations...")
+			logger.Warn("press CTRL+C again to force quit")
+
+			ch := make(chan os.Signal, 1)
+			signal.Notify(ch, os.Interrupt)
+			go func() {
+				<-ch
+				logger.Warn("Two interrupts received. Exiting immediately.")
+				diags = diags.Append(diag.Diagnostic{
+					Severity: diag.SeverityError,
+					Summary:  "Force quit",
+					Detail:   "data loss may have occurred",
+					Source:   "orchestra",
+				})
+				diags.Fatal(logger.WriterLevel(logrus.ErrorLevel))
+				Finale(ctx, logrus.FatalLevel)
+				os.Exit(1)
+				return
+			}()
+			for _, runnable := range runnables {
+				logger.Debugf("stopping runnable %s", runnable.Identifier())
+				diags = diags.Extend(d)
+				if !d.HasErrors() {
+					d = runnable.Terminate()
+					diags = diags.Extend(d)
+				}
+			}
+
+			if diags.HasErrors() || diags.HasWarnings() {
+				diags.Write(logger.WriterLevel(logrus.ErrorLevel))
+			}
+			cancel()
+		case <-ctx.Done():
+			logger.Infof("took %s to complete the pipeline", time.Since(ctx.Value(c.TogomakContextBootTime).(time.Time)))
+			return
+		}
+	}(ctx, cancel)
+	// endregion: interrupt handler
+
 	for _, layer := range depGraph.TopoSortedLayers() {
 		for _, runnableId := range layer {
 			var runnable ci.Runnable
@@ -381,6 +419,7 @@ func Orchestra(cfg Config) {
 				return
 			}
 			logger.Debugf("runnable %s is %T", runnableId, runnable)
+			runnables = append(runnables, runnable)
 
 			ok, diags = runnable.CanRun(ctx)
 			if diags.HasErrors() {
@@ -455,8 +494,9 @@ func Orchestra(cfg Config) {
 					wg.Done()
 					return
 				}
-				logger.Warn(stageDiags.Error())
-				if runnable.CanRetry() {
+				if !runnable.CanRetry() {
+					logger.Error(stageDiags.Error())
+				} else {
 					logger.Infof("retrying runnable %s", runnableId)
 					retryCount := 0
 					retryMinBackOff := time.Duration(runnable.MinRetryBackoff()) * time.Second
@@ -531,4 +571,15 @@ func Orchestra(cfg Config) {
 
 	daemonWg.Wait()
 
+	if diags.HasErrors() || diags.HasWarnings() {
+		diags.Fatal(logger.WriterLevel(logrus.ErrorLevel))
+	}
+	Finale(ctx, logrus.InfoLevel)
+
+}
+
+func Finale(ctx context.Context, logLevel logrus.Level) {
+	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger)
+	bootTime := ctx.Value(c.TogomakContextBootTime).(time.Time)
+	logger.Log(logLevel, ui.Grey(fmt.Sprintf("took %s", time.Since(bootTime).Round(time.Millisecond))))
 }

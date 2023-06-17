@@ -9,7 +9,9 @@ const StageBlock = "stage"
 
 type StageContainer struct {
 	Image   string   `hcl:"image" json:"image"`
-	Volumes []string `hcl:"volumes" json:"volumes"`
+	Volumes []string `hcl:"volumes,optional" json:"volumes"`
+	Ports   []string `hcl:"ports,optional" json:"ports"`
+	Stdin   bool     `hcl:"stdin,optional" json:"stdin"`
 }
 
 type Stages []Stage
@@ -54,5 +56,6 @@ type Stage struct {
 	Container   *StageContainer     `hcl:"container,block" json:"container"`
 	Environment []*StageEnvironment `hcl:"env,block" json:"environment"`
 
-	process *exec.Cmd
+	process     *exec.Cmd
+	ContainerId string
 }

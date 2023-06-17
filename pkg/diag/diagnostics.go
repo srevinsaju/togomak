@@ -106,8 +106,13 @@ func (d Diagnostics) NewHclWriteDiagnosticsError(source string, err error) Diagn
 
 func (d Diagnostics) Write(writer io.Writer) {
 	for i, diag := range d {
+
+		diagHeader := ui.Red(fmt.Sprintf("Error %d", i+1))
+		if diag.Severity == SeverityWarning {
+			diagHeader = ui.Yellow(fmt.Sprintf("Warning %d", i+1))
+		}
 		_, err := fmt.Fprintf(writer, "%s: %s\n\t%s\n\tsource: %s\n\n",
-			ui.Red(fmt.Sprintf("diagnostic %d", i+1)),
+			diagHeader,
 			ui.Bold(diag.Summary),
 			diag.Detail,
 			ui.Grey(diag.Source),
@@ -116,10 +121,10 @@ func (d Diagnostics) Write(writer io.Writer) {
 			panic(err)
 		}
 	}
+	writer.Write([]byte("\n"))
 }
 
 func (d Diagnostics) Fatal(writer io.Writer) {
 	d.Write(writer)
-	writer.Write([]byte("\n"))
 	os.Exit(1)
 }
