@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"fmt"
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/transport"
@@ -13,8 +14,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/diag"
+	"github.com/srevinsaju/togomak/v1/pkg/ui"
 	"github.com/zclconf/go-cty/cty"
-
 	"io"
 )
 
@@ -114,7 +115,7 @@ func (e *GitProvider) DecodeBody(body hcl.Body) diag.Diagnostics {
 		hclDiags = append(hclDiags, d...)
 	}
 
-	depthAttr, ok := content.Attributes["depth"]
+	depthAttr, ok := content.Attributes["dreaderepth"]
 	depth := cty.NumberIntVal(0)
 	if ok {
 		depth, d = depthAttr.Expr.Value(hclContext)
@@ -296,16 +297,31 @@ func (e *GitProvider) Attributes(ctx context.Context) map[string]cty.Value {
 		}
 		authMethod = publicKeys
 	}
+
 	cloneOptions := &git.CloneOptions{
 		Tags:     git.AllTags,
 		Depth:    e.cfg.depth,
 		CABundle: e.cfg.caBundle,
 		Auth:     authMethod,
 		URL:      e.cfg.repo,
-		Progress: logger.Writer(),
+		Progress: nil,
 	}
 	var repo *git.Repository
 	var err error
+	var cloneComplete = make(chan bool)
+	go func() {
+		pb := ui.NewProgressWriter(logger, fmt.Sprintf("pulling git repo %s", e.Identifier()))
+		for {
+			select {
+			case <-cloneComplete:
+				pb.Close()
+				return
+			default:
+				pb.Write([]byte("1"))
+			}
+		}
+	}()
+
 	if e.cfg.destination == "" || e.cfg.destination == "memory" {
 		logger.Debug("cloning into memory storage")
 		s = memory.NewStorage()
@@ -314,6 +330,7 @@ func (e *GitProvider) Attributes(ctx context.Context) map[string]cty.Value {
 		logger.Debugf("cloning to %s", e.cfg.destination)
 		repo, err = git.PlainCloneContext(ctx, e.cfg.destination, false, cloneOptions)
 	}
+	cloneComplete <- true
 
 	if err != nil {
 		diags = diags.Append(diag.Diagnostic{

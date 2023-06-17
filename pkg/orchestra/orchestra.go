@@ -110,7 +110,7 @@ func Orchestra(cfg Config) {
 	stageStatuses := cfg.Pipeline.Stages
 
 	// write the pipeline to the temporary directory
-	pipelineFilePath := filepath.Join(t.tempDir, meta.ConfigFileName)
+	pipelineFilePath := filepath.Join(t.cwd, t.tempDir, meta.ConfigFileName)
 	var pipelineData []byte
 	for _, f := range t.parser.Files() {
 		pipelineData = append(pipelineData, f.Bytes...)
