@@ -1,6 +1,7 @@
 # togomak 
 
 ![GitHub go.mod Go version (branch)](https://img.shields.io/github/go-mod/go-version/srevinsaju/togomak/v1)
+[![codecov](https://codecov.io/github/srevinsaju/togomak/branch/v1/graph/badge.svg?token=ABSszEKbdK)](https://codecov.io/github/srevinsaju/togomak)
 
 
 togomak is a powerful, build pipeline orchestration tool, and a drop-in 
