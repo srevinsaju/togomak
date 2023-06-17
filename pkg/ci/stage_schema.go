@@ -7,11 +7,18 @@ import (
 
 const StageBlock = "stage"
 
+type StageContainerVolume struct {
+	Source      hcl.Expression `hcl:"source" json:"source"`
+	Destination hcl.Expression `hcl:"destination" json:"destination"`
+}
+
+type StageContainerVolumes []StageContainerVolume
+
 type StageContainer struct {
-	Image   string   `hcl:"image" json:"image"`
-	Volumes []string `hcl:"volumes,optional" json:"volumes"`
-	Ports   []string `hcl:"ports,optional" json:"ports"`
-	Stdin   bool     `hcl:"stdin,optional" json:"stdin"`
+	Image   string                `hcl:"image" json:"image"`
+	Volumes StageContainerVolumes `hcl:"volume,block" json:"volumes"`
+	Ports   []string              `hcl:"ports,optional" json:"ports"`
+	Stdin   bool                  `hcl:"stdin,optional" json:"stdin"`
 }
 
 type Stages []Stage

@@ -53,6 +53,8 @@ func TopoSort(ctx context.Context, pipe *ci.Pipeline) (*depgraph.Graph, diag.Dia
 				parent = x.RenderBlock(ci.MacroBlock, name)
 			case ci.ParamBlock:
 				continue
+			case ci.BuilderBlock:
+				continue
 			}
 
 			_, d = ci.Resolve(ctx, pipe, parent)
@@ -110,6 +112,9 @@ func TopoSort(ctx context.Context, pipe *ci.Pipeline) (*depgraph.Graph, diag.Dia
 			case ci.ParamBlock:
 				continue
 
+			case ci.BuilderBlock:
+				continue
+
 			}
 
 			_, d = ci.Resolve(ctx, pipe, parent)
@@ -162,7 +167,12 @@ func TopoSort(ctx context.Context, pipe *ci.Pipeline) (*depgraph.Graph, diag.Dia
 				name := variable[1].(hcl.TraverseAttr).Name
 				parent = x.RenderBlock(ci.MacroBlock, name)
 			case ci.ThisBlock:
+				continue
 			case ci.ParamBlock:
+				continue
+			case ci.BuilderBlock:
+				continue
+			default:
 				continue
 			}
 
@@ -212,7 +222,12 @@ func TopoSort(ctx context.Context, pipe *ci.Pipeline) (*depgraph.Graph, diag.Dia
 				name := variable[1].(hcl.TraverseAttr).Name
 				parent = x.RenderBlock(ci.MacroBlock, name)
 			case ci.ThisBlock:
+				continue
 			case ci.ParamBlock:
+				continue
+			case ci.BuilderBlock:
+				continue
+			default:
 				continue
 			}
 			_, d = ci.Resolve(ctx, pipe, parent)
