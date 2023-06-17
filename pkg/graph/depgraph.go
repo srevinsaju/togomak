@@ -55,6 +55,8 @@ func TopoSort(ctx context.Context, pipe *ci.Pipeline) (*depgraph.Graph, diag.Dia
 				continue
 			case ci.BuilderBlock:
 				continue
+			default:
+				continue
 			}
 
 			_, d = ci.Resolve(ctx, pipe, parent)
@@ -114,7 +116,8 @@ func TopoSort(ctx context.Context, pipe *ci.Pipeline) (*depgraph.Graph, diag.Dia
 
 			case ci.BuilderBlock:
 				continue
-
+			default:
+				continue
 			}
 
 			_, d = ci.Resolve(ctx, pipe, parent)
