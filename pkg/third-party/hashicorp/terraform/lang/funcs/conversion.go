@@ -4,9 +4,9 @@
 package funcs
 
 import (
+	"github.com/srevinsaju/togomak/v1/pkg/third-party/hashicorp/terraform/lang/marks"
 	"strconv"
 
-	"github.com/srevinsaju/togomak/v1/pkg/third-party/hashicorp/terraform/lang/marks"
 	"github.com/srevinsaju/togomak/v1/pkg/third-party/hashicorp/terraform/lang/types"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/convert"

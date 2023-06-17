@@ -13,6 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/diag"
+	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/ui"
 	"github.com/zclconf/go-cty/cty"
 	"io"
@@ -57,7 +58,7 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 	pipe := ctx.Value(c.TogomakContextPipeline).(*Pipeline)
 	cwd := ctx.Value(c.TogomakContextCwd).(string)
 	tmpDir := ctx.Value(c.TogomakContextTempDir).(string)
-	logger.Debugf("running %s.%s.%s", StageBlock, s.Id, MacroBlock)
+	logger.Debugf("running %s.%s", s.Identifier(), MacroBlock)
 
 	var hclDiags hcl.Diagnostics
 	var err error
@@ -145,7 +146,7 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 
 			for fName, fContent := range files {
 				lastExecutionPath = filepath.Join(tmpDir, s.Id, fName)
-				if filepath.Base(fName) == "togomak.hcl" {
+				if filepath.Base(fName) == meta.ConfigFileName {
 					defaultExecutionPath = filepath.Join(tmpDir, s.Id, fName)
 				}
 				// write the file content to the temporary directory

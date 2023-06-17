@@ -4,9 +4,9 @@
 package funcs
 
 import (
+	"github.com/srevinsaju/togomak/v1/pkg/third-party/hashicorp/terraform/lang/marks"
 	"testing"
 
-	"github.com/srevinsaju/togomak/v1/pkg/third-party/hashicorp/terraform/lang/marks"
 	"github.com/zclconf/go-cty/cty"
 )
 
