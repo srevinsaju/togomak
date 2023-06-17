@@ -2,6 +2,7 @@ package diag
 
 import (
 	"fmt"
+	"github.com/hashicorp/hcl/v2"
 	"github.com/srevinsaju/togomak/v1/pkg/ui"
 	"io"
 	"os"
@@ -37,6 +38,27 @@ func (d Diagnostics) Len() int {
 
 func (d Diagnostics) Extend(diags Diagnostics) Diagnostics {
 	return append(d, diags...)
+}
+
+func (d Diagnostics) ExtendHCLDiagnostics(hclDiags hcl.Diagnostics, hclDgWriter hcl.DiagnosticWriter, source string) Diagnostics {
+	if hclDiags.HasErrors() {
+		err := hclDgWriter.WriteDiagnostics(hclDiags)
+		if err != nil {
+			d = d.Append(Diagnostic{
+				Severity: SeverityError,
+				Summary:  "failed to write HCL diagnostics",
+				Detail:   err.Error(),
+			})
+		}
+		d = d.Append(Diagnostic{
+			Severity: SeverityError,
+			Summary:  "failed to evaluate HCL",
+			Detail:   hclDiags.Error(),
+			Source:   source,
+		})
+	}
+
+	return d
 }
 
 func (d Diagnostics) Append(diag Diagnostic) Diagnostics {
