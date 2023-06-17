@@ -28,6 +28,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -309,8 +310,8 @@ func Orchestra(cfg Config) {
 		logger.Fatal(dgwriter.WriteDiagnostics(hclDiags))
 	}
 
-	// whitelist all stages if unspecified
-	var stageStatuses ConfigPipelineStageList = cfg.Pipeline.Stages
+	// whitelist all stages if unspecifieds
+	var stageStatuses = cfg.Pipeline.Stages
 
 	// write the pipeline to the temporary directory
 	pipelineFilePath := filepath.Join(tmpDir, meta.ConfigFileName)
@@ -354,54 +355,16 @@ func Orchestra(cfg Config) {
 	var daemonWg sync.WaitGroup
 	var hasDaemons bool
 
+	var runnables ci.Runnables
+
 	// region: interrupt handler
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Interrupt)
-
-	var runnables []ci.Runnable
-
-	go func(ctx context.Context, cancel context.CancelFunc) {
-		select {
-		case <-ch:
-			var diags diag.Diagnostics
-			logger.Warn("received interrupt signal, cancelling the pipeline")
-			logger.Warn("stopping running operations...")
-			logger.Warn("press CTRL+C again to force quit")
-
-			ch := make(chan os.Signal, 1)
-			signal.Notify(ch, os.Interrupt)
-			go func() {
-				<-ch
-				logger.Warn("Two interrupts received. Exiting immediately.")
-				diags = diags.Append(diag.Diagnostic{
-					Severity: diag.SeverityError,
-					Summary:  "Force quit",
-					Detail:   "data loss may have occurred",
-					Source:   "orchestra",
-				})
-				diags.Fatal(logger.WriterLevel(logrus.ErrorLevel))
-				Finale(ctx, logrus.FatalLevel)
-				os.Exit(1)
-				return
-			}()
-			for _, runnable := range runnables {
-				logger.Debugf("stopping runnable %s", runnable.Identifier())
-				diags = diags.Extend(d)
-				if !d.HasErrors() {
-					d = runnable.Terminate()
-					diags = diags.Extend(d)
-				}
-			}
-
-			if diags.HasErrors() || diags.HasWarnings() {
-				diags.Write(logger.WriterLevel(logrus.ErrorLevel))
-			}
-			cancel()
-		case <-ctx.Done():
-			logger.Infof("took %s to complete the pipeline", time.Since(ctx.Value(c.TogomakContextBootTime).(time.Time)))
-			return
-		}
-	}(ctx, cancel)
+	chInterrupt := make(chan os.Signal, 1)
+	chKill := make(chan os.Signal, 1)
+	signal.Notify(chInterrupt, os.Interrupt)
+	signal.Notify(chInterrupt, syscall.SIGTERM)
+	signal.Notify(chKill, os.Kill)
+	go InterruptHandler(ctx, cancel, chInterrupt, &runnables)
+	go KillHandler(ctx, cancel, chKill, &runnables)
 	// endregion: interrupt handler
 
 	for _, layer := range depGraph.TopoSortedLayers() {

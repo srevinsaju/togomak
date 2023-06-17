@@ -20,6 +20,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"syscall"
 )
 
 const TogomakParamEnvVarPrefix = "TOGOMAK__param__"
@@ -333,6 +334,7 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 
 	cmd := exec.CommandContext(ctx, runCommand, runArgs...)
 	cmd.Stdout = logger.Writer()
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Stderr = logger.WriterLevel(logrus.WarnLevel)
 	cmd.Env = append(envStrings, os.Environ()...)
 
@@ -563,10 +565,33 @@ func (s *Stage) Terminate() diag.Diagnostics {
 				Source:   dockerContainerSourceFmt(s.ContainerId),
 			})
 		}
+	} else if s.process != nil {
+		err := s.process.Process.Signal(syscall.SIGTERM)
+		if err != nil {
+			diags = diags.Append(diag.Diagnostic{
+				Severity: diag.SeverityError,
+				Summary:  "failed to terminate process",
+				Source:   s.Identifier(),
+				Detail:   err.Error(),
+			})
+		}
 	}
+
 	return diags
 }
 
 func (s *Stage) Kill() diag.Diagnostics {
-	return nil
+	diags := s.Terminate()
+	if s.process != nil && !s.process.ProcessState.Exited() {
+		err := s.process.Process.Kill()
+		if err != nil {
+			diags = diags.Append(diag.Diagnostic{
+				Severity: diag.SeverityError,
+				Source:   s.Identifier(),
+				Summary:  "couldn't kill stage",
+				Detail:   err.Error(),
+			})
+		}
+	}
+	return diags
 }
