@@ -48,15 +48,14 @@ func NewContextWithTogomak(cfg Config) (Togomak, context.Context) {
 		logger.Infof("%s (version=%s)", meta.AppName, meta.AppVersion)
 	}
 
+	// --> set up the working directory
+	cwd := Chdir(cfg, logger)
 	// create temporary directory
 	pipelineId := uuid.New().String()
 	tmpDir := filepath.Join(meta.BuildDirPrefix, "pipelines", "tmp")
 	err := os.MkdirAll(tmpDir, 0755)
 	x.Must(err)
 	tmpDir, err = os.MkdirTemp(tmpDir, pipelineId)
-	x.Must(err)
-	// --> set up the working directory
-	cwd := Chdir(cfg, logger)
 	x.Must(err)
 
 	ctx := context.Background()

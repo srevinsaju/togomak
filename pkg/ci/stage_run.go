@@ -380,7 +380,7 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 				})
 			}
 
-			pb := ui.NewProgressWriter(reader, logger.Writer(), fmt.Sprintf("pulling image %s", s.Container.Image))
+			pb := ui.NewDockerProgressWriter(reader, logger.Writer(), fmt.Sprintf("pulling image %s", s.Container.Image))
 			defer pb.Close()
 			defer reader.Close()
 			io.Copy(pb, reader)
