@@ -226,11 +226,20 @@ stage &quot;install&quot; {
 stage &quot;example&quot; {
   container {
     image = &quot;ubuntu&quot;
+    volume {
+      source = &quot;${cwd}/diary&quot;
+      destination = &quot;/newdiary&quot;
+    }
   }
   script = &lt;&lt;-EOT
   #!/usr/bin/env bash
-  apt update &amp;&amp; apt install -y neofetch
-  neofetch
+  ls -al
+  for i in $(seq 1 10); do
+    sleep 1
+    echo &quot;Loading $i...&quot;
+  done
+  cat rei.diary.txt
+  ls -al /newdiary
   EOT
 }
 </code></pre>
