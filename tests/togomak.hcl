@@ -51,4 +51,8 @@ stage "coverage" {
   depends_on = [stage.coverage_merge]
   script = "go tool covdata textfmt -i=${local.coverage_merge_dir} -o=coverage.out"
 }
+stage "coverage_unit_tests" {
+  dir = ".."
+  script = "go test ./... -coverprofile=coverage_unit_tests.out"
+}
 

@@ -5,3 +5,4 @@ cmd/togomak/*.hcl
 examples/*/.togomak/
 cmd/togomak/.togomak/
 docs/book/
+coverage*.out
