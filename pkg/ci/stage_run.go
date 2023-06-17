@@ -336,7 +336,6 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 
 	cmd := exec.CommandContext(ctx, runCommand, runArgs...)
 	cmd.Stdout = logger.Writer()
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Stderr = logger.WriterLevel(logrus.WarnLevel)
 	cmd.Env = append(envStrings, os.Environ()...)
 	cmd.Dir = dir
