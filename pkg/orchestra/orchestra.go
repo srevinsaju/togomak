@@ -310,7 +310,7 @@ func Orchestra(cfg Config) {
 		logger.Fatal(dgwriter.WriteDiagnostics(hclDiags))
 	}
 
-	// whitelist all stages if unspecifieds
+	// whitelist all stages if unspecified
 	var stageStatuses = cfg.Pipeline.Stages
 
 	// write the pipeline to the temporary directory

@@ -8,6 +8,7 @@
     - [Interpolation](./features/interpolation.md)
     - [Reusable Stages](./features/macros.md)
     - [Daemonizing](./features/daemonizing.md)
+    - [Container Support](./features/docker.md)
 
 - [Command Line Interface](./cli/introduction.md)
     - [Usage](./cli/usage.md)

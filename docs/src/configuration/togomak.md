@@ -25,3 +25,4 @@ is required for any pipeline to be considered
 * [`boot_time`](#boot_time) - The time at which the Togomak runner executable was started
 * [`boot_time_unix`](#boot_time_unix) - The time at which the Togomak runner executable was started, in unix format
 * [`pipeline_id`](#pipeline_id) - The unique identifier for the pipeline run (uuid)
+* [`ci`](#pipeline_id) - Returns `true` if togomak is running on a CI environment, like GitHub Actions or Jenkins, etc.

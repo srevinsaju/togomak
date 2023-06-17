@@ -119,7 +119,7 @@ dependent of the `build` stage completes.
 
 Under the hood, the `build` stage will receive
 a `SIGTERM` signal, and will be given a grace period
-of 30 seconds to complete. If the stage does not
+of 10 seconds to complete. If the stage does not
 terminate within the grace period, it will be
 forcefully killed (`SIGKILL`).
 

@@ -85,6 +85,11 @@ stage "build" {
 }
 ```
 
+## Stage with Containers 
+```hcl
+{{#include ../../../examples/docker/togomak.hcl}}
+```
+
 
 
 ## Arguments Reference
