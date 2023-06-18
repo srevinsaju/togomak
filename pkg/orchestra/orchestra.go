@@ -178,17 +178,21 @@ func Orchestra(cfg Config) {
 				continue
 			}
 
-			runnable, diags = ci.Resolve(ctx, pipe, runnableId)
-			if diags.HasErrors() {
-				diags.Fatal(logger.WriterLevel(logrus.ErrorLevel))
+			runnable, d = ci.Resolve(ctx, pipe, runnableId)
+			if d.HasErrors() {
+				diagsMutex.Lock()
+				diags = diags.Extend(d)
+				diagsMutex.Unlock()
 				return
 			}
 			logger.Debugf("runnable %s is %T", runnableId, runnable)
 			runnables = append(runnables, runnable)
 
-			ok, diags = runnable.CanRun(ctx)
-			if diags.HasErrors() {
-				diags.Fatal(logger.WriterLevel(logrus.ErrorLevel))
+			ok, d = runnable.CanRun(ctx)
+			if d.HasErrors() {
+				diagsMutex.Lock()
+				diags = diags.Extend(d)
+				diagsMutex.Unlock()
 				return
 			}
 
@@ -329,6 +333,7 @@ func Orchestra(cfg Config) {
 				// wait for daemons to stop
 				cancel()
 			}
+			break
 
 		}
 
