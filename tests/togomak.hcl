@@ -30,6 +30,7 @@ stage "integration_tests" {
   ls ../examples
   for i in ../examples/*; do 
     ./togomak_coverage -C "$i" --ci -v
+    ./togomak_coverage -C "$i" --ci -v -n
   done
 
   for i in tests/failing/*; do 

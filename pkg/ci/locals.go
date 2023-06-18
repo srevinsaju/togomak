@@ -46,8 +46,8 @@ func (*Local) Description() string {
 	return ""
 }
 
-func (*Local) Identifier() string {
-	return fmt.Sprintf("local.%s", &Local{})
+func (l *Local) Identifier() string {
+	return fmt.Sprintf("local.%s", l.Key)
 }
 
 func (*Local) Type() string {
