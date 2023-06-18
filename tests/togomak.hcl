@@ -12,12 +12,14 @@ stage "build" {
 locals {
   coverage_data_dir = "${cwd}/coverage_data_files"
   coverage_merge_dir = "${cwd}/coverage_merge_dir"
+  coverage_data_interactive_dir = "${cwd}/coverage_data_interactive_dir"
 }
 
 stage "coverage_prepare" {
   script = <<-EOT
   set -e
   rm -rf ${local.coverage_data_dir} && mkdir ${local.coverage_data_dir}
+  rm -rf ${local.coverage_data_interactive_dir} && mkdir ${local.coverage_data_interactive_dir}
   rm -rf ${local.coverage_merge_dir} && mkdir ${local.coverage_merge_dir}
   EOT
 }
@@ -56,15 +58,20 @@ stage "coverage_raw" {
   script = "go tool covdata percent -i=${local.coverage_data_dir}" 
 }
 stage "coverage_merge" {
-  depends_on = [stage.coverage_raw]
-  script = "go tool covdata merge -i=${local.coverage_data_dir} -o=${local.coverage_merge_dir}"
+  depends_on = [stage.coverage_raw, stage.coverage_unit_tests]
+  script = "go tool covdata merge -i=${local.coverage_data_dir},${local.coverage_data_interactive_dir} -o=${local.coverage_merge_dir}"
 }
 stage "coverage" {
   depends_on = [stage.coverage_merge]
   script = "go tool covdata textfmt -i=${local.coverage_merge_dir} -o=coverage.out"
 }
 stage "coverage_unit_tests" {
+  depends_on = [stage.build]
   dir = ".."
   script = "go test ./... -coverprofile=coverage_unit_tests.out"
+  env {
+    name = "PROMPT_GOCOVERDIR"
+    value = local.coverage_data_interactive_dir
+  }
 }
 
