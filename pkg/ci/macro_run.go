@@ -14,11 +14,6 @@ const (
 )
 
 func (m *Macro) Prepare(ctx context.Context, skip bool, overridden bool) diag.Diagnostics {
-	if m.Source == "" && m.Files == nil {
-		return nil
-	}
-	// TODO: implement source
-
 	return nil // no-op
 }
 
@@ -53,19 +48,7 @@ func (m *Macro) Run(ctx context.Context) diag.Diagnostics {
 	// endregion
 
 	if hcDiags.HasErrors() {
-		err := hcDiagWriter.WriteDiagnostics(hcDiags)
-		if err != nil {
-			diags = diags.Append(diag.Diagnostic{
-				Severity: diag.SeverityError,
-				Summary:  "failed to write HCL diagnostics",
-				Detail:   err.Error(),
-			})
-		}
-		diags = diags.Append(diag.Diagnostic{
-			Severity: diag.SeverityError,
-			Summary:  "failed to evaluate data block",
-			Detail:   hcDiags.Error(),
-		})
+		diags = diags.ExtendHCLDiagnostics(hcDiags, hcDiagWriter, m.Identifier())
 	}
 
 	if diags.HasErrors() {
