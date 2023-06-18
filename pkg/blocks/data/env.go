@@ -108,7 +108,7 @@ func (e *EnvProvider) DecodeBody(body hcl.Body) diag.Diagnostics {
 
 }
 
-func (e *EnvProvider) Value(ctx context.Context) string {
+func (e *EnvProvider) Value(ctx context.Context, id string) string {
 	if !e.initialized {
 		panic("provider not initialized")
 	}

@@ -260,7 +260,7 @@ func (e *GitProvider) Initialized() bool {
 	return e.initialized
 }
 
-func (e *GitProvider) Value(ctx context.Context) string {
+func (e *GitProvider) Value(ctx context.Context, id string) string {
 	if !e.initialized {
 		panic("provider not initialized")
 	}

@@ -12,5 +12,7 @@ const (
 	ConfigFileName = "togomak.hcl"
 	BuildDirPrefix = ".togomak"
 
+	EnvVarPrefix = "TOGOMAK__"
+
 	RootStage = "togomak.root"
 )

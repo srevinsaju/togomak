@@ -39,7 +39,7 @@ func (d Data) Run(ctx context.Context) diag.Diagnostics {
 			provide := pr.New()
 			provide.SetContext(ctx)
 			diags = diags.Extend(provide.DecodeBody(d.Body))
-			value = provide.Value(ctx)
+			value = provide.Value(ctx, d.Id)
 			attr = provide.Attributes(ctx)
 			break
 		}

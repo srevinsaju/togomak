@@ -8,7 +8,9 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/diag"
+	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/zclconf/go-cty/cty"
+	"os"
 )
 
 type PromptProvider struct {
@@ -105,15 +107,23 @@ func (e *PromptProvider) Initialized() bool {
 	return e.initialized
 }
 
-func (e *PromptProvider) Value(ctx context.Context) string {
+func (e *PromptProvider) Value(ctx context.Context, id string) string {
 	if !e.initialized {
 		panic("provider not initialized")
 	}
 
 	logger := e.ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField("provider", e.Name())
 	unattended := e.ctx.Value(c.TogomakContextUnattended).(bool)
+
+	envVarName := fmt.Sprintf("%s%s__%s", meta.EnvVarPrefix, e.Name(), id)
+	logger.Tracef("checking for environment variable %s", envVarName)
+	envExists, ok := os.LookupEnv(envVarName)
+	if ok {
+		logger.Debug("environment variable found, using that")
+		return envExists
+	}
 	if unattended {
-		logger.Warn("--unattended/--ci mode enabled, skipping user input")
+		logger.Warn("--unattended/--ci mode enabled, falling back to default")
 		return e.def
 	}
 
