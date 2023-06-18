@@ -17,7 +17,7 @@ type Provider interface {
 
 	SetContext(context context.Context)
 	DecodeBody(body hcl.Body) diag.Diagnostics
-	Value(ctx context.Context) string
+	Value(ctx context.Context, id string) string
 	Attributes(ctx context.Context) map[string]cty.Value
 }
 
