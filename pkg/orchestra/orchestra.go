@@ -183,7 +183,7 @@ func Orchestra(cfg Config) {
 				diagsMutex.Lock()
 				diags = diags.Extend(d)
 				diagsMutex.Unlock()
-				return
+				break
 			}
 			logger.Debugf("runnable %s is %T", runnableId, runnable)
 			runnables = append(runnables, runnable)
@@ -193,7 +193,7 @@ func Orchestra(cfg Config) {
 				diagsMutex.Lock()
 				diags = diags.Extend(d)
 				diagsMutex.Unlock()
-				return
+				break
 			}
 
 			// region: requested stages, whitelisting and blacklisting
@@ -241,8 +241,8 @@ func Orchestra(cfg Config) {
 
 			d := runnable.Prepare(ctx, !ok, overridden)
 			if d.HasErrors() {
-				diags.Fatal(logger.WriterLevel(logrus.ErrorLevel))
-				return
+				diags.Write(logger.WriterLevel(logrus.ErrorLevel))
+				break
 			}
 
 			if !ok {
