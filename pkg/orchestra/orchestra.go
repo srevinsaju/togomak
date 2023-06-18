@@ -43,6 +43,14 @@ func NewLogger(cfg Config) *logrus.Logger {
 		logger.SetLevel(logrus.TraceLevel)
 		break
 	}
+	if cfg.Ci {
+		logger.SetFormatter(&logrus.TextFormatter{
+			DisableColors:             false,
+			EnvironmentOverrideColors: false,
+			ForceColors:               true,
+			ForceQuote:                false,
+		})
+	}
 	if cfg.Child {
 		logger.SetFormatter(&logrus.TextFormatter{
 			DisableTimestamp:          true,
