@@ -13,11 +13,13 @@ locals {
   coverage_data_dir = "${cwd}/coverage_data_files"
   coverage_merge_dir = "${cwd}/coverage_merge_dir"
   coverage_data_interactive_dir = "${cwd}/coverage_data_interactive_dir"
+  coverage_data_docker_dir = "${cwd}/coverage_data_docker_files"
 }
 
 stage "coverage_prepare" {
   script = <<-EOT
   set -e
+  rm -rf ${local.coverage_data_docker_dir} && mkdir ${local.coverage_data_docker_dir}
   rm -rf ${local.coverage_data_dir} && mkdir ${local.coverage_data_dir}
   rm -rf ${local.coverage_data_interactive_dir} && mkdir ${local.coverage_data_interactive_dir}
   rm -rf ${local.coverage_merge_dir} && mkdir ${local.coverage_merge_dir}
@@ -59,7 +61,7 @@ stage "coverage_raw" {
 }
 stage "coverage_merge" {
   depends_on = [stage.coverage_raw, stage.coverage_unit_tests]
-  script = "go tool covdata merge -i=${local.coverage_data_dir},${local.coverage_data_interactive_dir} -o=${local.coverage_merge_dir}"
+  script = "go tool covdata merge -i=${local.coverage_data_dir},${local.coverage_data_interactive_dir},${local.coverage_data_docker_dir} -o=${local.coverage_merge_dir}"
 }
 stage "coverage" {
   depends_on = [stage.coverage_merge]
@@ -72,6 +74,10 @@ stage "coverage_unit_tests" {
   env {
     name = "PROMPT_GOCOVERDIR"
     value = local.coverage_data_interactive_dir
+  }
+  env {
+    name = "DOCKER_GOCOVERDIR"
+    value = local.coverage_data_docker_dir
   }
 }
 

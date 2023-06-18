@@ -125,5 +125,36 @@ func TestPrompt(t *testing.T) {
 }
 
 func TestInterrupt(t *testing.T) {
+	c, err := expect.NewConsole(expect.WithStdout(os.Stdout))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer c.Close()
+
+	cmd := exec.Command("./togomak_coverage", "-C", "../examples/docker")
+
+	RunTest(t, func(c expectConsole) {
+		time.Sleep(500 * time.Millisecond)
+		err = cmd.Process.Signal(os.Interrupt)
+		if err != nil {
+			t.Error(err)
+		}
+		c.ExpectEOF()
+
+	}, func(stdio terminal.Stdio) error {
+		cmd.Stdin = stdio.In
+		cmd.Stdout = stdio.Out
+		cmd.Stderr = stdio.Out
+		cmd.Env = append(os.Environ(), fmt.Sprintf("GOCOVERDIR=%s", os.Getenv("DOCKER_GOCOVERDIR")))
+
+		return cmd.Start()
+
+	})
+
+	err = cmd.Wait()
+	if err != nil {
+		t.Error(err)
+	}
+	fmt.Println(cmd.ProcessState.ExitCode())
 
 }
