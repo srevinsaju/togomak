@@ -31,6 +31,17 @@ stage "integration_tests" {
   for i in ../examples/*; do 
     ./togomak_coverage -C "$i" --ci -v
   done
+
+  for i in tests/failing/*; do 
+    set +e
+    ./togomak_coverage -C "$i" --ci -v
+    result=$?
+    if [ $result -eq 0 ]; then 
+      set -e
+      echo "$i completed successfully when it was supposed to fail"
+      exit 1
+    fi
+  done
   EOT
 
   env {
