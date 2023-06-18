@@ -60,6 +60,8 @@ func NewContextWithTogomak(cfg Config) (Togomak, context.Context) {
 
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, c.TogomakContextTempDir, tmpDir)
+	ctx = context.WithValue(ctx, c.TogomakContextCi, cfg.Ci)
+	ctx = context.WithValue(ctx, c.TogomakContextUnattended, cfg.Unattended)
 	ctx = context.WithValue(ctx, c.TogomakContextLogger, logger)
 	ctx = context.WithValue(ctx, c.TogomakContextBootTime, time.Now())
 	ctx = context.WithValue(ctx, c.TogomakContextPipelineId, pipelineId)

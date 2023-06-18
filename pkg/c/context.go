@@ -19,6 +19,9 @@ const (
 	TogomakContextPipelineDryRun = "pipeline_dry_run"
 	TogomakContextPipelineTmpDir = "pipeline_tmp_dir"
 
+	TogomakContextCi         = "ci"
+	TogomakContextUnattended = "unattended"
+
 	TogomakContextLogger        = "logger"
 	TogomakContextHclDiagWriter = "hcl_diag_writer"
 	TogomakContextHclEval       = "togomak_eval_context"

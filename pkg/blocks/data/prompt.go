@@ -111,6 +111,12 @@ func (e *PromptProvider) Value(ctx context.Context) string {
 	}
 
 	logger := e.ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField("provider", e.Name())
+	unattended := e.ctx.Value(c.TogomakContextUnattended).(bool)
+	if unattended {
+		logger.Warn("--unattended/--ci mode enabled, skipping user input")
+		return e.def
+	}
+
 	prompt := e.promptParsed
 	if prompt == "" {
 		prompt = fmt.Sprintf("Enter a value for %s:", e.Name())
