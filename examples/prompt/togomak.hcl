@@ -23,6 +23,7 @@ stage "quit" {
   #!/usr/bin/env bash
   set -eux
   if [[ "${data.prompt.name.value}" != "Shinji Ikari" ]]; then
+    echo "${data.prompt.name.value}" >> /tmp/quit
     exit 1
   fi
   EOT

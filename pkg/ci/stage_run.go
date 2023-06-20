@@ -282,8 +282,14 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 	}
 
 	script, d := s.Script.Value(evalCtx)
+	if d.HasErrors() && isDryRun {
+		script = cty.StringVal(ui.Italic(ui.Yellow("(will be evaluated later)")))
+
+	} else {
+		hclDiags = hclDiags.Extend(d)
+	}
 	shell := s.Shell
-	hclDiags = hclDiags.Extend(d)
+
 	args, d := s.Args.Value(evalCtx)
 	hclDiags = hclDiags.Extend(d)
 

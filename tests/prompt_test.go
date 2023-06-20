@@ -3,8 +3,6 @@ package tests
 import (
 	"fmt"
 	"github.com/AlecAivazis/survey/v2/terminal"
-	"time"
-
 	expect "github.com/Netflix/go-expect"
 	pseudotty "github.com/creack/pty"
 	"github.com/hinshun/vt10x"
@@ -99,25 +97,27 @@ func TestPrompt(t *testing.T) {
 	}
 	defer c.Close()
 
-	cmd := exec.Command("./togomak_coverage", "-C", "../examples/prompt")
+	cmd := exec.Command("./togomak_coverage", "-C", "../examples/prompt", "--ci=false")
 
 	RunTest(t, func(c expectConsole) {
-		time.Sleep(1 * time.Second)
 		c.SendLine("Shinji Ikari\n\n")
-		c.ExpectEOF()
-
+		fmt.Println(c.Console().ExpectEOF())
 	}, func(stdio terminal.Stdio) error {
 		cmd.Stdin = stdio.In
 		cmd.Stdout = stdio.Out
 		cmd.Stderr = stdio.Out
 		cmd.Env = append(os.Environ(), "QUIT_IF_NOT_SHINJI=true", fmt.Sprintf("GOCOVERDIR=%s", os.Getenv("PROMPT_GOCOVERDIR")))
-
 		return cmd.Start()
 
 	})
 
 	err = cmd.Wait()
 	if err != nil {
+		d, err := os.ReadFile("/tmp/quit")
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(string(d))
 		t.Error(err)
 	}
 	fmt.Println(cmd.ProcessState.ExitCode())
