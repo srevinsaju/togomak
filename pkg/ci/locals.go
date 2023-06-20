@@ -1,6 +1,7 @@
 package ci
 
 import (
+	"context"
 	"fmt"
 	"github.com/srevinsaju/togomak/v1/pkg/diag"
 )
@@ -84,4 +85,15 @@ func (l LocalGroup) ById(id string) (*Local, error) {
 		}
 	}
 	return nil, fmt.Errorf("local variable with id %s not found", id)
+}
+
+func (l *Local) Expand(ctx context.Context) (Runnables, diag.Diagnostics) {
+	return nil, nil
+}
+
+func (l *Local) Expanded() bool {
+	return false
+}
+func (l *Local) ForEachDerived() bool {
+	return false
 }

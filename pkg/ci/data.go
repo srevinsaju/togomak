@@ -1,6 +1,7 @@
 package ci
 
 import (
+	"context"
 	"fmt"
 	"github.com/srevinsaju/togomak/v1/pkg/diag"
 )
@@ -38,4 +39,14 @@ func (d Data) Terminate() diag.Diagnostics {
 
 func (d Data) Kill() diag.Diagnostics {
 	return nil
+}
+
+func (d Data) Expand(ctx context.Context) (Runnables, diag.Diagnostics) {
+	return nil, nil
+}
+func (d Data) Expanded() bool {
+	return false
+}
+func (d Data) ForEachDerived() bool {
+	return false
 }

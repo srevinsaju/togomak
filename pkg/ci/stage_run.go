@@ -34,11 +34,15 @@ func (s *Stage) Prepare(ctx context.Context, skip bool, overridden bool) diag.Di
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger)
 	// show some user-friendly output on the details of the stage about to be run
 
+	identifier := s.Id
+	if s.forEachAttr != "" {
+		identifier = fmt.Sprintf("%s[\"%s\"]", s.Id, s.forEachAttr)
+	}
 	var id string
 	if !skip {
-		id = ui.Blue(s.Id)
+		id = ui.Blue(identifier)
 	} else {
-		id = fmt.Sprintf("%s %s", ui.Yellow(s.Id), ui.Grey("(skipped)"))
+		id = fmt.Sprintf("%s %s", ui.Yellow(identifier), ui.Grey("(skipped)"))
 	}
 	if overridden {
 		id = fmt.Sprintf("%s %s", id, ui.Bold("(overriden)"))
@@ -48,7 +52,6 @@ func (s *Stage) Prepare(ctx context.Context, skip bool, overridden bool) diag.Di
 }
 
 func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
-
 	if s.Use == nil {
 		// this stage does not use a macro
 		return s, nil
@@ -204,14 +207,20 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 	s.Id = oldStageId
 	s.Name = oldStageName
 	s.DependsOn = oldStageDependsOn
-
+	if macro.Stage != nil && macro.Stage.ForEach != nil {
+		s.ForEach = macro.Stage.ForEach
+	}
 	return s, nil
 
 }
 
 func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 	hclDgWriter := ctx.Value(c.TogomakContextHclDiagWriter).(hcl.DiagnosticWriter)
-	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField(StageBlock, s.Id)
+	identifier := s.Id
+	if s.forEachAttr != "" {
+		identifier = fmt.Sprintf("%s.%s", s.Id, s.forEachAttr)
+	}
+	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField(StageBlock, identifier)
 	cwd := ctx.Value(c.TogomakContextCwd).(string)
 	logger.Debugf("running %s.%s", StageBlock, s.Id)
 	isDryRun := ctx.Value(c.TogomakContextPipelineDryRun).(bool)
@@ -220,10 +229,6 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 	var hclDiags hcl.Diagnostics
 	var err error
 	evalCtx := ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
-
-	// expand stages using macros
-	s, d := s.expandMacros(ctx)
-	hclDiags = hclDiags.Extend(d)
 
 	paramsGo := map[string]cty.Value{}
 	if s.Use != nil && s.Use.Parameters != nil {
@@ -236,20 +241,28 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 		}
 	}
 
-	oldParam, ok := evalCtx.Variables["param"]
+	oldParam, ok := evalCtx.Variables[ParamBlock]
 	if ok {
 		oldParamMap := oldParam.AsValueMap()
 		for k, v := range oldParamMap {
 			paramsGo[k] = v
 		}
 	}
+
 	evalCtx = evalCtx.NewChild()
 	evalCtx.Variables = map[string]cty.Value{
-		"this": cty.ObjectVal(map[string]cty.Value{
+		ThisBlock: cty.ObjectVal(map[string]cty.Value{
 			"name": cty.StringVal(s.Name),
 			"id":   cty.StringVal(s.Id),
 		}),
-		"param": cty.ObjectVal(paramsGo),
+		ParamBlock: cty.ObjectVal(paramsGo),
+	}
+	if s.ForEachDerived() {
+		eachBlock := map[string]cty.Value{
+			"key":   cty.StringVal(s.forEachAttr),
+			"value": s.forEachValue,
+		}
+		evalCtx.Variables["each"] = cty.ObjectVal(eachBlock)
 	}
 
 	script, d := s.Script.Value(evalCtx)
@@ -537,6 +550,11 @@ func (s *Stage) CanRun(ctx context.Context) (bool, diag.Diagnostics) {
 		}
 	}
 
+	eachAttrRaw, d := s.ForEach.Value(evalCtx)
+	if d.HasErrors() {
+		return false, diags.ExtendHCLDiagnostics(d, hclWriter, s.Identifier())
+	}
+
 	evalCtx = evalCtx.NewChild()
 	evalCtx.Variables = map[string]cty.Value{
 		"this": cty.ObjectVal(map[string]cty.Value{
@@ -544,6 +562,7 @@ func (s *Stage) CanRun(ctx context.Context) (bool, diag.Diagnostics) {
 			"id":   cty.StringVal(s.Id),
 		}),
 		"param": cty.ObjectVal(paramsGo),
+		"each":  eachAttrRaw,
 	}
 	v, hclDiags := s.Condition.Value(evalCtx)
 	if hclDiags.HasErrors() {

@@ -32,7 +32,9 @@ func (s *Stage) Variables() []hcl.Traversal {
 	traversal = append(traversal, s.Args.Variables()...)
 
 	if s.Use != nil {
-		traversal = append(traversal, s.Use.Macro.Variables()...)
+		if s.Use.Macro != nil {
+			traversal = append(traversal, s.Use.Macro.Variables()...)
+		}
 		traversal = append(traversal, s.Use.Parameters.Variables()...)
 	}
 	if s.Container != nil {

@@ -1,6 +1,7 @@
 package ci
 
 import (
+	"context"
 	"fmt"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/srevinsaju/togomak/v1/pkg/diag"
@@ -34,6 +35,9 @@ func (m *Macro) Variables() []hcl.Traversal {
 	var traversal []hcl.Traversal
 
 	traversal = append(traversal, m.Files.Variables()...)
+	if m.Stage != nil {
+		traversal = append(traversal, m.Stage.Variables()...)
+	}
 	return traversal
 }
 
@@ -47,4 +51,14 @@ func (m *Macro) Terminate() diag.Diagnostics {
 
 func (m *Macro) Kill() diag.Diagnostics {
 	return nil
+}
+
+func (m *Macro) Expand(ctx context.Context) (Runnables, diag.Diagnostics) {
+	return nil, nil
+}
+func (m *Macro) Expanded() bool {
+	return false
+}
+func (m *Macro) ForEachDerived() bool {
+	return false
 }

@@ -2,6 +2,10 @@ togomak {
   version = 1
 }
 
+stage "tests" {
+  if = false
+  script = "togomak -C tests --ci"
+}
 
 stage "fmt" {
   script = "go fmt github.com/srevinsaju/togomak/v1/..."

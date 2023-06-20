@@ -239,85 +239,104 @@ func Orchestra(cfg Config) {
 			}
 			// endregion: requested stages, whitelisting and blacklisting
 
-			d := runnable.Prepare(ctx, !ok, overridden)
+			expandedBlocks, d := runnable.Expand(ctx)
 			if d.HasErrors() {
-				diags.Write(logger.WriterLevel(logrus.ErrorLevel))
+				diagsMutex.Lock()
+				diags = diags.Extend(d)
+				diagsMutex.Unlock()
 				break
 			}
-
-			if !ok {
-				logger.Debugf("skipping runnable %s, condition evaluated to false", runnableId)
-				continue
+			if expandedBlocks == nil {
+				expandedBlocks = []ci.Runnable{runnable}
 			}
 
-			if runnable.IsDaemon() {
-				hasDaemons = true
-				daemonWg.Add(1)
-			} else {
-				wg.Add(1)
-			}
-
-			go func(runnableId string) {
-				stageDiags := runnable.Run(ctx)
-				if !stageDiags.HasErrors() {
-					wg.Done()
-					return
+			for _, runnable := range expandedBlocks {
+				if runnable.Expanded() {
+					fmt.Println("skipping expanded block", runnable.Identifier())
+					continue
 				}
-				if !runnable.CanRetry() {
-					logger.Error(stageDiags.Error())
-				} else {
-					logger.Infof("retrying runnable %s", runnableId)
-					retryCount := 0
-					retryMinBackOff := time.Duration(runnable.MinRetryBackoff()) * time.Second
-					retryMaxBackOff := time.Duration(runnable.MaxRetryBackoff()) * time.Second
-					retrySuccess := false
-					for retryCount < runnable.MaxRetries() {
-						retryCount++
-						sleepDuration := time.Duration(1) * time.Second
-						if runnable.RetryExponentialBackoff() {
-
-							if retryMinBackOff*time.Duration(retryCount) > retryMaxBackOff && retryMaxBackOff > 0 {
-								sleepDuration = retryMaxBackOff
-							} else {
-								sleepDuration = retryMinBackOff * time.Duration(retryCount)
-							}
-						} else {
-							sleepDuration = retryMinBackOff
-						}
-						logger.Warnf("runnable %s failed, retrying in %s", runnableId, sleepDuration)
-						time.Sleep(sleepDuration)
-						sDiags := runnable.Run(ctx)
-						stageDiags = append(stageDiags, sDiags...)
-
-						if !sDiags.HasErrors() {
-							retrySuccess = true
-							break
-						}
-					}
-
-					if !retrySuccess {
-						logger.Warnf("runnable %s failed after %d retries", runnableId, retryCount)
-					}
-
+				d := runnable.Prepare(ctx, !ok, overridden)
+				if d.HasErrors() {
+					diags.Write(logger.WriterLevel(logrus.ErrorLevel))
+					break
 				}
-				diagsMutex.Lock()
-				diags = diags.Extend(stageDiags)
-				diagsMutex.Unlock()
+
+				if !ok {
+					logger.Debugf("skipping runnable %s, condition evaluated to false", runnable.Identifier())
+					continue
+				}
+
 				if runnable.IsDaemon() {
-					daemonWg.Done()
+					hasDaemons = true
+					daemonWg.Add(1)
 				} else {
-					wg.Done()
+					wg.Add(1)
 				}
 
-			}(runnableId)
+				runnable := runnable
+				go func(runnableId string, runnable ci.Runnable) {
+					stageDiags := runnable.Run(ctx)
+					if !stageDiags.HasErrors() {
+						wg.Done()
+						return
+					}
+					if !runnable.CanRetry() {
+						logger.Error(stageDiags.Error())
+					} else {
+						logger.Infof("retrying runnable %s", runnableId)
+						retryCount := 0
+						retryMinBackOff := time.Duration(runnable.MinRetryBackoff()) * time.Second
+						retryMaxBackOff := time.Duration(runnable.MaxRetryBackoff()) * time.Second
+						retrySuccess := false
+						for retryCount < runnable.MaxRetries() {
+							retryCount++
+							sleepDuration := time.Duration(1) * time.Second
+							if runnable.RetryExponentialBackoff() {
 
-			if cfg.Pipeline.DryRun {
-				// TODO: implement --concurrency option
-				// wait for the runnable to finish
-				// disable concurrency
-				wg.Wait()
-				daemonWg.Wait()
+								if retryMinBackOff*time.Duration(retryCount) > retryMaxBackOff && retryMaxBackOff > 0 {
+									sleepDuration = retryMaxBackOff
+								} else {
+									sleepDuration = retryMinBackOff * time.Duration(retryCount)
+								}
+							} else {
+								sleepDuration = retryMinBackOff
+							}
+							logger.Warnf("runnable %s failed, retrying in %s", runnableId, sleepDuration)
+							time.Sleep(sleepDuration)
+							sDiags := runnable.Run(ctx)
+							stageDiags = append(stageDiags, sDiags...)
+
+							if !sDiags.HasErrors() {
+								retrySuccess = true
+								break
+							}
+						}
+
+						if !retrySuccess {
+							logger.Warnf("runnable %s failed after %d retries", runnableId, retryCount)
+						}
+
+					}
+					diagsMutex.Lock()
+					diags = diags.Extend(stageDiags)
+					diagsMutex.Unlock()
+					if runnable.IsDaemon() {
+						daemonWg.Done()
+					} else {
+						wg.Done()
+					}
+
+				}(runnableId, runnable)
+
+				if cfg.Pipeline.DryRun {
+					// TODO: implement --concurrency option
+					// wait for the runnable to finish
+					// disable concurrency
+					wg.Wait()
+					daemonWg.Wait()
+				}
 			}
+
 		}
 		wg.Wait()
 

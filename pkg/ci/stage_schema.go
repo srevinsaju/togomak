@@ -2,6 +2,7 @@ package ci
 
 import (
 	"github.com/hashicorp/hcl/v2"
+	"github.com/zclconf/go-cty/cty"
 	"os/exec"
 )
 
@@ -47,11 +48,16 @@ type StageDaemon struct {
 }
 
 type Stage struct {
-	Id        string         `hcl:"id,label" json:"id"`
+	Id string `hcl:"id,label" json:"id"`
+
 	Condition hcl.Expression `hcl:"if,optional" json:"if"`
 	DependsOn hcl.Expression `hcl:"depends_on,optional" json:"depends_on"`
-	ForEach   hcl.Expression `hcl:"for_each,optional" json:"for_each"`
 	Use       *StageUse      `hcl:"use,block" json:"use"`
+	ForEach   hcl.Expression `hcl:"for_each,optional" json:"for_each"`
+
+	forEachAttr    string
+	forEachValue   cty.Value
+	isForEachBlock bool
 
 	Daemon *StageDaemon `hcl:"daemon,block" json:"daemon"`
 	Retry  *StageRetry  `hcl:"retry,block" json:"retry"`
