@@ -58,6 +58,8 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 	pipe := ctx.Value(c.TogomakContextPipeline).(*Pipeline)
 	cwd := ctx.Value(c.TogomakContextCwd).(string)
 	tmpDir := ctx.Value(c.TogomakContextTempDir).(string)
+	ci := ctx.Value(c.TogomakContextCi).(bool)
+	unattended := ctx.Value(c.TogomakContextUnattended).(bool)
 	logger.Debugf("running %s.%s", s.Identifier(), MacroBlock)
 
 	var hclDiags hcl.Diagnostics
@@ -195,14 +197,31 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 				panic(err)
 			}
 			parent := shellescape.Quote(s.Id)
+			args := []cty.Value{
+				cty.StringVal(executable),
+				cty.StringVal("--child"),
+				cty.StringVal("--dir"), cty.StringVal(cwd),
+				cty.StringVal("--file"), cty.StringVal(defaultExecutionPath),
+				cty.StringVal("--parent"), cty.StringVal(parent),
+			}
+			if ci {
+				args = append(args, cty.StringVal("--ci"))
+			}
+			if unattended {
+				args = append(args, cty.StringVal("--unattended"))
+			}
+			childStatuses := s.Get(StageContextChildStatuses).([]string)
+			fmt.Println(childStatuses)
+			if childStatuses != nil {
+				var ctyChildStatuses []cty.Value
+				for _, childStatus := range childStatuses {
+					ctyChildStatuses = append(ctyChildStatuses, cty.StringVal(childStatus))
+				}
+				args = append(args, ctyChildStatuses...)
+			}
 			s.Args = hcl.StaticExpr(
-				cty.ListVal([]cty.Value{
-					cty.StringVal(executable),
-					cty.StringVal("--child"),
-					cty.StringVal("--dir"), cty.StringVal(cwd),
-					cty.StringVal("--file"), cty.StringVal(defaultExecutionPath),
-					cty.StringVal("--parent"), cty.StringVal(parent),
-				}), hcl.Range{Filename: "memory"})
+				cty.ListVal(args),
+				hcl.Range{Filename: "memory"})
 
 		}
 	}
@@ -290,7 +309,9 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 
 		envStrings = append(envStrings, envParsed)
 	}
-	envStrings = append(envStrings, fmt.Sprintf("%s=%s", meta.OutputEnvVar, filepath.Join(cwd, tmpDir, meta.OutputEnvFile)))
+	togomakEnvExport := fmt.Sprintf("%s=%s", meta.OutputEnvVar, filepath.Join(cwd, tmpDir, meta.OutputEnvFile))
+	logger.Tracef("exporting %s", togomakEnvExport)
+	envStrings = append(envStrings, togomakEnvExport)
 
 	if s.Use != nil && s.Use.Parameters != nil {
 		for k, v := range paramsGo {
@@ -353,7 +374,7 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 	cmd := exec.CommandContext(ctx, runCommand, runArgs...)
 	cmd.Stdout = logger.Writer()
 	cmd.Stderr = logger.WriterLevel(logrus.WarnLevel)
-	cmd.Env = append(envStrings, os.Environ()...)
+	cmd.Env = append(os.Environ(), envStrings...)
 	cmd.Dir = dir
 
 	if s.Container == nil {

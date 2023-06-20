@@ -1,6 +1,7 @@
 package ci
 
 import (
+	"context"
 	"github.com/hashicorp/hcl/v2"
 	"os/exec"
 )
@@ -47,6 +48,9 @@ type StageDaemon struct {
 }
 
 type Stage struct {
+	ctx            context.Context
+	ctxInitialised bool
+
 	Id        string         `hcl:"id,label" json:"id"`
 	Condition hcl.Expression `hcl:"if,optional" json:"if"`
 	DependsOn hcl.Expression `hcl:"depends_on,optional" json:"depends_on"`
@@ -64,6 +68,7 @@ type Stage struct {
 	Container   *StageContainer     `hcl:"container,block" json:"container"`
 	Environment []*StageEnvironment `hcl:"env,block" json:"environment"`
 
-	process     *exec.Cmd
-	ContainerId string
+	process                *exec.Cmd
+	macroWhitelistedStages []string
+	ContainerId            string
 }

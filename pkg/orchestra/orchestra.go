@@ -174,7 +174,9 @@ func Orchestra(cfg Config) {
 		// we parse the TOGOMAK_ENV file at the beginning of every layer
 		// this allows us to have different environments for different layers
 
-		envFile, err := os.OpenFile(filepath.Join(t.cwd, t.tempDir, meta.OutputEnvFile), os.O_RDONLY|os.O_CREATE, 0644)
+		togomakEnvFile := filepath.Join(t.cwd, t.tempDir, meta.OutputEnvFile)
+		logger.Tracef("%s will be stored and exported here: %s", meta.OutputEnvVar, togomakEnvFile)
+		envFile, err := os.OpenFile(togomakEnvFile, os.O_RDONLY|os.O_CREATE, 0644)
 		if err == nil {
 			e, err := envparse.Parse(envFile)
 			if err != nil {
@@ -192,7 +194,7 @@ func Orchestra(cfg Config) {
 			}
 			t.ectx.Variables[ci.OutputBlock] = cty.ObjectVal(ee)
 		} else {
-			logger.Warn("could not open TOGOMAK_OUTPUTS file, ignoring... : ", err)
+			logger.Warnf("could not open %s file, ignoring... :%s", meta.OutputEnvVar, err)
 		}
 
 		for _, runnableId := range layer {
@@ -256,11 +258,12 @@ func Orchestra(cfg Config) {
 					// stage is explicitly whitelisted or blacklisted
 					// using the ^ or + prefix
 					overridden = true
-					ok = ok || stageStatus.Operation == ConfigPipelineStageRunWhitelistOperation
-					if stageStatus.Operation == ConfigPipelineStageRunBlacklistOperation {
+					ok = ok || stageStatus.AnyOperations(ConfigPipelineStageRunWhitelistOperation)
+					if stageStatus.AllOperations(ConfigPipelineStageRunBlacklistOperation) {
 						ok = false
 					}
 				}
+				runnable.Set(ci.StageContextChildStatuses, stageStatus.Children(runnableId).Marshall())
 
 			}
 			// endregion: requested stages, whitelisting and blacklisting

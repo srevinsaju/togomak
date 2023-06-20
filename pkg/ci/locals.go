@@ -66,6 +66,13 @@ func (*Local) Kill() diag.Diagnostics {
 	return nil
 }
 
+func (*Local) Set(k any, v any) {
+}
+
+func (*Local) Get(k any) any {
+	return nil
+}
+
 func (l LocalsGroup) Expand() ([]*Local, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	var locals []*Local
