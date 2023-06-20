@@ -3,6 +3,7 @@ package orchestra
 import (
 	"context"
 	"fmt"
+	"github.com/hashicorp/go-envparse"
 	"github.com/kendru/darwin/go/depgraph"
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
@@ -170,7 +171,32 @@ func Orchestra(cfg Config) {
 	// endregion: interrupt handler
 
 	for _, layer := range depGraph.TopoSortedLayers() {
+		// we parse the TOGOMAK_ENV file at the beginning of every layer
+		// this allows us to have different environments for different layers
+
+		envFile, err := os.OpenFile(filepath.Join(t.cwd, t.tempDir, meta.OutputEnvFile), os.O_RDONLY|os.O_CREATE, 0644)
+		if err == nil {
+			e, err := envparse.Parse(envFile)
+			if err != nil {
+				diags = diags.Append(diag.Diagnostic{
+					Severity: diag.SeverityError,
+					Summary:  "could not parse TOGOMAK_ENV file",
+					Detail:   err.Error(),
+				})
+				break
+			}
+			envFile.Close()
+			ee := make(map[string]cty.Value)
+			for k, v := range e {
+				ee[k] = cty.StringVal(v)
+			}
+			t.ectx.Variables[ci.OutputBlock] = cty.ObjectVal(ee)
+		} else {
+			logger.Warn("could not open TOGOMAK_OUTPUTS file, ignoring... : ", err)
+		}
+
 		for _, runnableId := range layer {
+
 			var runnable ci.Runnable
 			var ok bool
 

@@ -153,6 +153,15 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 				// and then add it to the stage
 				fpath := filepath.Join(tmpDir, s.Id, fName)
 				logger.Debugf("writing %s to %s", fName, fpath)
+				if fContent.IsNull() {
+					return s, hclDiags.Append(&hcl.Diagnostic{
+						Severity:    hcl.DiagError,
+						Summary:     "invalid macro",
+						Detail:      fmt.Sprintf("%s uses a macro with an invalid file %s", s.Identifier(), fName),
+						EvalContext: hclContext,
+						Subject:     variable.SourceRange().Ptr(),
+					})
+				}
 				err = os.WriteFile(fpath, []byte(fContent.AsString()), 0644)
 				if err != nil {
 					// TODO: move to diagnostics
@@ -213,6 +222,7 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 	hclDgWriter := ctx.Value(c.TogomakContextHclDiagWriter).(hcl.DiagnosticWriter)
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField(StageBlock, s.Id)
 	cwd := ctx.Value(c.TogomakContextCwd).(string)
+	tmpDir := ctx.Value(c.TogomakContextTempDir).(string)
 	logger.Debugf("running %s.%s", StageBlock, s.Id)
 	isDryRun := ctx.Value(c.TogomakContextPipelineDryRun).(bool)
 
@@ -253,6 +263,7 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 	}
 
 	script, d := s.Script.Value(evalCtx)
+	shell := s.Shell
 	hclDiags = hclDiags.Extend(d)
 	args, d := s.Args.Value(evalCtx)
 	hclDiags = hclDiags.Extend(d)
@@ -279,6 +290,7 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 
 		envStrings = append(envStrings, envParsed)
 	}
+	envStrings = append(envStrings, fmt.Sprintf("%s=%s", meta.OutputEnvVar, filepath.Join(cwd, tmpDir, meta.OutputEnvFile)))
 
 	if s.Use != nil && s.Use.Parameters != nil {
 		for k, v := range paramsGo {
@@ -292,13 +304,17 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 	}
 
 	runArgs := make([]string, 0)
-	runCommand := "sh"
+	if shell == "" {
+		shell = "bash"
+	}
+
+	runCommand := shell
 
 	// emptyCommands - specifies if both args and scripts were unset
 	emptyCommands := false
 
 	if script.Type() == cty.String {
-		runArgs = append(runArgs, "-c", script.AsString())
+		runArgs = append(runArgs, "-e", "-c", script.AsString())
 	} else if !args.IsNull() && len(args.AsValueSlice()) != 0 {
 		runCommand = args.AsValueSlice()[0].AsString()
 		for i, a := range args.AsValueSlice() {

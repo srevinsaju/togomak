@@ -59,6 +59,7 @@ type Stage struct {
 	Name        string              `hcl:"name,optional" json:"name"`
 	Dir         hcl.Expression      `hcl:"dir,optional" json:"dir"`
 	Script      hcl.Expression      `hcl:"script,optional" json:"script"`
+	Shell       string              `hcl:"shell,optional" json:"shell"`
 	Args        hcl.Expression      `hcl:"args,optional" json:"args"`
 	Container   *StageContainer     `hcl:"container,block" json:"container"`
 	Environment []*StageEnvironment `hcl:"env,block" json:"environment"`
