@@ -45,6 +45,18 @@ func main() {
 			Action:  list,
 		},
 		{
+			Name:   "fmt",
+			Usage:  "format a pipeline file",
+			Action: format,
+			Flags: []cli.Flag{
+				&cli.BoolFlag{
+					Name:    "check",
+					Usage:   "check if the file is formatted",
+					Aliases: []string{"c"},
+				},
+			},
+		},
+		{
 			Name:  "cache",
 			Usage: "manage the cache",
 			Subcommands: []*cli.Command{
@@ -204,4 +216,9 @@ func cleanCache(ctx *cli.Context) error {
 func list(ctx *cli.Context) error {
 	cfg := newConfigFromCliContext(ctx)
 	return orchestra.List(cfg)
+}
+
+func format(ctx *cli.Context) error {
+	cfg := newConfigFromCliContext(ctx)
+	return orchestra.Format(cfg, ctx.Bool("check"))
 }

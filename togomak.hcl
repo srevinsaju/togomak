@@ -11,17 +11,17 @@ stage "vet" {
 }
 stage "build" {
   depends_on = [stage.fmt, stage.vet]
-  script = "go build -v -o ./cmd/togomak/togomak github.com/srevinsaju/togomak/v1/cmd/togomak"
+  script     = "go build -v -o ./cmd/togomak/togomak github.com/srevinsaju/togomak/v1/cmd/togomak"
 }
 stage "install" {
   depends_on = [stage.build]
-  script = "go install github.com/srevinsaju/togomak/v1/cmd/togomak"
+  script     = "go install github.com/srevinsaju/togomak/v1/cmd/togomak"
 }
 
 stage "docs_serve" {
   daemon {
     enabled = true
   }
-  if = false
+  if     = false
   script = "cd docs && mdbook serve"
 }
