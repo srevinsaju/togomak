@@ -35,6 +35,8 @@ stage "integration_tests" {
     ./togomak_coverage -C "$i" --ci -v root
     ./togomak_coverage -C "$i" --ci -v -n
   done
+  ./togomak_coverage cache clean --recursive
+  ./togomak_coverage fmt --check --recursive
 
   for i in tests/failing/*; do 
     set +e
