@@ -4,6 +4,6 @@ togomak {
 
 
 stage "list" {
-  name   = "listing files"
+  name = "listing files"
   args = ["ls", "-al"]
 }

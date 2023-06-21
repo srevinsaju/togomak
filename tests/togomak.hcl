@@ -5,13 +5,13 @@ togomak {
 
 stage "build" {
   name   = "build"
-  dir = ".."
+  dir    = ".."
   script = "go build -cover -o tests/togomak_coverage ./cmd/togomak"
 }
 
 locals {
-  coverage_data_dir = "${cwd}/coverage_data_files"
-  coverage_merge_dir = "${cwd}/coverage_merge_dir"
+  coverage_data_dir             = "${cwd}/coverage_data_files"
+  coverage_merge_dir            = "${cwd}/coverage_merge_dir"
   coverage_data_interactive_dir = "${cwd}/coverage_data_interactive_dir"
 }
 
@@ -26,7 +26,7 @@ stage "coverage_prepare" {
 
 stage "integration_tests" {
   depends_on = [stage.build, stage.coverage_prepare]
-  script = <<-EOT
+  script     = <<-EOT
   #!/usr/bin/env bash
   set -e
   ls ../examples
@@ -49,29 +49,29 @@ stage "integration_tests" {
   EOT
 
   env {
-    name = "GOCOVERDIR"
+    name  = "GOCOVERDIR"
     value = local.coverage_data_dir
   }
 }
 
 stage "coverage_raw" {
   depends_on = [stage.integration_tests]
-  script = "go tool covdata percent -i=${local.coverage_data_dir}" 
+  script     = "go tool covdata percent -i=${local.coverage_data_dir}"
 }
 stage "coverage_merge" {
   depends_on = [stage.coverage_raw, stage.coverage_unit_tests]
-  script = "go tool covdata merge -i=${local.coverage_data_dir},${local.coverage_data_interactive_dir} -o=${local.coverage_merge_dir}"
+  script     = "go tool covdata merge -i=${local.coverage_data_dir},${local.coverage_data_interactive_dir} -o=${local.coverage_merge_dir}"
 }
 stage "coverage" {
   depends_on = [stage.coverage_merge]
-  script = "go tool covdata textfmt -i=${local.coverage_merge_dir} -o=coverage.out"
+  script     = "go tool covdata textfmt -i=${local.coverage_merge_dir} -o=coverage.out"
 }
 stage "coverage_unit_tests" {
   depends_on = [stage.build]
-  dir = ".."
-  script = "go test ./... -coverprofile=coverage_unit_tests.out"
+  dir        = ".."
+  script     = "go test ./... -coverprofile=coverage_unit_tests.out"
   env {
-    name = "PROMPT_GOCOVERDIR"
+    name  = "PROMPT_GOCOVERDIR"
     value = local.coverage_data_interactive_dir
   }
 }

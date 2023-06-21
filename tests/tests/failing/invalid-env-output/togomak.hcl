@@ -11,6 +11,6 @@ stage "agent" {
 
 stage "seele" {
   depends_on = [stage.agent]
-  name   = "seele"
-  script = "echo The agent from Seele reporting! ${output.AGENT}"
+  name       = "seele"
+  script     = "echo The agent from Seele reporting! ${output.AGENT}"
 }

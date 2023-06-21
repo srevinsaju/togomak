@@ -3,7 +3,7 @@ togomak {
 }
 
 data "git" "repo" {
-  url = "https://github.com/srevinsaju/togomak"
+  url   = "https://github.com/srevinsaju/togomak"
   files = ["togomak.hcl"]
 }
 

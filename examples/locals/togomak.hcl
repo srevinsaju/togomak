@@ -4,7 +4,7 @@ togomak {
 
 locals {
   nerv_headquarters = "Tokyo-3"
-  pilot_name = "Shinji"
+  pilot_name        = "Shinji"
 }
 
 stage "eva01_synchronization" {
