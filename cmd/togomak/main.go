@@ -54,6 +54,11 @@ func main() {
 					Usage:   "check if the file is formatted",
 					Aliases: []string{"c"},
 				},
+				&cli.BoolFlag{
+					Name:    "recursive",
+					Usage:   "format all the files named togomak.hcl in the current directory, and its children",
+					Aliases: []string{"r"},
+				},
 			},
 		},
 		{
@@ -220,5 +225,5 @@ func list(ctx *cli.Context) error {
 
 func format(ctx *cli.Context) error {
 	cfg := newConfigFromCliContext(ctx)
-	return orchestra.Format(cfg, ctx.Bool("check"))
+	return orchestra.Format(cfg, ctx.Bool("check"), ctx.Bool("recursive"))
 }
