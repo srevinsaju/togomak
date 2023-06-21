@@ -9,6 +9,7 @@
     - [Reusable Stages](./features/macros.md)
     - [Daemonizing](./features/daemonizing.md)
     - [Container Support](./features/docker.md)
+    - [Outputs](./features/outputs.md)
 
 - [Command Line Interface](./cli/introduction.md)
     - [Usage](./cli/usage.md)
@@ -20,7 +21,8 @@
     - [Data](./configuration/data.md)
         - [`data.env`](./configuration/data_env.md)
         - [`data.prompt`](./configuration/data_prompt.md)
-        - [`data.file`](./configuration/data_file.md)
+        - [`data.file`]()
+        - [`data.git`](./configuration/data_git.md)
     - [Macro](./configuration/macro.md)
 
 - [Plugins](./contrib/plugins/introduction.md)
