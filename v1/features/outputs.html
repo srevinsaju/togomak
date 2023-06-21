@@ -165,8 +165,8 @@ stage &quot;agent&quot; {
 
 stage &quot;seele&quot; {
   depends_on = [stage.agent]
-  name   = &quot;seele&quot;
-  script = &quot;echo The agent from Seele reporting! ${output.AGENT}&quot;
+  name       = &quot;seele&quot;
+  script     = &quot;echo The agent from Seele reporting! ${output.AGENT}&quot;
 }
 </code></pre>
 <p>As a limitation, you can only share data within 

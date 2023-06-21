@@ -264,8 +264,8 @@ in multiple stages later. Let's see how:</p>
 }
 
 macro &quot;explode&quot; {
-    stage &quot;explode&quot; {
-        script = &lt;&lt;-EOT
+  stage &quot;explode&quot; {
+    script = &lt;&lt;-EOT
         for i in $(seq 1 10); do
           sleep 0.1
           echo &quot;${param.eva}: Loading $i...&quot;
@@ -273,28 +273,28 @@ macro &quot;explode&quot; {
 
         echo &quot;${param.eva}: entry plug connected! pilot ${param.pilot} synchronized! 🤖&quot;
         EOT
-    }
+  }
 }
 
 
 stage &quot;entry_plug_eva01&quot; {
-    use {
-        macro = macro.explode 
-        parameters = {
-            pilot = &quot;Shinji Ikari 🙅‍♂️&quot;
-            eva = &quot;01&quot;
-        }
+  use {
+    macro = macro.explode
+    parameters = {
+      pilot = &quot;Shinji Ikari 🙅‍♂️&quot;
+      eva   = &quot;01&quot;
     }
+  }
 }
 
 stage &quot;entry_plug_eva02&quot; {
-    use { 
-        macro = macro.explode 
-        parameters = {
-            pilot = &quot;Asuka Langley Soryu 🙅‍♀️&quot;
-            eva = &quot;02&quot;
-        }
+  use {
+    macro = macro.explode
+    parameters = {
+      pilot = &quot;Asuka Langley Soryu 🙅‍♀️&quot;
+      eva   = &quot;02&quot;
     }
+  }
 }
 
 
@@ -316,23 +316,26 @@ required for handling these daemon-like long-running process.</p>
 stage &quot;fmt&quot; {
   script = &quot;go fmt github.com/srevinsaju/togomak/v1/...&quot;
 }
+
 stage &quot;vet&quot; {
   script = &quot;go vet github.com/srevinsaju/togomak/v1/...&quot;
 }
+
 stage &quot;build&quot; {
   depends_on = [stage.fmt, stage.vet]
-  script = &quot;go build -v -o ./cmd/togomak/togomak github.com/srevinsaju/togomak/v1/cmd/togomak&quot;
+  script     = &quot;go build -v -o ./cmd/togomak/togomak github.com/srevinsaju/togomak/v1/cmd/togomak&quot;
 }
+
 stage &quot;install&quot; {
   depends_on = [stage.build]
-  script = &quot;go install github.com/srevinsaju/togomak/v1/cmd/togomak&quot;
+  script     = &quot;go install github.com/srevinsaju/togomak/v1/cmd/togomak&quot;
 }
 
 stage &quot;docs_serve&quot; {
   daemon {
     enabled = true
   }
-  if = false
+  if     = false
   script = &quot;cd docs &amp;&amp; mdbook serve&quot;
 }
 </code></pre>
@@ -354,7 +357,7 @@ stage &quot;example&quot; {
   container {
     image = &quot;ubuntu&quot;
     volume {
-      source = &quot;${cwd}/diary&quot;
+      source      = &quot;${cwd}/diary&quot;
       destination = &quot;/newdiary&quot;
     }
   }
@@ -391,8 +394,8 @@ stage &quot;agent&quot; {
 
 stage &quot;seele&quot; {
   depends_on = [stage.agent]
-  name   = &quot;seele&quot;
-  script = &quot;echo The agent from Seele reporting! ${output.AGENT}&quot;
+  name       = &quot;seele&quot;
+  script     = &quot;echo The agent from Seele reporting! ${output.AGENT}&quot;
 }
 </code></pre>
 <p>As a limitation, you can only share data within 
@@ -471,23 +474,26 @@ this repository:</p>
 stage &quot;fmt&quot; {
   script = &quot;go fmt github.com/srevinsaju/togomak/v1/...&quot;
 }
+
 stage &quot;vet&quot; {
   script = &quot;go vet github.com/srevinsaju/togomak/v1/...&quot;
 }
+
 stage &quot;build&quot; {
   depends_on = [stage.fmt, stage.vet]
-  script = &quot;go build -v -o ./cmd/togomak/togomak github.com/srevinsaju/togomak/v1/cmd/togomak&quot;
+  script     = &quot;go build -v -o ./cmd/togomak/togomak github.com/srevinsaju/togomak/v1/cmd/togomak&quot;
 }
+
 stage &quot;install&quot; {
   depends_on = [stage.build]
-  script = &quot;go install github.com/srevinsaju/togomak/v1/cmd/togomak&quot;
+  script     = &quot;go install github.com/srevinsaju/togomak/v1/cmd/togomak&quot;
 }
 
 stage &quot;docs_serve&quot; {
   daemon {
     enabled = true
   }
-  if = false
+  if     = false
   script = &quot;cd docs &amp;&amp; mdbook serve&quot;
 }
 </code></pre>
@@ -672,7 +678,7 @@ stage &quot;example&quot; {
   container {
     image = &quot;ubuntu&quot;
     volume {
-      source = &quot;${cwd}/diary&quot;
+      source      = &quot;${cwd}/diary&quot;
       destination = &quot;/newdiary&quot;
     }
   }
@@ -770,7 +776,7 @@ a <code>locals {}</code> block. </p>
 
 locals {
   nerv_headquarters = &quot;Tokyo-3&quot;
-  pilot_name = &quot;Shinji&quot;
+  pilot_name        = &quot;Shinji&quot;
 }
 
 stage &quot;eva01_synchronization&quot; {
@@ -865,7 +871,7 @@ to a specific directory</p>
 }
 
 data &quot;git&quot; &quot;repo&quot; {
-  url = &quot;https://github.com/srevinsaju/togomak&quot;
+  url   = &quot;https://github.com/srevinsaju/togomak&quot;
   files = [&quot;togomak.hcl&quot;]
 }
 
@@ -883,16 +889,16 @@ stage &quot;example&quot; {
 }
 
 data &quot;git&quot; &quot;eva01_source&quot; {
-  url = &quot;https://github.com/srevinsaju/togomak&quot;
+  url   = &quot;https://github.com/srevinsaju/togomak&quot;
   files = [&quot;togomak.hcl&quot;]
 }
 
 macro &quot;gendo_brain&quot; {
-  files = data.git.eva01_source.files 
+  files = data.git.eva01_source.files
 }
 
 stage &quot;build_eva01&quot; {
-  name   = &quot;Building eva unit&quot;
+  name = &quot;Building eva unit&quot;
   use {
     macro = macro.gendo_brain
   }
@@ -944,8 +950,8 @@ another child process which will run the contents of the file, as an independant
 }
 
 macro &quot;explode&quot; {
-    stage &quot;explode&quot; {
-        script = &lt;&lt;-EOT
+  stage &quot;explode&quot; {
+    script = &lt;&lt;-EOT
         for i in $(seq 1 10); do
           sleep 0.1
           echo &quot;${param.eva}: Loading $i...&quot;
@@ -953,28 +959,28 @@ macro &quot;explode&quot; {
 
         echo &quot;${param.eva}: entry plug connected! pilot ${param.pilot} synchronized! 🤖&quot;
         EOT
-    }
+  }
 }
 
 
 stage &quot;entry_plug_eva01&quot; {
-    use {
-        macro = macro.explode 
-        parameters = {
-            pilot = &quot;Shinji Ikari 🙅‍♂️&quot;
-            eva = &quot;01&quot;
-        }
+  use {
+    macro = macro.explode
+    parameters = {
+      pilot = &quot;Shinji Ikari 🙅‍♂️&quot;
+      eva   = &quot;01&quot;
     }
+  }
 }
 
 stage &quot;entry_plug_eva02&quot; {
-    use { 
-        macro = macro.explode 
-        parameters = {
-            pilot = &quot;Asuka Langley Soryu 🙅‍♀️&quot;
-            eva = &quot;02&quot;
-        }
+  use {
+    macro = macro.explode
+    parameters = {
+      pilot = &quot;Asuka Langley Soryu 🙅‍♀️&quot;
+      eva   = &quot;02&quot;
     }
+  }
 }
 
 

@@ -163,8 +163,8 @@ another child process which will run the contents of the file, as an independant
 }
 
 macro &quot;explode&quot; {
-    stage &quot;explode&quot; {
-        script = &lt;&lt;-EOT
+  stage &quot;explode&quot; {
+    script = &lt;&lt;-EOT
         for i in $(seq 1 10); do
           sleep 0.1
           echo &quot;${param.eva}: Loading $i...&quot;
@@ -172,28 +172,28 @@ macro &quot;explode&quot; {
 
         echo &quot;${param.eva}: entry plug connected! pilot ${param.pilot} synchronized! 🤖&quot;
         EOT
-    }
+  }
 }
 
 
 stage &quot;entry_plug_eva01&quot; {
-    use {
-        macro = macro.explode 
-        parameters = {
-            pilot = &quot;Shinji Ikari 🙅‍♂️&quot;
-            eva = &quot;01&quot;
-        }
+  use {
+    macro = macro.explode
+    parameters = {
+      pilot = &quot;Shinji Ikari 🙅‍♂️&quot;
+      eva   = &quot;01&quot;
     }
+  }
 }
 
 stage &quot;entry_plug_eva02&quot; {
-    use { 
-        macro = macro.explode 
-        parameters = {
-            pilot = &quot;Asuka Langley Soryu 🙅‍♀️&quot;
-            eva = &quot;02&quot;
-        }
+  use {
+    macro = macro.explode
+    parameters = {
+      pilot = &quot;Asuka Langley Soryu 🙅‍♀️&quot;
+      eva   = &quot;02&quot;
     }
+  }
 }
 
 

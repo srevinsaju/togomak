@@ -158,7 +158,7 @@ to a specific directory</p>
 }
 
 data &quot;git&quot; &quot;repo&quot; {
-  url = &quot;https://github.com/srevinsaju/togomak&quot;
+  url   = &quot;https://github.com/srevinsaju/togomak&quot;
   files = [&quot;togomak.hcl&quot;]
 }
 
@@ -176,16 +176,16 @@ stage &quot;example&quot; {
 }
 
 data &quot;git&quot; &quot;eva01_source&quot; {
-  url = &quot;https://github.com/srevinsaju/togomak&quot;
+  url   = &quot;https://github.com/srevinsaju/togomak&quot;
   files = [&quot;togomak.hcl&quot;]
 }
 
 macro &quot;gendo_brain&quot; {
-  files = data.git.eva01_source.files 
+  files = data.git.eva01_source.files
 }
 
 stage &quot;build_eva01&quot; {
-  name   = &quot;Building eva unit&quot;
+  name = &quot;Building eva unit&quot;
   use {
     macro = macro.gendo_brain
   }

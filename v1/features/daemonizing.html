@@ -161,23 +161,26 @@ required for handling these daemon-like long-running process.</p>
 stage &quot;fmt&quot; {
   script = &quot;go fmt github.com/srevinsaju/togomak/v1/...&quot;
 }
+
 stage &quot;vet&quot; {
   script = &quot;go vet github.com/srevinsaju/togomak/v1/...&quot;
 }
+
 stage &quot;build&quot; {
   depends_on = [stage.fmt, stage.vet]
-  script = &quot;go build -v -o ./cmd/togomak/togomak github.com/srevinsaju/togomak/v1/cmd/togomak&quot;
+  script     = &quot;go build -v -o ./cmd/togomak/togomak github.com/srevinsaju/togomak/v1/cmd/togomak&quot;
 }
+
 stage &quot;install&quot; {
   depends_on = [stage.build]
-  script = &quot;go install github.com/srevinsaju/togomak/v1/cmd/togomak&quot;
+  script     = &quot;go install github.com/srevinsaju/togomak/v1/cmd/togomak&quot;
 }
 
 stage &quot;docs_serve&quot; {
   daemon {
     enabled = true
   }
-  if = false
+  if     = false
   script = &quot;cd docs &amp;&amp; mdbook serve&quot;
 }
 </code></pre>
