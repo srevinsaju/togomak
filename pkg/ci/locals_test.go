@@ -1,6 +1,9 @@
 package ci
 
-import "testing"
+import (
+	"github.com/stretchr/testify/assert"
+	"testing"
+)
 
 func TestLocals_Description(t *testing.T) {
 	locals := Locals{}
@@ -42,4 +45,13 @@ func TestLocal_Type(t *testing.T) {
 	if local.Type() != LocalBlock {
 		t.Error("Type() should return 'local'")
 	}
+}
+
+func TestLocal_Set(t *testing.T) {
+	data := Local{}
+	data.Set("key", "value")
+}
+func TestLocal_Get(t *testing.T) {
+	data := Local{}
+	assert.Equal(t, data.Get("key"), nil)
 }
