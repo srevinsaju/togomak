@@ -3,6 +3,7 @@ package orchestra
 import (
 	"context"
 	"fmt"
+	"github.com/hashicorp/go-envparse"
 	"github.com/kendru/darwin/go/depgraph"
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
@@ -170,7 +171,34 @@ func Orchestra(cfg Config) {
 	// endregion: interrupt handler
 
 	for _, layer := range depGraph.TopoSortedLayers() {
+		// we parse the TOGOMAK_ENV file at the beginning of every layer
+		// this allows us to have different environments for different layers
+
+		togomakEnvFile := filepath.Join(t.cwd, t.tempDir, meta.OutputEnvFile)
+		logger.Tracef("%s will be stored and exported here: %s", meta.OutputEnvVar, togomakEnvFile)
+		envFile, err := os.OpenFile(togomakEnvFile, os.O_RDONLY|os.O_CREATE, 0644)
+		if err == nil {
+			e, err := envparse.Parse(envFile)
+			if err != nil {
+				diags = diags.Append(diag.Diagnostic{
+					Severity: diag.SeverityError,
+					Summary:  "could not parse TOGOMAK_ENV file",
+					Detail:   err.Error(),
+				})
+				break
+			}
+			envFile.Close()
+			ee := make(map[string]cty.Value)
+			for k, v := range e {
+				ee[k] = cty.StringVal(v)
+			}
+			t.ectx.Variables[ci.OutputBlock] = cty.ObjectVal(ee)
+		} else {
+			logger.Warnf("could not open %s file, ignoring... :%s", meta.OutputEnvVar, err)
+		}
+
 		for _, runnableId := range layer {
+
 			var runnable ci.Runnable
 			var ok bool
 
@@ -230,11 +258,12 @@ func Orchestra(cfg Config) {
 					// stage is explicitly whitelisted or blacklisted
 					// using the ^ or + prefix
 					overridden = true
-					ok = ok || stageStatus.Operation == ConfigPipelineStageRunWhitelistOperation
-					if stageStatus.Operation == ConfigPipelineStageRunBlacklistOperation {
+					ok = ok || stageStatus.AnyOperations(ConfigPipelineStageRunWhitelistOperation)
+					if stageStatus.AllOperations(ConfigPipelineStageRunBlacklistOperation) {
 						ok = false
 					}
 				}
+				runnable.Set(ci.StageContextChildStatuses, stageStatus.Children(runnableId).Marshall())
 
 			}
 			// endregion: requested stages, whitelisting and blacklisting

@@ -14,5 +14,8 @@ const (
 
 	EnvVarPrefix = "TOGOMAK__"
 
+	OutputEnvFile = ".togomak.env"
+	OutputEnvVar  = "TOGOMAK_OUTPUTS"
+
 	RootStage = "togomak.root"
 )

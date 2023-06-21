@@ -48,3 +48,10 @@ func (m *Macro) Terminate() diag.Diagnostics {
 func (m *Macro) Kill() diag.Diagnostics {
 	return nil
 }
+
+func (m *Macro) Set(k any, v any) {
+}
+
+func (m *Macro) Get(k any) any {
+	return nil
+}

@@ -21,11 +21,18 @@ func (d Datas) ById(provider string, id string) (*Data, error) {
 			return &data, nil
 		}
 	}
-	return nil, fmt.Errorf("data block with id %s not found", id)
+	return nil, fmt.Errorf("data block with id=%s and provider=%s not found", id, provider)
 }
 
 func (d Data) Type() string {
 	return DataBlock
+}
+
+func (d Data) Set(k any, v any) {
+}
+
+func (d Data) Get(k any) any {
+	return nil
 }
 
 func (d Data) IsDaemon() bool {

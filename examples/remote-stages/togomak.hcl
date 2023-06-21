@@ -4,7 +4,6 @@ togomak {
 
 data "git" "eva01_source" {
   url = "https://github.com/srevinsaju/togomak"
-  depth = 1
   files = ["togomak.hcl"]
 }
 

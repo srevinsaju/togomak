@@ -14,6 +14,7 @@ require (
 	github.com/go-git/go-billy/v5 v5.4.1
 	github.com/go-git/go-git/v5 v5.7.0
 	github.com/google/uuid v1.3.0
+	github.com/hashicorp/go-envparse v0.1.0
 	github.com/hashicorp/go-uuid v1.0.3
 	github.com/hashicorp/hcl/v2 v2.17.0
 	github.com/hinshun/vt10x v0.0.0-20220119200601-820417d04eec

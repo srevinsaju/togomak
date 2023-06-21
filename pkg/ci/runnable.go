@@ -45,6 +45,9 @@ type Runnable interface {
 
 	Terminate() diag.Diagnostics
 	Kill() diag.Diagnostics
+
+	Set(k any, v any)
+	Get(k any) any
 }
 
 type Runnables []Runnable

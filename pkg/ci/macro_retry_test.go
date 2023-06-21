@@ -1,6 +1,9 @@
 package ci
 
-import "testing"
+import (
+	"github.com/stretchr/testify/assert"
+	"testing"
+)
 
 func TestMacro_CanRetry(t *testing.T) {
 	macro := Macro{}
@@ -42,4 +45,14 @@ func TestMacro_RetryExponentialBackoff(t *testing.T) {
 	if macro.RetryExponentialBackoff() {
 		t.Error("RetryExponentialBackoff() should return false")
 	}
+}
+
+func TestMacro_Set(t *testing.T) {
+	data := Macro{}
+	data.Set("key", "value")
+}
+
+func TestMacro_Get(t *testing.T) {
+	data := Macro{}
+	assert.Equal(t, data.Get("key"), nil)
 }

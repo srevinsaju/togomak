@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
@@ -41,6 +42,28 @@ type gitProviderConfig struct {
 	auth  gitProviderAuthConfig
 	files []string
 }
+
+const (
+	GitBlockArgumentUrl         = "url"
+	GitBlockArgumentTag         = "tag"
+	GitBlockArgumentBranch      = "branch"
+	GitBlockArgumentDestination = "destination"
+	GitBlockArgumentCommit      = "commit"
+	GitBlockArgumentDepth       = "depth"
+	GitBlockArgumentCaBundle    = "ca_bundle"
+	GitBlockArgumentAuth        = "auth"
+	GitBlockArgumentFiles       = "files"
+
+	GitBlockAttrLastTag             = "last_tag"
+	GitBlockAttrCommitsSinceLastTag = "commits_since_last_tag"
+	GitBlockAttrSha                 = "sha"
+	GitBlockAttrRef                 = "ref"
+
+	GitBlockAttrIsTag    = "is_tag"
+	GitBlockAttrIsBranch = "is_branch"
+	GitBlockAttrIsNote   = "is_note"
+	GitBlockAttrIsRemote = "is_remote"
+)
 
 type GitProvider struct {
 	initialized bool
@@ -84,62 +107,62 @@ func (e *GitProvider) DecodeBody(body hcl.Body) diag.Diagnostics {
 		diags = diags.NewHclWriteDiagnosticsError(e.Identifier(), hclDiagWriter.WriteDiagnostics(hclDiags))
 	}
 
-	repo, d := content.Attributes["url"].Expr.Value(hclContext)
+	repo, d := content.Attributes[GitBlockArgumentUrl].Expr.Value(hclContext)
 	hclDiags = append(hclDiags, d...)
 
-	tagAttr, ok := content.Attributes["tag"]
+	tagAttr, ok := content.Attributes[GitBlockArgumentTag]
 	tag := cty.StringVal("")
 	if ok {
 		tag, d = tagAttr.Expr.Value(hclContext)
 		hclDiags = append(hclDiags, d...)
 	}
 
-	branchAttr, ok := content.Attributes["branch"]
+	branchAttr, ok := content.Attributes[GitBlockArgumentBranch]
 	branch := cty.StringVal("")
 	if ok {
 		branch, d = branchAttr.Expr.Value(hclContext)
 		hclDiags = append(hclDiags, d...)
 	}
 
-	commitAttr, ok := content.Attributes["commit"]
+	commitAttr, ok := content.Attributes[GitBlockArgumentCommit]
 	commit := cty.StringVal("")
 	if ok {
 		commit, d = commitAttr.Expr.Value(hclContext)
 		hclDiags = append(hclDiags, d...)
 	}
 
-	destinationAttr, ok := content.Attributes["destination"]
+	destinationAttr, ok := content.Attributes[GitBlockArgumentDestination]
 	destination := cty.StringVal("")
 	if ok {
 		destination, d = destinationAttr.Expr.Value(hclContext)
 		hclDiags = append(hclDiags, d...)
 	}
 
-	depthAttr, ok := content.Attributes["dreaderepth"]
+	depthAttr, ok := content.Attributes[GitBlockArgumentDepth]
 	depth := cty.NumberIntVal(0)
 	if ok {
 		depth, d = depthAttr.Expr.Value(hclContext)
 		hclDiags = append(hclDiags, d...)
 	}
 
-	caBundleAttr, ok := content.Attributes["ca_bundle"]
+	caBundleAttr, ok := content.Attributes[GitBlockArgumentCaBundle]
 	caBundle := cty.StringVal("")
 	if ok {
 		caBundle, d = caBundleAttr.Expr.Value(hclContext)
 		hclDiags = append(hclDiags, d...)
 	}
 
-	filesAttr, ok := content.Attributes["files"]
+	filesAttr, ok := content.Attributes[GitBlockArgumentFiles]
 	files := cty.ListValEmpty(cty.String)
 	if ok {
 		files, d = filesAttr.Expr.Value(hclContext)
 		hclDiags = append(hclDiags, d...)
 	}
 
-	authBlock := content.Blocks.OfType("auth")
+	authBlock := content.Blocks.OfType(GitBlockArgumentAuth)
 	var authConfig gitProviderAuthConfig
 	if len(authBlock) == 1 {
-		auth, d := content.Blocks.OfType("auth")[0].Body.Content(GitProviderAuthSchema())
+		auth, d := content.Blocks.OfType(GitBlockArgumentAuth)[0].Body.Content(GitProviderAuthSchema())
 		hclDiags = append(hclDiags, d...)
 
 		authUsername, d := auth.Attributes["username"].Expr.Value(hclContext)
@@ -220,36 +243,36 @@ func (e *GitProvider) Schema() *hcl.BodySchema {
 	return &hcl.BodySchema{
 		Blocks: []hcl.BlockHeaderSchema{
 			{
-				Type: "auth",
+				Type: GitBlockArgumentAuth,
 			},
 		},
 		Attributes: []hcl.AttributeSchema{
 			{
-				Name:     "url",
+				Name:     GitBlockArgumentUrl,
 				Required: true,
 			},
 			{
-				Name:     "tag",
+				Name:     GitBlockArgumentTag,
 				Required: false,
 			},
 			{
-				Name:     "branch",
+				Name:     GitBlockArgumentBranch,
 				Required: false,
 			},
 			{
-				Name:     "commit",
+				Name:     GitBlockArgumentCommit,
 				Required: false,
 			},
 			{
-				Name:     "destination",
+				Name:     GitBlockArgumentDestination,
 				Required: false,
 			},
 			{
-				Name:     "depth",
+				Name:     GitBlockArgumentDepth,
 				Required: false,
 			},
 			{
-				Name:     "files",
+				Name:     GitBlockArgumentFiles,
 				Required: false,
 			},
 		},
@@ -278,6 +301,7 @@ func (e *GitProvider) Attributes(ctx context.Context) map[string]cty.Value {
 
 	// clone git repo
 	// git clone
+	fmt.Println(e.cfg.repo)
 	var s storage.Storer
 	var authMethod transport.AuthMethod
 	if e.cfg.auth.password != "" {
@@ -355,6 +379,29 @@ func (e *GitProvider) Attributes(ctx context.Context) map[string]cty.Value {
 		return nil
 	}
 
+	commitIter, err := repo.Log(&git.LogOptions{
+		Order: git.LogOrderCommitterTime,
+	})
+
+	count := 0
+	lastTag := ""
+	if err != nil {
+		diags = diags.Append(diag.Diagnostic{
+			Severity: diag.SeverityWarning,
+			Summary:  "git log failed",
+			Detail:   err.Error(),
+			Source:   e.Identifier(),
+		})
+	} else {
+		for commit, err := commitIter.Next(); err != nil; {
+			if commit.Type() == plumbing.TagObject {
+				lastTag = commit.Hash.String()
+			}
+			count++
+		}
+	}
+	commitsSinceLastTag := cty.NumberIntVal(int64(count))
+
 	var files = make(map[string]cty.Value)
 	for _, f := range e.cfg.files {
 		_, err := w.Filesystem.Stat(f)
@@ -392,12 +439,19 @@ func (e *GitProvider) Attributes(ctx context.Context) map[string]cty.Value {
 		files[f] = cty.StringVal(string(data[:]))
 	}
 
-	attrs["files"] = cty.MapVal(files)
-	attrs["url"] = cty.StringVal(e.cfg.repo)
-	attrs["tag"] = cty.StringVal(e.cfg.tag)
+	if files == nil || len(files) == 0 {
+		attrs[GitBlockArgumentFiles] = cty.MapValEmpty(cty.String)
+	} else {
+		attrs[GitBlockArgumentFiles] = cty.MapVal(files)
+	}
+
+	attrs[GitBlockArgumentUrl] = cty.StringVal(e.cfg.repo)
+	attrs[GitBlockArgumentTag] = cty.StringVal(e.cfg.tag)
 
 	ref, err := repo.Head()
+	refString := cty.StringVal("")
 	branch := cty.StringVal("")
+	tag := cty.StringVal("")
 	isBranch := cty.False
 	isTag := cty.False
 	isRemote := cty.False
@@ -412,19 +466,26 @@ func (e *GitProvider) Attributes(ctx context.Context) map[string]cty.Value {
 		})
 
 	} else {
-		branch = cty.StringVal(ref.Name().String())
+		refString = cty.StringVal(ref.Name().String())
+		branch = cty.StringVal(ref.Name().Short())
 		isBranch = cty.BoolVal(ref.Name().IsBranch())
 		isTag = cty.BoolVal(ref.Name().IsTag())
+		tag = cty.StringVal(ref.Name().Short())
 		isRemote = cty.BoolVal(ref.Name().IsRemote())
 		isNote = cty.BoolVal(ref.Name().IsNote())
 		sha = cty.StringVal(ref.Hash().String())
 	}
-	attrs["branch"] = branch
-	attrs["is_branch"] = isBranch
-	attrs["is_tag"] = isTag
-	attrs["is_remote"] = isRemote
-	attrs["is_note"] = isNote
-	attrs["sha"] = sha
+
+	attrs[GitBlockArgumentBranch] = branch
+	attrs[GitBlockArgumentTag] = tag
+	attrs[GitBlockAttrIsBranch] = isBranch
+	attrs[GitBlockAttrRef] = refString
+	attrs[GitBlockAttrIsTag] = isTag
+	attrs[GitBlockAttrIsRemote] = isRemote
+	attrs[GitBlockAttrIsNote] = isNote
+	attrs[GitBlockAttrSha] = sha
+	attrs[GitBlockAttrLastTag] = cty.StringVal(lastTag)
+	attrs[GitBlockAttrCommitsSinceLastTag] = commitsSinceLastTag
 
 	// get the commit
 	return attrs

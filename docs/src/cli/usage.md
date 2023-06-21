@@ -99,6 +99,22 @@ This translates to:
 > for the same stage will take no effect. The first
 > entry will be considered and the rest will be ignored.
 
+#### Whitlisting stages from a macro
+If you would like to whitelist stages from a macro,
+you could do so by using the `+` operator.
+
+```bash
+togomak macro_name.build
+```
+
+or 
+
+```bash
+togomak macro_name.root +macro_name.build
+``` 
+
+and so on.
+
 
 ## Daemonize stages
 > Experimental feature, use with caution.

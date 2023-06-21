@@ -1,6 +1,9 @@
 package ci
 
-import "testing"
+import (
+	"github.com/stretchr/testify/assert"
+	"testing"
+)
 
 func TestData_Kill(t *testing.T) {
 	data := Data{}
@@ -28,4 +31,14 @@ func TestData_IsDaemon(t *testing.T) {
 	if data.IsDaemon() {
 		t.Error("IsDaemon() should return false")
 	}
+}
+
+func TestData_Set(t *testing.T) {
+	data := Data{}
+	data.Set("key", "value")
+}
+
+func TestData_Get(t *testing.T) {
+	data := Data{}
+	assert.Equal(t, data.Get("key"), nil)
 }
