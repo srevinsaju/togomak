@@ -3,11 +3,10 @@ package orchestra
 import (
 	"bytes"
 	"fmt"
+	"github.com/bmatcuk/doublestar"
 	"github.com/hashicorp/hcl/v2/hclwrite"
-	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/pipeline"
 	"os"
-	"path/filepath"
 )
 
 func Format(cfg Config, check bool, recursive bool) error {
@@ -16,25 +15,21 @@ func Format(cfg Config, check bool, recursive bool) error {
 	var toFormat []string
 
 	if recursive {
-		err := filepath.WalkDir(t.cwd, func(path string, d os.DirEntry, err error) error {
-			if filepath.Base(path) == meta.ConfigFileName {
-				t.logger.Tracef("Found %s", path)
-				data, err := os.ReadFile(path)
-				if err != nil {
-					return err
-				}
-				outSrc := hclwrite.Format(data)
-				if !bytes.Equal(outSrc, data) {
-					t.logger.Tracef("%s needs formatting", path)
-					toFormat = append(toFormat, path)
-				}
-			} else {
-				t.logger.Tracef("Skipping %s", path)
+		matches, err := doublestar.Glob("**/*.hcl")
+		for _, path := range matches {
+			t.logger.Tracef("Found %s", path)
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return err
 			}
-			return nil
-		})
+			outSrc := hclwrite.Format(data)
+			if !bytes.Equal(outSrc, data) {
+				t.logger.Tracef("%s needs formatting", path)
+				toFormat = append(toFormat, path)
+			}
+		}
 		if err != nil {
-			t.logger.Fatalf("Error while formatting: %s", err)
+			t.logger.Fatalf("Error while globbing for **/*.hcl: %s", err)
 		}
 	} else {
 		fn := pipeline.ConfigFilePath(ctx)
@@ -61,6 +56,9 @@ func Format(cfg Config, check bool, recursive bool) error {
 				panic(err)
 			}
 		}
+	}
+	if check && len(toFormat) > 0 {
+		os.Exit(1)
 	}
 	return nil
 

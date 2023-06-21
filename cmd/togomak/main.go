@@ -69,6 +69,13 @@ func main() {
 					Name:   "clean",
 					Usage:  "clean the cache",
 					Action: cleanCache,
+					Flags: []cli.Flag{
+						&cli.BoolFlag{
+							Name:    "recursive",
+							Usage:   "clean the cache recursively",
+							Aliases: []string{"r"},
+						},
+					},
 				},
 			},
 		},
@@ -206,6 +213,7 @@ func run(ctx *cli.Context) error {
 }
 
 func cleanCache(ctx *cli.Context) error {
+	recursive := ctx.Bool("recursive")
 	owd, err := os.Getwd()
 	if err != nil {
 		panic(err)
@@ -214,7 +222,7 @@ func cleanCache(ctx *cli.Context) error {
 	if dir == "" {
 		dir = owd
 	}
-	cache.CleanCache(dir)
+	cache.CleanCache(dir, recursive)
 	return nil
 }
 

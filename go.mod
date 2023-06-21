@@ -8,6 +8,7 @@ require (
 	github.com/alessio/shellescape v1.4.1
 	github.com/bcicen/jstream v1.0.1
 	github.com/bmatcuk/doublestar v1.1.5
+	github.com/bmatcuk/doublestar/v4 v4.6.0
 	github.com/creack/pty v1.1.18
 	github.com/docker/docker v24.0.2+incompatible
 	github.com/fatih/color v1.15.0
