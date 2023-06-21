@@ -84,7 +84,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="features/introduction.html"><strong aria-hidden="true">2.</strong> Features</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="features/concurrency.html"><strong aria-hidden="true">2.1.</strong> Concurrency</a></li><li class="chapter-item expanded "><a href="features/dependency.html"><strong aria-hidden="true">2.2.</strong> Dependency Resolution</a></li><li class="chapter-item expanded "><a href="features/interpolation.html"><strong aria-hidden="true">2.3.</strong> Interpolation</a></li><li class="chapter-item expanded "><a href="features/macros.html"><strong aria-hidden="true">2.4.</strong> Reusable Stages</a></li><li class="chapter-item expanded "><a href="features/daemonizing.html"><strong aria-hidden="true">2.5.</strong> Daemonizing</a></li><li class="chapter-item expanded "><a href="features/docker.html"><strong aria-hidden="true">2.6.</strong> Container Support</a></li></ol></li><li class="chapter-item expanded "><a href="cli/introduction.html"><strong aria-hidden="true">3.</strong> Command Line Interface</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="cli/usage.html"><strong aria-hidden="true">3.1.</strong> Usage</a></li></ol></li><li class="chapter-item expanded "><a href="configuration/introduction.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="configuration/togomak.html"><strong aria-hidden="true">4.1.</strong> Togomak</a></li><li class="chapter-item expanded "><a href="configuration/stage.html"><strong aria-hidden="true">4.2.</strong> Stage</a></li><li class="chapter-item expanded "><a href="configuration/locals.html"><strong aria-hidden="true">4.3.</strong> Locals</a></li><li class="chapter-item expanded "><a href="configuration/data.html"><strong aria-hidden="true">4.4.</strong> Data</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="configuration/data_env.html"><strong aria-hidden="true">4.4.1.</strong> data.env</a></li><li class="chapter-item expanded "><a href="configuration/data_prompt.html"><strong aria-hidden="true">4.4.2.</strong> data.prompt</a></li><li class="chapter-item expanded "><a href="configuration/data_file.html"><strong aria-hidden="true">4.4.3.</strong> data.file</a></li></ol></li><li class="chapter-item expanded "><a href="configuration/macro.html"><strong aria-hidden="true">4.5.</strong> Macro</a></li></ol></li><li class="chapter-item expanded "><a href="contrib/plugins/introduction.html"><strong aria-hidden="true">5.</strong> Plugins</a></li><li class="chapter-item expanded "><a href="contributing.html"><strong aria-hidden="true">6.</strong> Contributing</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="features/introduction.html"><strong aria-hidden="true">2.</strong> Features</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="features/concurrency.html"><strong aria-hidden="true">2.1.</strong> Concurrency</a></li><li class="chapter-item expanded "><a href="features/dependency.html"><strong aria-hidden="true">2.2.</strong> Dependency Resolution</a></li><li class="chapter-item expanded "><a href="features/interpolation.html"><strong aria-hidden="true">2.3.</strong> Interpolation</a></li><li class="chapter-item expanded "><a href="features/macros.html"><strong aria-hidden="true">2.4.</strong> Reusable Stages</a></li><li class="chapter-item expanded "><a href="features/daemonizing.html"><strong aria-hidden="true">2.5.</strong> Daemonizing</a></li><li class="chapter-item expanded "><a href="features/docker.html"><strong aria-hidden="true">2.6.</strong> Container Support</a></li><li class="chapter-item expanded "><a href="features/outputs.html"><strong aria-hidden="true">2.7.</strong> Outputs</a></li></ol></li><li class="chapter-item expanded "><a href="cli/introduction.html"><strong aria-hidden="true">3.</strong> Command Line Interface</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="cli/usage.html"><strong aria-hidden="true">3.1.</strong> Usage</a></li></ol></li><li class="chapter-item expanded "><a href="configuration/introduction.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="configuration/togomak.html"><strong aria-hidden="true">4.1.</strong> Togomak</a></li><li class="chapter-item expanded "><a href="configuration/stage.html"><strong aria-hidden="true">4.2.</strong> Stage</a></li><li class="chapter-item expanded "><a href="configuration/locals.html"><strong aria-hidden="true">4.3.</strong> Locals</a></li><li class="chapter-item expanded "><a href="configuration/data.html"><strong aria-hidden="true">4.4.</strong> Data</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="configuration/data_env.html"><strong aria-hidden="true">4.4.1.</strong> data.env</a></li><li class="chapter-item expanded "><a href="configuration/data_prompt.html"><strong aria-hidden="true">4.4.2.</strong> data.prompt</a></li><li class="chapter-item expanded "><div><strong aria-hidden="true">4.4.3.</strong> data.file</div></li><li class="chapter-item expanded "><a href="configuration/data_git.html"><strong aria-hidden="true">4.4.4.</strong> data.git</a></li></ol></li><li class="chapter-item expanded "><a href="configuration/macro.html"><strong aria-hidden="true">4.5.</strong> Macro</a></li></ol></li><li class="chapter-item expanded "><a href="contrib/plugins/introduction.html"><strong aria-hidden="true">5.</strong> Plugins</a></li><li class="chapter-item expanded "><a href="contributing.html"><strong aria-hidden="true">6.</strong> Contributing</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -370,6 +370,37 @@ stage &quot;example&quot; {
   EOT
 }
 </code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="outputs"><a class="header" href="#outputs">Outputs</a></h1>
+<p>Sometimes, you would want to generate some outputs 
+from your build. Sometimes, you might want to store 
+the version you parsed from a file, or a list of files 
+that you would want to share with another independent 
+stage.</p>
+<p>To do so, you can write as environment variables to <code>$TOGOMAK_OUTPUTS</code></p>
+<p>for example:</p>
+<pre><code class="language-hcl">togomak {
+  version = 1
+}
+
+stage &quot;agent&quot; {
+  script = &lt;&lt;-EOT
+  set -u
+  echo &quot;AGENT=Ryoji Kaji&quot; &gt;&gt; $TOGOMAK_OUTPUTS
+  EOT
+}
+
+stage &quot;seele&quot; {
+  depends_on = [stage.agent]
+  name   = &quot;seele&quot;
+  script = &quot;echo The agent from Seele reporting! ${output.AGENT}&quot;
+}
+</code></pre>
+<p>As a limitation, you can only share data within 
+the same pipeline scope. i.e, data is not 
+implicitly shared between pipelines run using
+an remote source, or external file, in the case
+of using <code>macros</code> with external files. However,
+you can still pass them using <code>macro</code>'s parameters.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="command-line-interface"><a class="header" href="#command-line-interface">Command Line Interface</a></h1>
 <ul>
 <li><a href="cli/./cli/usage.html">Usage</a></li>
@@ -497,6 +528,15 @@ and not <code>stage.install</code>, you could do:</p>
 for the same stage will take no effect. The first
 entry will be considered and the rest will be ignored.</p>
 </blockquote>
+<h4 id="whitlisting-stages-from-a-macro"><a class="header" href="#whitlisting-stages-from-a-macro">Whitlisting stages from a macro</a></h4>
+<p>If you would like to whitelist stages from a macro,
+you could do so by using the <code>+</code> operator.</p>
+<pre><code class="language-bash">togomak macro_name.build
+</code></pre>
+<p>or </p>
+<pre><code class="language-bash">togomak macro_name.root +macro_name.build
+</code></pre>
+<p>and so on.</p>
 <h2 id="daemonize-stages"><a class="header" href="#daemonize-stages">Daemonize stages</a></h2>
 <blockquote>
 <p>Experimental feature, use with caution.</p>
@@ -811,7 +851,80 @@ TTY is absent, or if any other UI provider is missing. (optional)</li>
 <ul>
 <li><a href="configuration/data_prompt.html#value"><code>value</code></a> - The response from the user, otherwise the <code>default</code> value will be returned.</li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="datafile"><a class="header" href="#datafile">data.file</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="datagit"><a class="header" href="#datagit"><code>data.git</code></a></h1>
+<p>The <code>git</code> data provider clones a git repository
+to a specific directory</p>
+<h3 id="opening-the-existing-repository"><a class="header" href="#opening-the-existing-repository">Opening the existing repository</a></h3>
+<pre><code class="language-hcl">data &quot;git&quot; &quot;this&quot; {
+  url = &quot;.&quot;
+}
+</code></pre>
+<h3 id="cloning-a-new-repository"><a class="header" href="#cloning-a-new-repository">Cloning a new repository</a></h3>
+<pre><code class="language-hcl">togomak {
+  version = 1
+}
+
+data &quot;git&quot; &quot;repo&quot; {
+  url = &quot;https://github.com/srevinsaju/togomak&quot;
+  files = [&quot;togomak.hcl&quot;]
+}
+
+stage &quot;example&quot; {
+  name   = &quot;example&quot;
+  script = &lt;&lt;-EOT
+  echo '${data.git.repo.files[&quot;togomak.hcl&quot;]}'
+  EOT
+
+}
+</code></pre>
+<h3 id="reusing-remote-stages-using-togomak"><a class="header" href="#reusing-remote-stages-using-togomak">Reusing remote stages, using togomak</a></h3>
+<pre><code class="language-hcl">togomak {
+  version = 1
+}
+
+data &quot;git&quot; &quot;eva01_source&quot; {
+  url = &quot;https://github.com/srevinsaju/togomak&quot;
+  files = [&quot;togomak.hcl&quot;]
+}
+
+macro &quot;gendo_brain&quot; {
+  files = data.git.eva01_source.files 
+}
+
+stage &quot;build_eva01&quot; {
+  name   = &quot;Building eva unit&quot;
+  use {
+    macro = macro.gendo_brain
+  }
+
+} 
+</code></pre>
+<h2 id="arguments-reference-3"><a class="header" href="#arguments-reference-3">Arguments Reference</a></h2>
+<ul>
+<li><a href="configuration/data_git.html#url"><code>url</code></a> - The URL of the repository to clone</li>
+<li><a href="configuration/data_git.html#tag"><code>tag</code></a> - The tag to checkout</li>
+<li><a href="configuration/data_git.html#branch"><code>branch</code></a> - The branch to checkout</li>
+<li><a href="configuration/data_git.html#destination"><code>destination</code></a> - The destination directory to clone the repository to, defaults to <code>&quot;memory&quot;</code>, which clones into memory</li>
+<li><a href="configuration/data_git.html#commit"><code>commit</code></a> - The commit to checkout</li>
+<li><a href="configuration/data_git.html#depth"><code>depth</code></a> - The depth of the clone</li>
+<li><a href="configuration/data_git.html#ca_bundle"><code>ca_bundle</code></a> - The path to a CA bundle file or directory</li>
+<li><a href="configuration/data_git.html#auth"><code>auth</code></a> - The authentication credentials to use when cloning the repository. Structure <a href="configuration/data_git.html#auth">documented below</a></li>
+<li><a href="configuration/data_git.html#files"><code>files</code></a> - The files to checkout from the repository. Accepts an array of file paths.</li>
+</ul>
+<h2 id="attributes-reference-3"><a class="header" href="#attributes-reference-3">Attributes Reference</a></h2>
+<ul>
+<li><a href="configuration/data_git.html#last-tag"><code>last_tag</code></a> - The latest tag in the repository, defaults to <code>&quot;&quot;</code></li>
+<li><a href="configuration/data_git.html#commits-since-last-tag"><code>commits_since_last_tag</code></a> - The number of commits since the last tag, defaults to <code>0</code></li>
+<li><a href="configuration/data_git.html#sha"><code>sha</code></a> - The SHA of the commit, defaults to <code>&quot;&quot;</code></li>
+<li><a href="configuration/data_git.html#ref"><code>ref</code></a> - The ref of the commit, in the format <code>refs/heads/&lt;branch&gt;</code> or <code>refs/tags/&lt;tag&gt;</code>, defaults to <code>&quot;&quot;</code></li>
+<li><a href="configuration/data_git.html#is-tag"><code>is_tag</code></a> - Whether the ref is a tag, defaults to <code>false</code></li>
+<li><a href="configuration/data_git.html#is-branch"><code>is_branch</code></a> - Whether the ref is a branch, defaults to <code>false</code></li>
+<li><a href="configuration/data_git.html#is-note"><code>is_note</code></a> - Whether the ref is a note, defaults to <code>false</code></li>
+<li><a href="configuration/data_git.html#is-remote"><code>is_remote</code></a> - Whether the ref is remote, defaults to <code>false</code></li>
+<li><a href="configuration/data_git.html#files"><code>files</code></a> - The files checked out from the repository. Returns a map, with the keys being the file paths and the values being the file contents.</li>
+<li><a href="configuration/data_git.html#branch"><code>branch</code></a> - The branch checked out from the repository. Returns a string.</li>
+<li><a href="configuration/data_git.html#tag"><code>tag</code></a> - The tag checked out from the repository. Returns a string.</li>
+</ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="macro"><a class="header" href="#macro">Macro</a></h1>
 <p>Macros are reusable stages. If you would like to reuse the same stage multiple times 
 in the same pipeline, with optionally different parameters, <code>macros</code> are the right 
