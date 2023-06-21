@@ -17,19 +17,19 @@ func Format(cfg Config, check bool, recursive bool) error {
 	if recursive {
 		matches, err := doublestar.Glob("**/*.hcl")
 		for _, path := range matches {
-			t.logger.Tracef("Found %s", path)
+			t.Logger.Tracef("Found %s", path)
 			data, err := os.ReadFile(path)
 			if err != nil {
 				return err
 			}
 			outSrc := hclwrite.Format(data)
 			if !bytes.Equal(outSrc, data) {
-				t.logger.Tracef("%s needs formatting", path)
+				t.Logger.Tracef("%s needs formatting", path)
 				toFormat = append(toFormat, path)
 			}
 		}
 		if err != nil {
-			t.logger.Fatalf("Error while globbing for **/*.hcl: %s", err)
+			t.Logger.Fatalf("Error while globbing for **/*.hcl: %s", err)
 		}
 	} else {
 		fn := pipeline.ConfigFilePath(ctx)
@@ -39,7 +39,7 @@ func Format(cfg Config, check bool, recursive bool) error {
 		}
 		outSrc := hclwrite.Format(data)
 		if !bytes.Equal(outSrc, data) {
-			t.logger.Tracef("%s needs formatting", fn)
+			t.Logger.Tracef("%s needs formatting", fn)
 			toFormat = append(toFormat, fn)
 		}
 	}

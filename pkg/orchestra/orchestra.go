@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 	"github.com/hashicorp/go-envparse"
+	"github.com/hashicorp/hcl/v2"
 	"github.com/kendru/darwin/go/depgraph"
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/ci"
-	"github.com/srevinsaju/togomak/v1/pkg/diag"
 	"github.com/srevinsaju/togomak/v1/pkg/graph"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/pipeline"
@@ -82,11 +82,14 @@ func Chdir(cfg Config, logger *logrus.Logger) string {
 
 }
 
-func Orchestra(cfg Config) {
-	var diags diag.Diagnostics
+func Orchestra(cfg Config) int {
+	var diags hcl.Diagnostics
 	t, ctx := NewContextWithTogomak(cfg)
 	ctx, cancel := context.WithCancel(ctx)
-	logger := t.logger
+	logger := t.Logger
+
+	defer cancel()
+	defer diagnostics(&t, &diags)
 
 	// region: external parameters
 	paramsGo := make(map[string]cty.Value)
@@ -126,14 +129,16 @@ func Orchestra(cfg Config) {
 	}
 	err := os.WriteFile(pipelineFilePath, pipelineData, 0644)
 	if err != nil {
-		logger.Fatal(err)
+		return fatal(ctx)
 	}
 
 	/// we will first expand all local blocks
 	locals, d := pipe.Locals.Expand()
+	diags = diags.Extend(d)
 	if d.HasErrors() {
-		d.Fatal(logger.WriterLevel(logrus.ErrorLevel))
+		return fatal(ctx)
 	}
+
 	pipe.Local = locals
 
 	// store the pipe in the context
@@ -146,9 +151,10 @@ func Orchestra(cfg Config) {
 	// we will now generate a dependency graph from the pipeline
 	// this will be used to generate the pipeline
 	var depGraph *depgraph.Graph
-	depGraph, diags = graph.TopoSort(ctx, pipe)
+	depGraph, d = graph.TopoSort(ctx, pipe)
+	diags = diags.Extend(d)
 	if diags.HasErrors() {
-		diags.Fatal(logger.WriterLevel(logrus.ErrorLevel))
+		return fatal(ctx)
 	}
 
 	// --> run the pipeline
@@ -158,7 +164,7 @@ func Orchestra(cfg Config) {
 	var wg sync.WaitGroup
 	var daemonWg sync.WaitGroup
 	var hasDaemons bool
-	var runnables ci.Runnables
+	var runnables ci.Blocks
 
 	// region: interrupt handler
 	chInterrupt := make(chan os.Signal, 1)
@@ -180,14 +186,14 @@ func Orchestra(cfg Config) {
 		if err == nil {
 			e, err := envparse.Parse(envFile)
 			if err != nil {
-				diags = diags.Append(diag.Diagnostic{
-					Severity: diag.SeverityError,
+				diags = diags.Append(&hcl.Diagnostic{
+					Severity: hcl.DiagError,
 					Summary:  "could not parse TOGOMAK_ENV file",
 					Detail:   err.Error(),
 				})
 				break
 			}
-			envFile.Close()
+			x.Must(envFile.Close())
 			ee := make(map[string]cty.Value)
 			for k, v := range e {
 				ee[k] = cty.StringVal(v)
@@ -199,7 +205,7 @@ func Orchestra(cfg Config) {
 
 		for _, runnableId := range layer {
 
-			var runnable ci.Runnable
+			var runnable ci.Block
 			var ok bool
 
 			if runnableId == meta.RootStage {
@@ -270,7 +276,7 @@ func Orchestra(cfg Config) {
 
 			d := runnable.Prepare(ctx, !ok, overridden)
 			if d.HasErrors() {
-				diags.Write(logger.WriterLevel(logrus.ErrorLevel))
+				diags = diags.Extend(d)
 				break
 			}
 
@@ -351,7 +357,6 @@ func Orchestra(cfg Config) {
 		wg.Wait()
 
 		if diags.HasErrors() {
-			diags.Write(logger.WriterLevel(logrus.ErrorLevel))
 			if hasDaemons && !cfg.Pipeline.DryRun && !cfg.Unattended {
 				logger.Info("pipeline failed, waiting for daemons to shut down")
 				logger.Info("hit Ctrl+C to force stop them")
@@ -369,16 +374,28 @@ func Orchestra(cfg Config) {
 	}
 
 	daemonWg.Wait()
-
-	if diags.HasErrors() || diags.HasWarnings() {
-		diags.Fatal(logger.WriterLevel(logrus.ErrorLevel))
+	if diags.HasErrors() {
+		return fatal(ctx)
 	}
-	Finale(ctx, logrus.InfoLevel)
-
+	return ok(ctx)
 }
 
 func Finale(ctx context.Context, logLevel logrus.Level) {
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger)
 	bootTime := ctx.Value(c.TogomakContextBootTime).(time.Time)
 	logger.Log(logLevel, ui.Grey(fmt.Sprintf("took %s", time.Since(bootTime).Round(time.Millisecond))))
+}
+
+func fatal(ctx context.Context) int {
+	Finale(ctx, logrus.ErrorLevel)
+	return 1
+}
+
+func ok(ctx context.Context) int {
+	Finale(ctx, logrus.InfoLevel)
+	return 0
+}
+
+func diagnostics(t *Togomak, diags *hcl.Diagnostics) {
+	x.Must(t.hclDiagWriter.WriteDiagnostics(*diags))
 }

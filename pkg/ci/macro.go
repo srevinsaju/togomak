@@ -1,9 +1,7 @@
 package ci
 
 import (
-	"fmt"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/srevinsaju/togomak/v1/pkg/diag"
 )
 
 const MacroBlock = "macro"
@@ -17,13 +15,19 @@ func (m *Macro) Identifier() string {
 	return m.Id
 }
 
-func (m Macros) ById(id string) (*Macro, error) {
+func (m Macros) ById(id string) (*Macro, hcl.Diagnostics) {
 	for _, macro := range m {
 		if macro.Id == id {
 			return &macro, nil
 		}
 	}
-	return nil, fmt.Errorf("macro block with id %s not found", id)
+	return nil, hcl.Diagnostics{
+		{
+			Severity: hcl.DiagError,
+			Summary:  "Macro not found",
+			Detail:   "Macro with id " + id + " not found",
+		},
+	}
 }
 
 func (m *Macro) Type() string {
@@ -41,11 +45,11 @@ func (m *Macro) IsDaemon() bool {
 	return false
 }
 
-func (m *Macro) Terminate() diag.Diagnostics {
+func (m *Macro) Terminate() hcl.Diagnostics {
 	return nil
 }
 
-func (m *Macro) Kill() diag.Diagnostics {
+func (m *Macro) Kill() hcl.Diagnostics {
 	return nil
 }
 

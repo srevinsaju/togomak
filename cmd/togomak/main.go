@@ -208,7 +208,7 @@ func newConfigFromCliContext(ctx *cli.Context) orchestra.Config {
 func run(ctx *cli.Context) error {
 	cfg := newConfigFromCliContext(ctx)
 
-	orchestra.Orchestra(cfg)
+	os.Exit(orchestra.Orchestra(cfg))
 	return nil
 }
 

@@ -23,7 +23,7 @@ import (
 )
 
 type Togomak struct {
-	logger        *logrus.Logger
+	Logger        *logrus.Logger
 	pipelineId    string
 	cfg           Config
 	cwd           string
@@ -31,10 +31,6 @@ type Togomak struct {
 	tempDir       string
 	parser        *hclparse.Parser
 	hclDiagWriter hcl.DiagnosticWriter
-}
-
-func (t Togomak) Logger() *logrus.Logger {
-	return t.logger
 }
 
 func (t Togomak) Parser() *hclparse.Parser {
@@ -240,12 +236,12 @@ func NewContextWithTogomak(cfg Config) (Togomak, context.Context) {
 	}
 
 	parser := hclparse.NewParser()
-	diagnosticTextWriter := hcl.NewDiagnosticTextWriter(logger.Writer(), parser.Files(), 0, true)
+	diagnosticTextWriter := hcl.NewDiagnosticTextWriter(os.Stdout, parser.Files(), 0, true)
 	ctx = context.WithValue(ctx, c.TogomakContextHclDiagWriter, diagnosticTextWriter)
 
 	ctx = context.WithValue(ctx, c.TogomakContextHclEval, hclContext)
 	t := Togomak{
-		logger:        logger,
+		Logger:        logger,
 		pipelineId:    pipelineId,
 		cfg:           cfg,
 		cwd:           cwd,

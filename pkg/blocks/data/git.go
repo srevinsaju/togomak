@@ -14,7 +14,6 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
-	"github.com/srevinsaju/togomak/v1/pkg/diag"
 	"github.com/srevinsaju/togomak/v1/pkg/ui"
 	"github.com/zclconf/go-cty/cty"
 	"io"
@@ -93,89 +92,86 @@ func (e *GitProvider) Url() string {
 	return "embedded::togomak.srev.in/providers/data/git"
 }
 
-func (e *GitProvider) DecodeBody(body hcl.Body) diag.Diagnostics {
+func (e *GitProvider) DecodeBody(body hcl.Body) hcl.Diagnostics {
 	if !e.initialized {
 		panic("provider not initialized")
 	}
-	var diags diag.Diagnostics
-	hclDiagWriter := e.ctx.Value(c.TogomakContextHclDiagWriter).(hcl.DiagnosticWriter)
+	var diags hcl.Diagnostics
 	hclContext := e.ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
 
 	schema := e.Schema()
-	content, hclDiags := body.Content(schema)
-	if hclDiags.HasErrors() {
-		diags = diags.NewHclWriteDiagnosticsError(e.Identifier(), hclDiagWriter.WriteDiagnostics(hclDiags))
-	}
+	content, d := body.Content(schema)
+	diags = diags.Extend(d)
 
 	repo, d := content.Attributes[GitBlockArgumentUrl].Expr.Value(hclContext)
-	hclDiags = append(hclDiags, d...)
+	diags = diags.Extend(d)
 
 	tagAttr, ok := content.Attributes[GitBlockArgumentTag]
 	tag := cty.StringVal("")
 	if ok {
 		tag, d = tagAttr.Expr.Value(hclContext)
-		hclDiags = append(hclDiags, d...)
+		diags = diags.Extend(d)
 	}
 
 	branchAttr, ok := content.Attributes[GitBlockArgumentBranch]
 	branch := cty.StringVal("")
 	if ok {
 		branch, d = branchAttr.Expr.Value(hclContext)
-		hclDiags = append(hclDiags, d...)
+		diags = diags.Extend(d)
 	}
 
 	commitAttr, ok := content.Attributes[GitBlockArgumentCommit]
 	commit := cty.StringVal("")
 	if ok {
 		commit, d = commitAttr.Expr.Value(hclContext)
-		hclDiags = append(hclDiags, d...)
+		diags = diags.Extend(d)
 	}
 
 	destinationAttr, ok := content.Attributes[GitBlockArgumentDestination]
 	destination := cty.StringVal("")
 	if ok {
 		destination, d = destinationAttr.Expr.Value(hclContext)
-		hclDiags = append(hclDiags, d...)
+		diags = diags.Extend(d)
 	}
 
 	depthAttr, ok := content.Attributes[GitBlockArgumentDepth]
 	depth := cty.NumberIntVal(0)
 	if ok {
 		depth, d = depthAttr.Expr.Value(hclContext)
-		hclDiags = append(hclDiags, d...)
+		diags = diags.Extend(d)
 	}
 
 	caBundleAttr, ok := content.Attributes[GitBlockArgumentCaBundle]
 	caBundle := cty.StringVal("")
 	if ok {
 		caBundle, d = caBundleAttr.Expr.Value(hclContext)
-		hclDiags = append(hclDiags, d...)
+		diags = diags.Extend(d)
 	}
 
 	filesAttr, ok := content.Attributes[GitBlockArgumentFiles]
 	files := cty.ListValEmpty(cty.String)
 	if ok {
 		files, d = filesAttr.Expr.Value(hclContext)
-		hclDiags = append(hclDiags, d...)
+		diags = diags.Extend(d)
 	}
 
 	authBlock := content.Blocks.OfType(GitBlockArgumentAuth)
 	var authConfig gitProviderAuthConfig
 	if len(authBlock) == 1 {
 		auth, d := content.Blocks.OfType(GitBlockArgumentAuth)[0].Body.Content(GitProviderAuthSchema())
-		hclDiags = append(hclDiags, d...)
+		diags = diags.Extend(d)
 
 		authUsername, d := auth.Attributes["username"].Expr.Value(hclContext)
-		hclDiags = append(hclDiags, d...)
+		diags = diags.Extend(d)
 
 		authPassword, d := auth.Attributes["password"].Expr.Value(hclContext)
-		hclDiags = append(hclDiags, d...)
+		diags = diags.Extend(d)
 
 		authSshPassword, d := auth.Attributes["ssh_password"].Expr.Value(hclContext)
-		hclDiags = append(hclDiags, d...)
+		diags = diags.Extend(d)
 
 		authSshPrivateKey, d := auth.Attributes["ssh_private_key"].Expr.Value(hclContext)
-		hclDiags = append(hclDiags, d...)
+		diags = diags.Extend(d)
 
 		authConfig = gitProviderAuthConfig{
 			username:      authUsername.AsString(),
@@ -183,10 +179,6 @@ func (e *GitProvider) DecodeBody(body hcl.Body) diag.Diagnostics {
 			sshPassword:   authSshPassword.AsString(),
 			sshPrivateKey: authSshPrivateKey.AsString(),
 		}
-	}
-
-	if hclDiags.HasErrors() {
-		diags = diags.NewHclWriteDiagnosticsError(e.Identifier(), hclDiagWriter.WriteDiagnostics(hclDiags))
 	}
 
 	depthInt, _ := depth.AsBigFloat().Int64()
@@ -207,7 +199,7 @@ func (e *GitProvider) DecodeBody(body hcl.Body) diag.Diagnostics {
 		files:       f,
 	}
 
-	return nil
+	return diags
 }
 
 func (e *GitProvider) New() Provider {
@@ -283,16 +275,16 @@ func (e *GitProvider) Initialized() bool {
 	return e.initialized
 }
 
-func (e *GitProvider) Value(ctx context.Context, id string) string {
+func (e *GitProvider) Value(ctx context.Context, id string) (string, hcl.Diagnostics) {
 	if !e.initialized {
 		panic("provider not initialized")
 	}
-	return ""
+	return "", nil
 }
 
-func (e *GitProvider) Attributes(ctx context.Context) map[string]cty.Value {
+func (e *GitProvider) Attributes(ctx context.Context) (map[string]cty.Value, hcl.Diagnostics) {
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField("provider", e.Name())
-	var diags diag.Diagnostics
+	var diags hcl.Diagnostics
 	if !e.initialized {
 		panic("provider not initialized")
 	}
@@ -301,7 +293,6 @@ func (e *GitProvider) Attributes(ctx context.Context) map[string]cty.Value {
 
 	// clone git repo
 	// git clone
-	fmt.Println(e.cfg.repo)
 	var s storage.Storer
 	var authMethod transport.AuthMethod
 
@@ -313,12 +304,12 @@ func (e *GitProvider) Attributes(ctx context.Context) map[string]cty.Value {
 	} else if e.cfg.auth.isSsh {
 		publicKeys, err := ssh.NewPublicKeys(e.cfg.auth.username, []byte(e.cfg.auth.sshPrivateKey), e.cfg.auth.sshPassword)
 		if err != nil {
-			diags = diags.Append(diag.Diagnostic{
-				Severity: diag.SeverityError,
+			diags = diags.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagError,
 				Summary:  "ssh key error",
 				Detail:   err.Error(),
 			})
-			return nil
+			return nil, diags
 		}
 		authMethod = publicKeys
 	}
@@ -358,26 +349,22 @@ func (e *GitProvider) Attributes(ctx context.Context) map[string]cty.Value {
 	cloneComplete <- true
 
 	if err != nil {
-		diags = diags.Append(diag.Diagnostic{
-			Severity: diag.SeverityError,
+		diags = diags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagError,
 			Summary:  "git clone failed",
 			Detail:   err.Error(),
-			Source:   e.Identifier(),
 		})
-		diags.Write(logger.WriterLevel(logrus.ErrorLevel))
-		return nil
+		return nil, diags
 	}
 
 	w, err := repo.Worktree()
 	if err != nil {
-		diags = diags.Append(diag.Diagnostic{
-			Severity: diag.SeverityError,
+		diags = diags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagError,
 			Summary:  "checkout failed",
 			Detail:   err.Error(),
-			Source:   e.Identifier(),
 		})
-		diags.Write(logger.WriterLevel(logrus.ErrorLevel))
-		return nil
+		return nil, diags
 	}
 
 	commitIter, err := repo.Log(&git.LogOptions{
@@ -387,11 +374,10 @@ func (e *GitProvider) Attributes(ctx context.Context) map[string]cty.Value {
 	count := 0
 	lastTag := ""
 	if err != nil {
-		diags = diags.Append(diag.Diagnostic{
-			Severity: diag.SeverityWarning,
+		diags = diags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagError,
 			Summary:  "git log failed",
 			Detail:   err.Error(),
-			Source:   e.Identifier(),
 		})
 	} else {
 		for commit, err := commitIter.Next(); err != nil; {
@@ -407,21 +393,19 @@ func (e *GitProvider) Attributes(ctx context.Context) map[string]cty.Value {
 	for _, f := range e.cfg.files {
 		_, err := w.Filesystem.Stat(f)
 		if err != nil {
-			diags = diags.Append(diag.Diagnostic{
-				Severity: diag.SeverityError,
+			diags = diags.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagError,
 				Summary:  "git file search failed",
 				Detail:   err.Error(),
-				Source:   e.Identifier(),
 			})
 			continue
 		}
 		file, err := w.Filesystem.Open(f)
 		if err != nil {
-			diags = diags.Append(diag.Diagnostic{
-				Severity: diag.SeverityError,
+			diags = diags.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagError,
 				Summary:  "git file open failed",
 				Detail:   err.Error(),
-				Source:   e.Identifier(),
 			})
 			continue
 		}
@@ -429,11 +413,10 @@ func (e *GitProvider) Attributes(ctx context.Context) map[string]cty.Value {
 
 		data, err := io.ReadAll(file)
 		if err != nil {
-			diags = diags.Append(diag.Diagnostic{
-				Severity: diag.SeverityError,
+			diags = diags.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagError,
 				Summary:  "git file read failed",
 				Detail:   err.Error(),
-				Source:   e.Identifier(),
 			})
 			continue
 		}
@@ -460,8 +443,8 @@ func (e *GitProvider) Attributes(ctx context.Context) map[string]cty.Value {
 	sha := cty.StringVal("")
 
 	if err != nil {
-		diags = diags.Append(diag.Diagnostic{
-			Severity: diag.SeverityWarning,
+		diags = diags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagError,
 			Summary:  "git head failed",
 			Detail:   err.Error(),
 		})
@@ -489,5 +472,5 @@ func (e *GitProvider) Attributes(ctx context.Context) map[string]cty.Value {
 	attrs[GitBlockAttrCommitsSinceLastTag] = commitsSinceLastTag
 
 	// get the commit
-	return attrs
+	return attrs, diags
 }

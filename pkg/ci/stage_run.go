@@ -12,7 +12,6 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
-	"github.com/srevinsaju/togomak/v1/pkg/diag"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/ui"
 	"github.com/zclconf/go-cty/cty"
@@ -30,7 +29,7 @@ const TogomakParamEnvVarPrefix = "TOGOMAK__param__"
 var TogomakParamEnvVarRegexExpression = fmt.Sprintf("%s([a-zA-Z0-9_]+)", TogomakParamEnvVarPrefix)
 var TogomakParamEnvVarRegex = regexp.MustCompile(TogomakParamEnvVarRegexExpression)
 
-func (s *Stage) Prepare(ctx context.Context, skip bool, overridden bool) diag.Diagnostics {
+func (s *Stage) Prepare(ctx context.Context, skip bool, overridden bool) hcl.Diagnostics {
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger)
 	// show some user-friendly output on the details of the stage about to be run
 
@@ -47,6 +46,7 @@ func (s *Stage) Prepare(ctx context.Context, skip bool, overridden bool) diag.Di
 	return nil
 }
 
+// expandMacros expands the macro in the stage, if any.
 func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 
 	if s.Use == nil {
@@ -62,42 +62,42 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 	unattended := ctx.Value(c.TogomakContextUnattended).(bool)
 	logger.Debugf("running %s.%s", s.Identifier(), MacroBlock)
 
-	var hclDiags hcl.Diagnostics
+	var diags hcl.Diagnostics
 	var err error
 
 	v := s.Use.Macro.Variables()
 	if v == nil || len(v) == 0 {
 		// this stage does not use a macro
-		return s, hclDiags
+		return s, diags
 	}
 
 	if len(v) != 1 {
-		hclDiags = hclDiags.Append(&hcl.Diagnostic{
+		diags = diags.Append(&hcl.Diagnostic{
 			Severity:    hcl.DiagError,
 			Summary:     "invalid macro",
 			Detail:      fmt.Sprintf("%s can only use a single macro", s.Identifier()),
 			EvalContext: hclContext,
 			Subject:     v[0].SourceRange().Ptr(),
 		})
-		return s, hclDiags
+		return s, diags
 	}
 	variable := v[0]
 	if variable.RootName() != MacroBlock {
-		hclDiags = hclDiags.Append(&hcl.Diagnostic{
+		diags = diags.Append(&hcl.Diagnostic{
 			Severity:    hcl.DiagError,
 			Summary:     "invalid macro",
 			Detail:      fmt.Sprintf("%s uses an invalid macro, got '%s'", s.Identifier(), variable.RootName()),
 			EvalContext: hclContext,
 			Subject:     v[0].SourceRange().Ptr(),
 		})
-		return s, hclDiags
+		return s, diags
 	}
 
 	macroName := variable[1].(hcl.TraverseAttr).Name
 	logger.Debugf("stage.%s uses macro.%s", s.Id, macroName)
 	macroRunnable, d := Resolve(ctx, pipe, fmt.Sprintf("macro.%s", macroName))
 	if d.HasErrors() {
-		d.Fatal(logger.WriterLevel(logrus.ErrorLevel))
+		return nil, diags.Extend(d)
 	}
 	macro := macroRunnable.(*Macro)
 
@@ -127,14 +127,14 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 	} else {
 		f, d := macro.Files.Value(hclContext)
 		if d.HasErrors() {
-			return s, hclDiags.Extend(d)
+			return s, diags.Extend(d)
 		}
 		if !f.IsNull() {
 			files := f.AsValueMap()
 			logger.Debugf("using %d files from %s", len(files), macro.Identifier())
 			err = os.MkdirAll(filepath.Join(tmpDir, s.Id), 0755)
 			if err != nil {
-				return s, hclDiags.Append(&hcl.Diagnostic{
+				return s, diags.Append(&hcl.Diagnostic{
 					Severity:    hcl.DiagError,
 					Summary:     "failed to create temporary directory",
 					Detail:      fmt.Sprintf("failed to create temporary directory for stage %s", s.Id),
@@ -156,7 +156,7 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 				fpath := filepath.Join(tmpDir, s.Id, fName)
 				logger.Debugf("writing %s to %s", fName, fpath)
 				if fContent.IsNull() {
-					return s, hclDiags.Append(&hcl.Diagnostic{
+					return s, diags.Append(&hcl.Diagnostic{
 						Severity:    hcl.DiagError,
 						Summary:     "invalid macro",
 						Detail:      fmt.Sprintf("%s uses a macro with an invalid file %s", s.Identifier(), fName),
@@ -167,7 +167,7 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 				err = os.WriteFile(fpath, []byte(fContent.AsString()), 0644)
 				if err != nil {
 					// TODO: move to diagnostics
-					return s, hclDiags.Append(&hcl.Diagnostic{
+					return s, diags.Append(&hcl.Diagnostic{
 						Severity:    hcl.DiagError,
 						Summary:     "invalid macro",
 						Detail:      fmt.Sprintf("%s uses a macro with an invalid file %s", s.Identifier(), fName),
@@ -182,14 +182,14 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 				}
 			}
 			if defaultExecutionPath == "" {
-				hclDiags = hclDiags.Append(&hcl.Diagnostic{
+				diags = diags.Append(&hcl.Diagnostic{
 					Severity:    hcl.DiagError,
 					Summary:     "invalid macro",
 					Detail:      fmt.Sprintf("%s uses a macro without a default execution file. include a file named togomak.hcl to avoid this error", s.Identifier()),
 					EvalContext: hclContext,
 					Subject:     variable.SourceRange().Ptr(),
 				})
-				return s, hclDiags
+				return s, diags
 			}
 
 			executable, err := os.Executable()
@@ -237,15 +237,13 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 
 }
 
-func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
-	hclDgWriter := ctx.Value(c.TogomakContextHclDiagWriter).(hcl.DiagnosticWriter)
+func (s *Stage) Run(ctx context.Context) hcl.Diagnostics {
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField(StageBlock, s.Id)
 	cwd := ctx.Value(c.TogomakContextCwd).(string)
 	tmpDir := ctx.Value(c.TogomakContextTempDir).(string)
 	logger.Debugf("running %s.%s", StageBlock, s.Id)
 	isDryRun := ctx.Value(c.TogomakContextPipelineDryRun).(bool)
 
-	var diags diag.Diagnostics
 	var hclDiags hcl.Diagnostics
 	var err error
 	evalCtx := ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
@@ -300,9 +298,8 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 		environment[env.Name] = v
 	}
 
-	diags = diags.ExtendHCLDiagnostics(hclDiags, hclDgWriter, s.Identifier())
-	if diags.HasErrors() {
-		return diags
+	if hclDiags.HasErrors() {
+		return hclDiags
 	}
 
 	envStrings := make([]string, len(environment))
@@ -350,12 +347,14 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 		}
 	} else if s.Container == nil {
 		// if the container is not null, we may rely on internal args or entrypoint scripts
-		diags = diags.Append(diag.Diagnostic{
-			Severity: diag.SeverityError,
-			Summary:  "script or args must be a string",
-			Detail:   fmt.Sprintf("the provided script or args, was not recognized as a valid string. received script='''%s''', args='''%s'''", script, args),
+		return hclDiags.Append(&hcl.Diagnostic{
+			Severity:    hcl.DiagError,
+			Summary:     "No commands specified",
+			Detail:      "Either script or args must be specified",
+			Subject:     s.Script.Range().Ptr(),
+			EvalContext: evalCtx,
 		})
-		return diags
+
 	} else {
 		emptyCommands = true
 	}
@@ -405,17 +404,18 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 			})
 		}
 		if hclDiags.HasErrors() {
-			return diags.ExtendHCLDiagnostics(hclDiags, hclDgWriter, s.Identifier())
+			return hclDiags
 		}
 		image := imageRaw.AsString()
 
 		cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
 		if err != nil {
-			return diags.Append(diag.Diagnostic{
-				Severity: diag.SeverityError,
-				Summary:  "could not create docker client",
-				Detail:   err.Error(),
-				Source:   s.Identifier(),
+			return hclDiags.Append(&hcl.Diagnostic{
+				Severity:    hcl.DiagError,
+				Summary:     "could not create docker client",
+				Detail:      err.Error(),
+				Subject:     s.Container.Image.Range().Ptr(),
+				EvalContext: evalCtx,
 			})
 		}
 		defer cli.Close()
@@ -426,11 +426,12 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 			logger.Infof("image %s does not exist, pulling...", image)
 			reader, err := cli.ImagePull(ctx, image, types.ImagePullOptions{})
 			if err != nil {
-				return diags.Append(diag.Diagnostic{
-					Severity: diag.SeverityError,
-					Summary:  "could not pull image",
-					Detail:   err.Error(),
-					Source:   s.Identifier(),
+				return hclDiags.Append(&hcl.Diagnostic{
+					Severity:    hcl.DiagError,
+					Summary:     "could not pull image",
+					Detail:      err.Error(),
+					Subject:     s.Container.Image.Range().Ptr(),
+					EvalContext: evalCtx,
 				})
 			}
 
@@ -459,16 +460,15 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 			}
 			binds = append(binds, fmt.Sprintf("%s:%s", source.AsString(), dest.AsString()))
 		}
-		diags = diags.ExtendHCLDiagnostics(hclDiags, hclDgWriter, s.Identifier())
-		if diags.HasErrors() {
-			return diags
+		if hclDiags.HasErrors() {
+			return hclDiags
 		}
 
 		if !isDryRun {
 			exposedPorts, bindings, d := s.Container.Ports.Nat(evalCtx)
-			if d.HasErrors() {
-				hclDiags = hclDiags.Extend(d)
-				return diags.ExtendHCLDiagnostics(hclDiags, hclDgWriter, s.Identifier())
+			hclDiags = hclDiags.Extend(d)
+			if hclDiags.HasErrors() {
+				return hclDiags
 			}
 
 			resp, err := cli.ContainerCreate(ctx, &dockerContainer.Config{
@@ -489,20 +489,21 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 				PortBindings: bindings,
 			}, nil, nil, "")
 			if err != nil {
-				return diags.Append(diag.Diagnostic{
-					Severity: diag.SeverityError,
-					Summary:  "could not create container",
-					Detail:   err.Error(),
-					Source:   s.Identifier(),
+				return hclDiags.Append(&hcl.Diagnostic{
+					Severity:    hcl.DiagError,
+					Summary:     "could not create container",
+					Detail:      err.Error(),
+					Subject:     s.Container.Image.Range().Ptr(),
+					EvalContext: evalCtx,
 				})
 			}
 
 			if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
-				return diags.Append(diag.Diagnostic{
-					Severity: diag.SeverityError,
+				return hclDiags.Append(&hcl.Diagnostic{
+					Severity: hcl.DiagError,
 					Summary:  "could not start container",
 					Detail:   err.Error(),
-					Source:   s.Identifier(),
+					Subject:  s.Container.Image.Range().Ptr(),
 				})
 			}
 			s.ContainerId = resp.ID
@@ -517,13 +518,12 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 				Follow: true,
 			})
 			if err != nil {
-				diags = diags.Append(diag.Diagnostic{
-					Severity: diag.SeverityError,
-					Summary:  "failed to get container logs",
+				return hclDiags.Append(&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "could not get container logs",
 					Detail:   err.Error(),
+					Subject:  s.Container.Image.Range().Ptr(),
 				})
-				diags.Write(logger.WriterLevel(logrus.ErrorLevel))
-				return diags
 			}
 			defer responseBody.Close()
 
@@ -534,24 +534,26 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 			}
 			if err != nil && err != io.EOF {
 				if err == context.Canceled {
-					return diags
+					return hclDiags
 				}
-				diags = diags.Append(diag.Diagnostic{
-					Severity: diag.SeverityError,
+				hclDiags = hclDiags.Append(&hcl.Diagnostic{
+					Severity: hcl.DiagError,
 					Summary:  "failed to copy container logs",
 					Detail:   err.Error(),
+					Subject:  s.Container.Image.Range().Ptr(),
 				})
 			}
 			err = cli.ContainerRemove(ctx, resp.ID, types.ContainerRemoveOptions{
 				RemoveVolumes: true,
 			})
 			if err != nil {
-				diags = diags.Append(diag.Diagnostic{
-					Severity: diag.SeverityWarning,
-					Summary:  "failed to remove docker container",
+				hclDiags = hclDiags.Append(&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "failed to remove container",
 					Detail:   err.Error(),
+					Subject:  s.Container.Image.Range().Ptr(),
 				})
-				return diags
+				return hclDiags
 			}
 		} else {
 			fmt.Println(ui.Blue("docker:run.image"), ui.Green(image))
@@ -566,31 +568,26 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 	}
 
 	if err != nil {
-		diags = diags.Append(diag.Diagnostic{
-			Severity: diag.SeverityError,
-			Summary:  "failed to run command",
+		hclDiags = hclDiags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  fmt.Sprintf("failed to run command (%s)", s.Identifier()),
 			Detail:   err.Error(),
-			Source:   s.Identifier(),
 		})
-		return diags
 	}
 
-	return diags
+	return hclDiags
 }
 
-func (s *Stage) CanRun(ctx context.Context) (bool, diag.Diagnostics) {
+func (s *Stage) CanRun(ctx context.Context) (bool, hcl.Diagnostics) {
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField("stage", s.Id)
 	logger.Debugf("checking if stage.%s can run", s.Id)
-
-	var diags diag.Diagnostics
 	evalCtx := ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
-	hclWriter := ctx.Value(c.TogomakContextHclDiagWriter).(hcl.DiagnosticWriter)
-	var hclDiags hcl.Diagnostics
+	var diags hcl.Diagnostics
 
 	paramsGo := map[string]cty.Value{}
 	if s.Use != nil && s.Use.Parameters != nil {
 		parameters, d := s.Use.Parameters.Value(evalCtx)
-		hclDiags = hclDiags.Extend(d)
+		diags = diags.Extend(d)
 		if !parameters.IsNull() {
 			for k, v := range parameters.AsValueMap() {
 				paramsGo[k] = v
@@ -606,26 +603,11 @@ func (s *Stage) CanRun(ctx context.Context) (bool, diag.Diagnostics) {
 		}),
 		"param": cty.ObjectVal(paramsGo),
 	}
-	v, hclDiags := s.Condition.Value(evalCtx)
-	if hclDiags.HasErrors() {
-		err := hclWriter.WriteDiagnostics(hclDiags)
-		if err != nil {
-			diags = append(diags, diag.Diagnostic{
-				Severity: diag.SeverityError,
-				Summary:  "failed to write HCL diagnostics",
-				Detail:   err.Error(),
-			})
-		}
-
-		diags = diags.Append(diag.Diagnostic{
-			Severity: diag.SeverityError,
-			Summary:  "failed to evaluate condition",
-			Detail:   hclDiags.Error(),
-			Source:   "stage_condition_check",
-		})
-
-		return false, diags
+	v, d := s.Condition.Value(evalCtx)
+	if d.HasErrors() {
+		return false, diags.Extend(d)
 	}
+
 	if v.Equals(cty.False).True() {
 		// this stage has been explicitly evaluated to false
 		// we will not run this
@@ -639,36 +621,36 @@ func dockerContainerSourceFmt(containerId string) string {
 	return fmt.Sprintf("docker: container=%s", containerId)
 }
 
-func (s *Stage) Terminate() diag.Diagnostics {
-	var diags diag.Diagnostics
+func (s *Stage) Terminate() hcl.Diagnostics {
+	var diags hcl.Diagnostics
 	if s.Container != nil && s.ContainerId != "" {
 		ctx := context.Background()
 
 		cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
 		if err != nil {
-			diags = diags.Append(diag.Diagnostic{
-				Severity: diag.SeverityError,
+			diags = diags.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagError,
 				Summary:  "failed to create docker client",
-				Detail:   err.Error(),
-				Source:   dockerContainerSourceFmt(s.ContainerId),
+				Detail:   fmt.Sprintf("%s: %s", dockerContainerSourceFmt(s.ContainerId), err.Error()),
 			})
 		}
 		err = cli.ContainerStop(ctx, s.ContainerId, dockerContainer.StopOptions{})
 		if err != nil {
-			diags = diags.Append(diag.Diagnostic{
-				Severity: diag.SeverityError,
+			diags = diags.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagError,
 				Summary:  "failed to stop container",
-				Detail:   err.Error(),
-				Source:   dockerContainerSourceFmt(s.ContainerId),
+				Detail:   fmt.Sprintf("%s: %s", dockerContainerSourceFmt(s.ContainerId), err.Error()),
 			})
 		}
-	} else if s.process != nil {
+	} else if s.process != nil && s.process.Process != nil {
+		if s.process.ProcessState.Exited() {
+			return diags
+		}
 		err := s.process.Process.Signal(syscall.SIGTERM)
 		if err != nil {
-			diags = diags.Append(diag.Diagnostic{
-				Severity: diag.SeverityError,
+			diags = diags.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagError,
 				Summary:  "failed to terminate process",
-				Source:   s.Identifier(),
 				Detail:   err.Error(),
 			})
 		}
@@ -677,14 +659,13 @@ func (s *Stage) Terminate() diag.Diagnostics {
 	return diags
 }
 
-func (s *Stage) Kill() diag.Diagnostics {
+func (s *Stage) Kill() hcl.Diagnostics {
 	diags := s.Terminate()
 	if s.process != nil && !s.process.ProcessState.Exited() {
 		err := s.process.Process.Kill()
 		if err != nil {
-			diags = diags.Append(diag.Diagnostic{
-				Severity: diag.SeverityError,
-				Source:   s.Identifier(),
+			diags = diags.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagError,
 				Summary:  "couldn't kill stage",
 				Detail:   err.Error(),
 			})

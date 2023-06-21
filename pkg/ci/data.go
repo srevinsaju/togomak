@@ -1,48 +1,53 @@
 package ci
 
 import (
-	"fmt"
-	"github.com/srevinsaju/togomak/v1/pkg/diag"
+	"github.com/hashicorp/hcl/v2"
 )
 
 const DataBlock = "data"
 
-func (d Data) Description() string {
+func (s Data) Description() string {
 	return ""
 }
 
-func (d Data) Identifier() string {
-	return d.Id
+func (s Data) Identifier() string {
+	return s.Id
 }
 
-func (d Datas) ById(provider string, id string) (*Data, error) {
+func (d Datas) ById(provider string, id string) (*Data, hcl.Diagnostics) {
 	for _, data := range d {
 		if data.Id == id && data.Provider == provider {
 			return &data, nil
 		}
 	}
-	return nil, fmt.Errorf("data block with id=%s and provider=%s not found", id, provider)
+	return nil, hcl.Diagnostics{
+		{
+			Severity: hcl.DiagError,
+			Summary:  "Data not found",
+			Detail:   "Data with id " + id + " not found",
+		},
+	}
 }
 
-func (d Data) Type() string {
+func (s Data) Type() string {
 	return DataBlock
 }
 
-func (d Data) Set(k any, v any) {
+func (s Data) Set(k any, v any) {
 }
 
-func (d Data) Get(k any) any {
+func (s Data) Get(k any) any {
 	return nil
 }
 
-func (d Data) IsDaemon() bool {
+func (s Data) IsDaemon() bool {
 	return false
 }
 
-func (d Data) Terminate() diag.Diagnostics {
+func (s Data) Terminate() hcl.Diagnostics {
 	return nil
 }
 
-func (d Data) Kill() diag.Diagnostics {
+func (s Data) Kill() hcl.Diagnostics {
 	return nil
 }

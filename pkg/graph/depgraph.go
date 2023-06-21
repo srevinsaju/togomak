@@ -6,14 +6,13 @@ import (
 	"github.com/kendru/darwin/go/depgraph"
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/ci"
-	"github.com/srevinsaju/togomak/v1/pkg/diag"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/x"
 )
 
-func TopoSort(ctx context.Context, pipe *ci.Pipeline) (*depgraph.Graph, diag.Diagnostics) {
+func TopoSort(ctx context.Context, pipe *ci.Pipeline) (*depgraph.Graph, hcl.Diagnostics) {
 	g := depgraph.New()
-	var diags diag.Diagnostics
+	var diags hcl.Diagnostics
 	logger := ctx.Value("logger").(*logrus.Logger).WithField("component", "graph")
 
 	for _, local := range pipe.Local {
@@ -64,8 +63,8 @@ func TopoSort(ctx context.Context, pipe *ci.Pipeline) (*depgraph.Graph, diag.Dia
 			err = g.DependOn(child, parent)
 
 			if err != nil {
-				diags = diags.Append(diag.Diagnostic{
-					Severity: diag.SeverityError,
+				diags = diags.Append(&hcl.Diagnostic{
+					Severity: hcl.DiagError,
 					Summary:  "Invalid dependency",
 					Detail:   err.Error(),
 				})
@@ -125,8 +124,8 @@ func TopoSort(ctx context.Context, pipe *ci.Pipeline) (*depgraph.Graph, diag.Dia
 			err = g.DependOn(child, parent)
 
 			if err != nil {
-				diags = diags.Append(diag.Diagnostic{
-					Severity: diag.SeverityError,
+				diags = diags.Append(&hcl.Diagnostic{
+					Severity: hcl.DiagError,
 					Summary:  "Invalid dependency",
 					Detail:   err.Error(),
 				})
@@ -184,8 +183,8 @@ func TopoSort(ctx context.Context, pipe *ci.Pipeline) (*depgraph.Graph, diag.Dia
 			err = g.DependOn(child, parent)
 
 			if err != nil {
-				diags = diags.Append(diag.Diagnostic{
-					Severity: diag.SeverityError,
+				diags = diags.Append(&hcl.Diagnostic{
+					Severity: hcl.DiagError,
 					Summary:  "Invalid dependency",
 					Detail:   err.Error(),
 				})
@@ -238,8 +237,8 @@ func TopoSort(ctx context.Context, pipe *ci.Pipeline) (*depgraph.Graph, diag.Dia
 			err = g.DependOn(child, parent)
 
 			if err != nil {
-				diags = diags.Append(diag.Diagnostic{
-					Severity: diag.SeverityError,
+				diags = diags.Append(&hcl.Diagnostic{
+					Severity: hcl.DiagError,
 					Summary:  "Invalid dependency",
 					Detail:   err.Error(),
 				})

@@ -30,4 +30,6 @@ const (
 	TogomakContextMutexStages = "mutex_stages"
 	TogomakContextMutexData   = "mutex_data"
 	TogomakContextMutexMacro  = "mutex_macro"
+
+	Togomak = "togomak"
 )

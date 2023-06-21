@@ -7,7 +7,6 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
-	"github.com/srevinsaju/togomak/v1/pkg/diag"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/zclconf/go-cty/cty"
 	"os"
@@ -40,35 +39,28 @@ func (e *PromptProvider) Url() string {
 	return "embedded::togomak.srev.in/providers/data/prompt"
 }
 
-func (e *PromptProvider) DecodeBody(body hcl.Body) diag.Diagnostics {
+func (e *PromptProvider) DecodeBody(body hcl.Body) hcl.Diagnostics {
 	if !e.initialized {
 		panic("provider not initialized")
 	}
-	var diags diag.Diagnostics
-	hclDiagWriter := e.ctx.Value(c.TogomakContextHclDiagWriter).(hcl.DiagnosticWriter)
+	var diags hcl.Diagnostics
+
 	hclContext := e.ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
 
 	schema := e.Schema()
-	content, hclDiags := body.Content(schema)
-	if hclDiags.HasErrors() {
-		source := fmt.Sprintf("data.%s:decodeBody", e.Name())
-		diags = diags.NewHclWriteDiagnosticsError(source, hclDiagWriter.WriteDiagnostics(hclDiags))
-	}
+	content, d := body.Content(schema)
+	diags = append(diags, d...)
+
 	attr := content.Attributes["prompt"]
 	var key cty.Value
-	key, hclDiags = attr.Expr.Value(hclContext)
-	if hclDiags.HasErrors() {
-		source := fmt.Sprintf("data.%s:decodeBody", e.Name())
-		diags = diags.NewHclWriteDiagnosticsError(source, hclDiagWriter.WriteDiagnostics(hclDiags))
-	}
+	key, d = attr.Expr.Value(hclContext)
+	diags = append(diags, d...)
+
 	e.promptParsed = key.AsString()
 
 	attr = content.Attributes["default"]
-	key, hclDiags = attr.Expr.Value(hclContext)
-	if hclDiags.HasErrors() {
-		source := fmt.Sprintf("data.%s:decodeBody", e.Name())
-		diags = diags.NewHclWriteDiagnosticsError(source, hclDiagWriter.WriteDiagnostics(hclDiags))
-	}
+	key, d = attr.Expr.Value(hclContext)
+	diags = append(diags, d...)
 	e.def = key.AsString()
 
 	return diags
@@ -96,18 +88,19 @@ func (e *PromptProvider) Schema() *hcl.BodySchema {
 	}
 }
 
-func (e *PromptProvider) Attributes(ctx context.Context) map[string]cty.Value {
+func (e *PromptProvider) Attributes(ctx context.Context) (map[string]cty.Value, hcl.Diagnostics) {
 	return map[string]cty.Value{
 		"prompt":  cty.StringVal(e.promptParsed),
 		"default": cty.StringVal(e.def),
-	}
+	}, nil
 }
 
 func (e *PromptProvider) Initialized() bool {
 	return e.initialized
 }
 
-func (e *PromptProvider) Value(ctx context.Context, id string) string {
+func (e *PromptProvider) Value(ctx context.Context, id string) (string, hcl.Diagnostics) {
+	var diags hcl.Diagnostics
 	if !e.initialized {
 		panic("provider not initialized")
 	}
@@ -120,11 +113,11 @@ func (e *PromptProvider) Value(ctx context.Context, id string) string {
 	envExists, ok := os.LookupEnv(envVarName)
 	if ok {
 		logger.Debug("environment variable found, using that")
-		return envExists
+		return envExists, nil
 	}
 	if unattended {
 		logger.Warn("--unattended/--ci mode enabled, falling back to default")
-		return e.def
+		return e.def, nil
 	}
 
 	prompt := e.promptParsed
@@ -143,8 +136,13 @@ func (e *PromptProvider) Value(ctx context.Context, id string) string {
 	err := survey.AskOne(&input, &resp)
 	if err != nil {
 		logger.Warn("unable to get value from prompt: ", err)
-		return e.def
+		diags = append(diags, &hcl.Diagnostic{
+			Severity: hcl.DiagWarning,
+			Summary:  "unable to get value from prompt",
+			Detail:   err.Error(),
+		})
+		return e.def, diags
 	}
 
-	return resp
+	return resp, diags
 }

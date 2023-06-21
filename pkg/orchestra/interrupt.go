@@ -2,20 +2,20 @@ package orchestra
 
 import (
 	"context"
+	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/ci"
-	"github.com/srevinsaju/togomak/v1/pkg/diag"
 	"os"
 	"os/signal"
 	"time"
 )
 
-func InterruptHandler(ctx context.Context, cancel context.CancelFunc, ch chan os.Signal, runnables *ci.Runnables) {
+func InterruptHandler(ctx context.Context, cancel context.CancelFunc, ch chan os.Signal, runnables *ci.Blocks) {
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger)
 	select {
 	case <-ch:
-		var diags diag.Diagnostics
+		var diags hcl.Diagnostics
 		logger.Warn("received interrupt signal, cancelling the pipeline")
 		logger.Warn("stopping running operations...")
 		logger.Warn("press CTRL+C again to force quit")
@@ -25,15 +25,12 @@ func InterruptHandler(ctx context.Context, cancel context.CancelFunc, ch chan os
 		go func() {
 			<-ch
 			logger.Warn("Two interrupts received. Exiting immediately.")
-			diags = diags.Append(diag.Diagnostic{
-				Severity: diag.SeverityError,
+			diags = diags.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagError,
 				Summary:  "Force quit",
 				Detail:   "data loss may have occurred",
-				Source:   "orchestra",
 			})
-			diags.Fatal(logger.WriterLevel(logrus.ErrorLevel))
-			Finale(ctx, logrus.FatalLevel)
-			os.Exit(1)
+			os.Exit(fatal(ctx))
 			return
 		}()
 		for _, runnable := range *runnables {
@@ -42,8 +39,10 @@ func InterruptHandler(ctx context.Context, cancel context.CancelFunc, ch chan os
 			diags = diags.Extend(d)
 		}
 
-		if diags.HasErrors() || diags.HasWarnings() {
-			diags.Write(logger.WriterLevel(logrus.ErrorLevel))
+		if diags.HasErrors() {
+			writer := hcl.NewDiagnosticTextWriter(os.Stderr, nil, 78, true)
+			_ = writer.WriteDiagnostics(diags)
+			os.Exit(fatal(ctx))
 		}
 		cancel()
 	case <-ctx.Done():
@@ -52,11 +51,11 @@ func InterruptHandler(ctx context.Context, cancel context.CancelFunc, ch chan os
 	}
 }
 
-func KillHandler(ctx context.Context, cancel context.CancelFunc, ch chan os.Signal, runnables *ci.Runnables) {
+func KillHandler(ctx context.Context, cancel context.CancelFunc, ch chan os.Signal, runnables *ci.Blocks) {
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger)
 	select {
 	case <-ch:
-		var diags diag.Diagnostics
+		var diags hcl.Diagnostics
 		logger.Warn("received kill signal, killing all subprocesses")
 		logger.Warn("stopping running operations...")
 
@@ -67,15 +66,16 @@ func KillHandler(ctx context.Context, cancel context.CancelFunc, ch chan os.Sign
 		}
 
 		cancel()
-		diags = diags.Append(diag.Diagnostic{
-			Severity: diag.SeverityError,
+		diags = diags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagError,
 			Summary:  "Force quit",
 			Detail:   "data loss may have occurred",
-			Source:   "orchestra",
 		})
-		diags.Fatal(logger.WriterLevel(logrus.ErrorLevel))
-		Finale(ctx, logrus.FatalLevel)
-		os.Exit(1)
+		if diags.HasErrors() {
+			writer := hcl.NewDiagnosticTextWriter(os.Stderr, nil, 78, true)
+			_ = writer.WriteDiagnostics(diags)
+		}
+		os.Exit(fatal(ctx))
 	case <-ctx.Done():
 		logger.Infof("took %s to complete the pipeline", time.Since(ctx.Value(c.TogomakContextBootTime).(time.Time)))
 		return
