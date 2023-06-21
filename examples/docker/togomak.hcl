@@ -6,7 +6,7 @@ stage "example" {
   container {
     image = "ubuntu"
     volume {
-      source = "${cwd}/diary"
+      source      = "${cwd}/diary"
       destination = "/newdiary"
     }
   }

@@ -3,7 +3,7 @@ togomak {
 }
 
 data "env" "hello_world" {
-  key = "HOME"
+  key     = "HOME"
   default = "@"
 }
 

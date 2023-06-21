@@ -3,12 +3,12 @@ togomak {
 }
 
 data "env" "quit_if_not_shinji" {
-  key = "QUIT_IF_NOT_SHINJI"
+  key     = "QUIT_IF_NOT_SHINJI"
   default = "false"
 }
 
 data "prompt" "name" {
-  prompt = "What is your name?"
+  prompt  = "What is your name?"
   default = "Pen Pen"
 }
 
@@ -18,7 +18,7 @@ stage "example" {
 }
 
 stage "quit" {
-  if = data.env.quit_if_not_shinji.value != "false"
+  if     = data.env.quit_if_not_shinji.value != "false"
   script = <<-EOT
   #!/usr/bin/env bash
   set -eux

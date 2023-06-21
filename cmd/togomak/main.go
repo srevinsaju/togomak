@@ -45,6 +45,23 @@ func main() {
 			Action:  list,
 		},
 		{
+			Name:   "fmt",
+			Usage:  "format a pipeline file",
+			Action: format,
+			Flags: []cli.Flag{
+				&cli.BoolFlag{
+					Name:    "check",
+					Usage:   "check if the file is formatted",
+					Aliases: []string{"c"},
+				},
+				&cli.BoolFlag{
+					Name:    "recursive",
+					Usage:   "format all the files named togomak.hcl in the current directory, and its children",
+					Aliases: []string{"r"},
+				},
+			},
+		},
+		{
 			Name:  "cache",
 			Usage: "manage the cache",
 			Subcommands: []*cli.Command{
@@ -52,6 +69,13 @@ func main() {
 					Name:   "clean",
 					Usage:  "clean the cache",
 					Action: cleanCache,
+					Flags: []cli.Flag{
+						&cli.BoolFlag{
+							Name:    "recursive",
+							Usage:   "clean the cache recursively",
+							Aliases: []string{"r"},
+						},
+					},
 				},
 			},
 		},
@@ -189,6 +213,7 @@ func run(ctx *cli.Context) error {
 }
 
 func cleanCache(ctx *cli.Context) error {
+	recursive := ctx.Bool("recursive")
 	owd, err := os.Getwd()
 	if err != nil {
 		panic(err)
@@ -197,11 +222,16 @@ func cleanCache(ctx *cli.Context) error {
 	if dir == "" {
 		dir = owd
 	}
-	cache.CleanCache(dir)
+	cache.CleanCache(dir, recursive)
 	return nil
 }
 
 func list(ctx *cli.Context) error {
 	cfg := newConfigFromCliContext(ctx)
 	return orchestra.List(cfg)
+}
+
+func format(ctx *cli.Context) error {
+	cfg := newConfigFromCliContext(ctx)
+	return orchestra.Format(cfg, ctx.Bool("check"), ctx.Bool("recursive"))
 }

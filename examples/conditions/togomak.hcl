@@ -3,12 +3,12 @@ togomak {
 }
 
 data "env" "home" {
-  key = "HOME"
+  key     = "HOME"
   default = "@"
 }
 
 stage "example" {
-  if = data.env.home.value != "@"
+  if     = data.env.home.value != "@"
   name   = "example"
   script = "echo hello world"
 }

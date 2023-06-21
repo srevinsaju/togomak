@@ -11,8 +11,7 @@ import (
 	"path/filepath"
 )
 
-func Read(ctx context.Context, parser *hclparse.Parser) (*ci.Pipeline, hcl.Diagnostics) {
-
+func ConfigFilePath(ctx context.Context) string {
 	filePath := ctx.Value(c.TogomakContextPipelineFilePath).(string)
 	if filePath == "" {
 		filePath = meta.ConfigFileName
@@ -22,6 +21,12 @@ func Read(ctx context.Context, parser *hclparse.Parser) (*ci.Pipeline, hcl.Diagn
 	if filepath.IsAbs(filePath) == false {
 		filePath = filepath.Join(owd, filePath)
 	}
+	return filePath
+}
+
+func Read(ctx context.Context, parser *hclparse.Parser) (*ci.Pipeline, hcl.Diagnostics) {
+	filePath := ConfigFilePath(ctx)
+
 	f, diags := parser.ParseHCLFile(filePath)
 
 	if diags.HasErrors() {
