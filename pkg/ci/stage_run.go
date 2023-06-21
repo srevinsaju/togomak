@@ -265,7 +265,7 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 		}
 	}
 
-	oldParam, ok := evalCtx.Variables["param"]
+	oldParam, ok := evalCtx.Variables[ParamBlock]
 	if ok {
 		oldParamMap := oldParam.AsValueMap()
 		for k, v := range oldParamMap {
@@ -274,17 +274,16 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 	}
 	evalCtx = evalCtx.NewChild()
 	evalCtx.Variables = map[string]cty.Value{
-		"this": cty.ObjectVal(map[string]cty.Value{
+		ThisBlock: cty.ObjectVal(map[string]cty.Value{
 			"name": cty.StringVal(s.Name),
 			"id":   cty.StringVal(s.Id),
 		}),
-		"param": cty.ObjectVal(paramsGo),
+		ParamBlock: cty.ObjectVal(paramsGo),
 	}
 
 	script, d := s.Script.Value(evalCtx)
 	if d.HasErrors() && isDryRun {
 		script = cty.StringVal(ui.Italic(ui.Yellow("(will be evaluated later)")))
-
 	} else {
 		hclDiags = hclDiags.Extend(d)
 	}
@@ -334,7 +333,6 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 	if shell == "" {
 		shell = "bash"
 	}
-
 	runCommand := shell
 
 	// emptyCommands - specifies if both args and scripts were unset
@@ -384,19 +382,33 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 	cmd.Dir = dir
 
 	if s.Container == nil {
-
 		s.process = cmd
-
 		logger.Trace("running command:", cmd.String())
-
 		if !isDryRun {
 			err = cmd.Run()
 		} else {
 			fmt.Println(cmd.String())
 		}
-
 	} else {
 		logger := logger.WithField("🐳", "")
+
+		imageRaw, d := s.Container.Image.Value(evalCtx)
+		if d.HasErrors() {
+			hclDiags = hclDiags.Extend(d)
+		} else if imageRaw.Type() != cty.String {
+			hclDiags = hclDiags.Append(&hcl.Diagnostic{
+				Severity:    hcl.DiagError,
+				Summary:     "image must be a string",
+				Detail:      fmt.Sprintf("the provided image, was not recognized as a valid string. received image='''%s'''", imageRaw),
+				Subject:     s.Container.Image.Range().Ptr(),
+				EvalContext: evalCtx,
+			})
+		}
+		if hclDiags.HasErrors() {
+			return diags.ExtendHCLDiagnostics(hclDiags, hclDgWriter, s.Identifier())
+		}
+		image := imageRaw.AsString()
+
 		cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
 		if err != nil {
 			return diags.Append(diag.Diagnostic{
@@ -408,11 +420,11 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 		}
 		defer cli.Close()
 		// check if image exists
-		logger.Debugf("checking if image %s exists", s.Container.Image)
-		_, _, err = cli.ImageInspectWithRaw(ctx, s.Container.Image)
+		logger.Debugf("checking if image %s exists", image)
+		_, _, err = cli.ImageInspectWithRaw(ctx, image)
 		if err != nil {
-			logger.Infof("image %s does not exist, pulling...", s.Container.Image)
-			reader, err := cli.ImagePull(ctx, s.Container.Image, types.ImagePullOptions{})
+			logger.Infof("image %s does not exist, pulling...", image)
+			reader, err := cli.ImagePull(ctx, image, types.ImagePullOptions{})
 			if err != nil {
 				return diags.Append(diag.Diagnostic{
 					Severity: diag.SeverityError,
@@ -453,8 +465,14 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 		}
 
 		if !isDryRun {
+			exposedPorts, bindings, d := s.Container.Ports.Nat(evalCtx)
+			if d.HasErrors() {
+				hclDiags = hclDiags.Extend(d)
+				return diags.ExtendHCLDiagnostics(hclDiags, hclDgWriter, s.Identifier())
+			}
+
 			resp, err := cli.ContainerCreate(ctx, &dockerContainer.Config{
-				Image:        s.Container.Image,
+				Image:        image,
 				Cmd:          containerArgs,
 				WorkingDir:   "/workspace",
 				Tty:          true,
@@ -464,9 +482,11 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 				OpenStdin:    s.Container.Stdin,
 				StdinOnce:    s.Container.Stdin,
 				Env:          envStrings,
+				ExposedPorts: exposedPorts,
 				// User: s.Container.User,
 			}, &dockerContainer.HostConfig{
-				Binds: binds,
+				Binds:        binds,
+				PortBindings: bindings,
 			}, nil, nil, "")
 			if err != nil {
 				return diags.Append(diag.Diagnostic{
@@ -534,11 +554,9 @@ func (s *Stage) Run(ctx context.Context) diag.Diagnostics {
 				return diags
 			}
 		} else {
-			fmt.Println(ui.Blue("docker:run.image"), ui.Green(s.Container.Image))
-
+			fmt.Println(ui.Blue("docker:run.image"), ui.Green(image))
 			fmt.Println(ui.Blue("docker:run.workdir"), ui.Green("/workspace"))
 			fmt.Println(ui.Blue("docker:run.volume"), ui.Green(cmd.Dir+":/workspace"))
-
 			fmt.Println(ui.Blue("docker:run.env"), ui.Green(strings.Join(envStrings, " ")))
 			fmt.Println(ui.Blue("docker:run.stdin"), ui.Green(s.Container.Stdin))
 			fmt.Println(ui.Blue("docker:run.args"), ui.Green(strings.Join(containerArgs, " ")))

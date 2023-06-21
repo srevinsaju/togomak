@@ -304,6 +304,7 @@ func (e *GitProvider) Attributes(ctx context.Context) map[string]cty.Value {
 	fmt.Println(e.cfg.repo)
 	var s storage.Storer
 	var authMethod transport.AuthMethod
+
 	if e.cfg.auth.password != "" {
 		authMethod = &http.BasicAuth{
 			Username: e.cfg.auth.username,
