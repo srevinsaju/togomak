@@ -3,6 +3,7 @@ package ci
 import (
 	"context"
 	"fmt"
+	"github.com/hashicorp/hcl/v2"
 )
 
 const StageContextChildStatuses = "child_statuses"
@@ -39,11 +40,17 @@ func (s *Stage) IsDaemon() bool {
 	return s.Daemon != nil && s.Daemon.Enabled
 }
 
-func (s Stages) ById(id string) (*Stage, error) {
+func (s Stages) ById(id string) (*Stage, hcl.Diagnostics) {
 	for _, stage := range s {
 		if stage.Id == id {
 			return &stage, nil
 		}
 	}
-	return nil, fmt.Errorf("stage with id %s not found", id)
+	return nil, hcl.Diagnostics{
+		{
+			Severity: hcl.DiagError,
+			Summary:  "Stage not found",
+			Detail:   fmt.Sprintf("Stage with id %s not found", id),
+		},
+	}
 }

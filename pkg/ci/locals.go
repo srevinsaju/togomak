@@ -2,7 +2,7 @@ package ci
 
 import (
 	"fmt"
-	"github.com/srevinsaju/togomak/v1/pkg/diag"
+	"github.com/hashicorp/hcl/v2"
 )
 
 const LocalsBlock = "locals"
@@ -20,16 +20,16 @@ func (l Locals) Type() string {
 	return LocalsBlock
 }
 
-func (l Locals) Expand() ([]*Local, diag.Diagnostics) {
+func (l Locals) Expand() ([]*Local, hcl.Diagnostics) {
 	var locals []*Local
-	var diags diag.Diagnostics
+	var diags hcl.Diagnostics
 	attr, err := l.Body.JustAttributes()
 	if err != nil {
-		return nil, diags.Append(diag.Diagnostic{
-			Severity: diag.SeverityError,
+		return nil, diags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagError,
 			Summary:  "Failed to decode locals",
 			Detail:   err.Error(),
-			Source:   l.Identifier(),
+			Subject:  l.Body.MissingItemRange().Ptr(),
 		})
 	}
 
@@ -58,11 +58,11 @@ func (*Local) IsDaemon() bool {
 	return false
 }
 
-func (*Local) Terminate() diag.Diagnostics {
+func (*Local) Terminate(safe bool) hcl.Diagnostics {
 	return nil
 }
 
-func (*Local) Kill() diag.Diagnostics {
+func (*Local) Kill() hcl.Diagnostics {
 	return nil
 }
 
@@ -73,8 +73,8 @@ func (*Local) Get(k any) any {
 	return nil
 }
 
-func (l LocalsGroup) Expand() ([]*Local, diag.Diagnostics) {
-	var diags diag.Diagnostics
+func (l LocalsGroup) Expand() ([]*Local, hcl.Diagnostics) {
+	var diags hcl.Diagnostics
 	var locals []*Local
 	for _, lo := range l {
 		ll, dd := lo.Expand()
@@ -84,11 +84,17 @@ func (l LocalsGroup) Expand() ([]*Local, diag.Diagnostics) {
 	return locals, diags
 }
 
-func (l LocalGroup) ById(id string) (*Local, error) {
+func (l LocalGroup) ById(id string) (*Local, hcl.Diagnostics) {
 	for _, lo := range l {
 		if lo.Key == id {
 			return lo, nil
 		}
 	}
-	return nil, fmt.Errorf("local variable with id %s not found", id)
+	return nil, hcl.Diagnostics{
+		{
+			Severity: hcl.DiagError,
+			Summary:  "Local not found",
+			Detail:   "Local with id " + id + " not found",
+		},
+	}
 }

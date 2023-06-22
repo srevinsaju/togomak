@@ -15,10 +15,19 @@ type StageContainerVolume struct {
 
 type StageContainerVolumes []StageContainerVolume
 
+type StageContainerPort struct {
+	Hostname      hcl.Expression `hcl:"host,optional" json:"host"`
+	ContainerPort hcl.Expression `hcl:"container_port" json:"container_port"`
+	Port          hcl.Expression `hcl:"port" json:"port"`
+}
+
+type StageContainerPorts []StageContainerPort
+
 type StageContainer struct {
-	Image   string                `hcl:"image" json:"image"`
+	Image   hcl.Expression        `hcl:"image" json:"image"`
 	Volumes StageContainerVolumes `hcl:"volume,block" json:"volumes"`
-	Ports   []string              `hcl:"ports,optional" json:"ports"`
+	Ports   StageContainerPorts   `hcl:"ports,optional" json:"ports"`
+	Host    hcl.Expression        `hcl:"host,optional" json:"host"`
 	Stdin   bool                  `hcl:"stdin,optional" json:"stdin"`
 }
 
@@ -41,15 +50,17 @@ type StageUse struct {
 	Macro      hcl.Expression `hcl:"macro" json:"macro"`
 	Parameters hcl.Expression `hcl:"parameters,optional" json:"parameters"`
 }
-
 type StageDaemon struct {
 	Enabled bool `hcl:"enabled" json:"enabled"`
 	Timeout int  `hcl:"timeout,optional" json:"timeout"`
+
+	Lifecycle *Lifecycle `hcl:"lifecycle,block" json:"lifecycle"`
 }
 
 type Stage struct {
 	ctx            context.Context
 	ctxInitialised bool
+	terminated     bool
 
 	Id        string         `hcl:"id,label" json:"id"`
 	Condition hcl.Expression `hcl:"if,optional" json:"if"`

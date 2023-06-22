@@ -21,6 +21,7 @@ const (
 
 	TogomakContextCi         = "ci"
 	TogomakContextUnattended = "unattended"
+	TogomakContextVerbosity  = "verbosity"
 
 	TogomakContextLogger        = "logger"
 	TogomakContextHclDiagWriter = "hcl_diag_writer"
@@ -30,4 +31,6 @@ const (
 	TogomakContextMutexStages = "mutex_stages"
 	TogomakContextMutexData   = "mutex_data"
 	TogomakContextMutexMacro  = "mutex_macro"
+
+	Togomak = "togomak"
 )

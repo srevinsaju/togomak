@@ -2,12 +2,15 @@ package data
 
 import (
 	"context"
-	"fmt"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
-	"github.com/srevinsaju/togomak/v1/pkg/diag"
 	"github.com/zclconf/go-cty/cty"
 	"os"
+)
+
+const (
+	EnvProviderAttrKey     = "key"
+	EnvProviderAttrDefault = "default"
 )
 
 type EnvProvider struct {
@@ -45,11 +48,11 @@ func (e *EnvProvider) New() Provider {
 	}
 }
 
-func (e *EnvProvider) Attributes(ctx context.Context) map[string]cty.Value {
+func (e *EnvProvider) Attributes(ctx context.Context, id string) (map[string]cty.Value, hcl.Diagnostics) {
 	return map[string]cty.Value{
-		"key":     cty.StringVal(e.keyParsed),
-		"default": cty.StringVal(e.def),
-	}
+		EnvProviderAttrKey:     cty.StringVal(e.keyParsed),
+		EnvProviderAttrDefault: cty.StringVal(e.def),
+	}, nil
 }
 
 func (e *EnvProvider) Url() string {
@@ -60,11 +63,11 @@ func (e *EnvProvider) Schema() *hcl.BodySchema {
 	schema := &hcl.BodySchema{
 		Attributes: []hcl.AttributeSchema{
 			{
-				Name:     "key",
+				Name:     EnvProviderAttrKey,
 				Required: true,
 			},
 			{
-				Name:     "default",
+				Name:     EnvProviderAttrDefault,
 				Required: false,
 			},
 		},
@@ -73,48 +76,41 @@ func (e *EnvProvider) Schema() *hcl.BodySchema {
 
 }
 
-func (e *EnvProvider) DecodeBody(body hcl.Body) diag.Diagnostics {
+func (e *EnvProvider) DecodeBody(body hcl.Body) hcl.Diagnostics {
 	if !e.initialized {
 		panic("provider not initialized")
 	}
-	var diags diag.Diagnostics
-	hclDiagWriter := e.ctx.Value(c.TogomakContextHclDiagWriter).(hcl.DiagnosticWriter)
+	var diags hcl.Diagnostics
 	hclContext := e.ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
 
 	schema := e.Schema()
-	content, hclDiags := body.Content(schema)
-	if hclDiags.HasErrors() {
-		source := fmt.Sprintf("data.%s:decodeBody", e.Name())
-		diags = diags.NewHclWriteDiagnosticsError(source, hclDiagWriter.WriteDiagnostics(hclDiags))
-	}
+	content, d := body.Content(schema)
+	diags = diags.Extend(d)
+
 	attr := content.Attributes["key"]
 	var key cty.Value
-	key, hclDiags = attr.Expr.Value(hclContext)
-	if hclDiags.HasErrors() {
-		source := fmt.Sprintf("data.%s:decodeBody", e.Name())
-		diags = diags.NewHclWriteDiagnosticsError(source, hclDiagWriter.WriteDiagnostics(hclDiags))
-	}
+	key, d = attr.Expr.Value(hclContext)
+	diags = diags.Extend(d)
+
 	e.keyParsed = key.AsString()
 
 	attr = content.Attributes["default"]
-	key, hclDiags = attr.Expr.Value(hclContext)
-	if hclDiags.HasErrors() {
-		source := fmt.Sprintf("data.%s:decodeBody", e.Name())
-		diags = diags.NewHclWriteDiagnosticsError(source, hclDiagWriter.WriteDiagnostics(hclDiags))
-	}
+	key, d = attr.Expr.Value(hclContext)
+	diags = diags.Extend(d)
+
 	e.def = key.AsString()
 
 	return diags
 
 }
 
-func (e *EnvProvider) Value(ctx context.Context, id string) string {
+func (e *EnvProvider) Value(ctx context.Context, id string) (string, hcl.Diagnostics) {
 	if !e.initialized {
 		panic("provider not initialized")
 	}
 	v, exists := os.LookupEnv(e.keyParsed)
 	if exists {
-		return v
+		return v, nil
 	}
-	return e.def
+	return e.def, nil
 }

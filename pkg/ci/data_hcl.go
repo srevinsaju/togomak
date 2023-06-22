@@ -5,15 +5,15 @@ import (
 	dataBlock "github.com/srevinsaju/togomak/v1/pkg/blocks/data"
 )
 
-func (d Data) Variables() []hcl.Traversal {
+func (s Data) Variables() []hcl.Traversal {
 	var traversal []hcl.Traversal
-	provider := dataBlock.DefaultProviders.Get(d.Provider)
+	provider := dataBlock.DefaultProviders.Get(s.Provider)
 	// TODO: this will panic, if the provider is not found
 	if provider == nil {
 		panic("provider not found")
 	}
 	provide := provider.New()
-	traversal = append(traversal, dataBlock.Variables(provide, d.Body)...)
+	traversal = append(traversal, dataBlock.Variables(provide, s.Body)...)
 	return traversal
 }
 

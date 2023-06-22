@@ -26,10 +26,10 @@ data "git" "this" {
 - [`url`](#url) - The URL of the repository to clone
 - [`tag`](#tag) - The tag to checkout
 - [`branch`](#branch) - The branch to checkout
-- [`destination`](#destination) - The destination directory to clone the repository to, defaults to `"memory"`, which clones into memory
+- [`destination`](#destination) - The destination directory to clone the repository to, defaults to `"memory"`, which clones into a temporary directory managed by `togomak`
 - [`commit`](#commit) - The commit to checkout
 - [`depth`](#depth) - The depth of the clone
-- [`ca_bundle`](#ca_bundle) - The path to a CA bundle file or directory
+- [`ca_bundle`](#ca_bundle) - The path to a CA bundle file or directory, (deprecated, does nothing).
 - [`auth`](#auth) - The authentication credentials to use when cloning the repository. Structure [documented below](#auth)
 - [`files`](#files) - The files to checkout from the repository. Accepts an array of file paths.
 
@@ -39,10 +39,16 @@ data "git" "this" {
 - [`sha`](#sha) - The SHA of the commit, defaults to `""`
 - [`ref`](#ref) - The ref of the commit, in the format `refs/heads/<branch>` or `refs/tags/<tag>`, defaults to `""`
 - [`is_tag`](#is-tag) - Whether the ref is a tag, defaults to `false`
-- [`is_branch`](#is-branch) - Whether the ref is a branch, defaults to `false`
-- [`is_note`](#is-note) - Whether the ref is a note, defaults to `false`
-- [`is_remote`](#is-remote) - Whether the ref is remote, defaults to `false`
 - [`files`](#files) - The files checked out from the repository. Returns a map, with the keys being the file paths and the values being the file contents.
 - [`branch`](#branch) - The branch checked out from the repository. Returns a string.
-- [`tag`](#tag) - The tag checked out from the repository. Returns a string.
+- [`destination`](#destination) - The destination where the repository is stored. 
+
+---
+<a id="auth"></a>
+The `auth` block supports:
+- [`username`](#username) - The username to be used. If password is specified, and if the username is empty, it falls back to `oauth2`
+- [`password`](#password) - The password to be used for connecting to the private repository. 
+
+
+
 

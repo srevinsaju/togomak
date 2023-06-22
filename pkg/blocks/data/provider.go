@@ -3,7 +3,6 @@ package data
 import (
 	"context"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/srevinsaju/togomak/v1/pkg/diag"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -16,9 +15,9 @@ type Provider interface {
 	New() Provider
 
 	SetContext(context context.Context)
-	DecodeBody(body hcl.Body) diag.Diagnostics
-	Value(ctx context.Context, id string) string
-	Attributes(ctx context.Context) map[string]cty.Value
+	DecodeBody(body hcl.Body) hcl.Diagnostics
+	Value(ctx context.Context, id string) (string, hcl.Diagnostics)
+	Attributes(ctx context.Context, id string) (map[string]cty.Value, hcl.Diagnostics)
 }
 
 func Variables(e Provider, body hcl.Body) []hcl.Traversal {

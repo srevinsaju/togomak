@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/srevinsaju/togomak/v1/pkg/diag"
+	"github.com/srevinsaju/togomak/v1/pkg/x"
 	"strings"
 
 	"sync"
@@ -12,19 +12,9 @@ import (
 
 const ThisBlock = "this"
 
-type Runnable interface {
-	Description() string
-	Identifier() string
-
-	Run(ctx context.Context) diag.Diagnostics
-	CanRun(ctx context.Context) (bool, diag.Diagnostics)
-
+type Retryable interface {
 	// CanRetry decides if the runnable can be retried
 	CanRetry() bool
-
-	// Prepare is called before the runnable is run
-	Prepare(ctx context.Context, skip bool, overridden bool) diag.Diagnostics
-
 	// MaxRetries returns the maximum number of retries that is valid for
 	// this runnable
 	MaxRetries() int
@@ -35,24 +25,55 @@ type Runnable interface {
 	// RetryExponentialBackoff returns true if the backoff time should be
 	// exponentially increasing
 	RetryExponentialBackoff() bool
+}
 
-	// IsDaemon returns true if the runnable is a daemon
-	IsDaemon() bool
-
-	Variables() []hcl.Traversal
-
+type Describable interface {
+	Description() string
+	Identifier() string
 	Type() string
+}
 
-	Terminate() diag.Diagnostics
-	Kill() diag.Diagnostics
+type Runnable interface {
+	// Prepare is called before the runnable is run
+	Prepare(ctx context.Context, skip bool, overridden bool) hcl.Diagnostics
+	Run(ctx context.Context) hcl.Diagnostics
+	CanRun(ctx context.Context) (bool, hcl.Diagnostics)
+}
 
+type Traversable interface {
+	Variables() []hcl.Traversal
+}
+
+type Contextual interface {
 	Set(k any, v any)
 	Get(k any) any
 }
 
-type Runnables []Runnable
+type Killable interface {
+	Terminate(safe bool) hcl.Diagnostics
+	Kill() hcl.Diagnostics
+	Terminated() bool
+}
 
-func (r Runnables) Variables() []hcl.Traversal {
+type Daemon interface {
+	// IsDaemon returns true if the runnable is a daemon
+	IsDaemon() bool
+	Lifecycle(ctx context.Context) (*DaemonLifecycle, hcl.Diagnostics)
+}
+
+type Block interface {
+	Retryable
+	Describable
+	Contextual
+	Traversable
+	Runnable
+	Killable
+	Daemon
+}
+
+type Blocks []Block
+
+func (r Blocks) Variables() []hcl.Traversal {
 	var traversal []hcl.Traversal
 	for _, runnable := range r {
 		traversal = append(traversal, runnable.Variables()...)
@@ -60,14 +81,14 @@ func (r Runnables) Variables() []hcl.Traversal {
 	return traversal
 }
 
-func (r Runnables) Run(ctx context.Context) diag.Diagnostics {
+func (r Blocks) Run(ctx context.Context) hcl.Diagnostics {
 	// run all runnables in parallel, collect errors and return
 	// create a channel to receive errors
 	var wg sync.WaitGroup
 	errChan := make(chan error, len(r))
 	for _, runnable := range r {
 		wg.Add(1)
-		go func(runnable Runnable) {
+		go func(runnable Block) {
 			defer wg.Done()
 			errChan <- runnable.Run(ctx)
 		}(runnable)
@@ -78,17 +99,14 @@ func (r Runnables) Run(ctx context.Context) diag.Diagnostics {
 	return nil
 }
 
-func Resolve(ctx context.Context, pipe *Pipeline, id string) (Runnable, diag.Diagnostics) {
-	summaryErr := "Resolution failed"
-	var diags diag.Diagnostics
+func Resolve(ctx context.Context, pipe *Pipeline, id string) (Block, hcl.Diagnostics) {
+	var diags hcl.Diagnostics
 	blocks := strings.Split(id, ".")
 	if len(blocks) != 2 && len(blocks) != 3 {
-		diags = diags.Append(diag.Diagnostic{
-			Severity: diag.SeverityError,
+		diags = diags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagError,
 			Summary:  "Invalid identifier",
 			Detail:   fmt.Sprintf("Expected a valid identifier, got '%s'", id),
-
-			Source: "resolve",
 		})
 	}
 	if diags.HasErrors() {
@@ -97,30 +115,26 @@ func Resolve(ctx context.Context, pipe *Pipeline, id string) (Runnable, diag.Dia
 
 	switch blocks[0] {
 	case "provider":
-		return nil, diags.Append(diag.NewNotImplementedError("provider"))
+		return nil, diags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  "Unsupported identifier",
+			Detail:   fmt.Sprintf("Expected a valid identifier, got %s", id),
+		})
 	case StageBlock:
-		stage, err := pipe.Stages.ById(blocks[1])
-		if err != nil {
-			diags = diags.Append(diag.NewError("resolve", summaryErr, err.Error()))
-		}
+		stage, d := pipe.Stages.ById(blocks[1])
+		diags = diags.Extend(d)
 		return stage, diags
 	case DataBlock:
-		data, err := pipe.Data.ById(blocks[1], blocks[2])
-		if err != nil {
-			diags = diags.Append(diag.NewError("resolve", summaryErr, err.Error()))
-		}
+		data, d := pipe.Data.ById(blocks[1], blocks[2])
+		diags = diags.Extend(d)
 		return data, diags
 	case MacroBlock:
-		macro, err := pipe.Macros.ById(blocks[1])
-		if err != nil {
-			diags = diags.Append(diag.NewError("resolve", summaryErr, err.Error()))
-		}
+		macro, d := pipe.Macros.ById(blocks[1])
+		diags = diags.Extend(d)
 		return macro, diags
 	case LocalBlock:
-		local, err := pipe.Local.ById(blocks[1])
-		if err != nil {
-			diags = diags.Append(diag.NewError("resolve", summaryErr, err.Error()))
-		}
+		local, d := pipe.Local.ById(blocks[1])
+		diags = diags.Extend(d)
 		return local, diags
 	case LocalsBlock:
 		panic("locals block cannot be resolved")
@@ -131,9 +145,41 @@ func Resolve(ctx context.Context, pipe *Pipeline, id string) (Runnable, diag.Dia
 		return nil, nil
 	}
 
-	return nil, diags.Append(diag.Diagnostic{
-		Severity: diag.SeverityError,
+	return nil, diags.Append(&hcl.Diagnostic{
+		Severity: hcl.DiagError,
 		Summary:  "Unsupported identifier",
 		Detail:   fmt.Sprintf("Expected a valid identifier, got %s", id),
 	})
+}
+
+func ResolveFromTraversal(variable hcl.Traversal) (string, hcl.Diagnostics) {
+	blockType := variable.RootName()
+	var parent string
+	var diags hcl.Diagnostics
+	switch blockType {
+	case DataBlock:
+		// the data block has the provider type as well as the name
+		provider := variable[1].(hcl.TraverseAttr).Name
+		name := variable[2].(hcl.TraverseAttr).Name
+		parent = x.RenderBlock(DataBlock, provider, name)
+	case StageBlock:
+		// the stage block has the name
+		name := variable[1].(hcl.TraverseAttr).Name
+		parent = x.RenderBlock(StageBlock, name)
+	case LocalBlock:
+		// the local block has the name
+		name := variable[1].(hcl.TraverseAttr).Name
+		parent = x.RenderBlock(LocalBlock, name)
+	case MacroBlock:
+		// the local block has the name
+		name := variable[1].(hcl.TraverseAttr).Name
+		parent = x.RenderBlock(MacroBlock, name)
+	case ParamBlock, ThisBlock, BuilderBlock:
+		return "", nil
+	default:
+		return "", nil
+
+	}
+	return parent, diags
+
 }
