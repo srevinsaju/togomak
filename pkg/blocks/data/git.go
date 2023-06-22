@@ -1,31 +1,18 @@
 package data
 
 import (
-	"bytes"
 	"code.gitea.io/gitea/modules/git"
+	"code.gitea.io/gitea/modules/setting"
 	"context"
-	"errors"
 	"fmt"
-	"github.com/go-git/go-billy/v5/memfs"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/object"
-	"github.com/go-git/go-git/v5/plumbing/transport"
-	"github.com/go-git/go-git/v5/plumbing/transport/http"
-	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
-	"github.com/go-git/go-git/v5/storage"
-	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/jdxcode/netrc"
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/ui"
 	"github.com/zclconf/go-cty/cty"
-	"io"
 	"net/url"
 	"os"
-	"os/user"
 	"path/filepath"
-	"strings"
 )
 
 type gitProviderAuthConfig struct {
@@ -65,12 +52,10 @@ const (
 	GitBlockAttrLastTag             = "last_tag"
 	GitBlockAttrCommitsSinceLastTag = "commits_since_last_tag"
 	GitBlockAttrSha                 = "sha"
-	GitBlockAttrRef                 = "ref"
 
-	GitBlockAttrIsTag    = "is_tag"
-	GitBlockAttrIsBranch = "is_branch"
-	GitBlockAttrIsNote   = "is_note"
-	GitBlockAttrIsRemote = "is_remote"
+	GitBlockAttrIsTag = "is_tag"
+	GitBlockAttrRef   = "ref"
+	GitBlockAttrFiles = "files"
 )
 
 type GitProvider struct {
@@ -212,6 +197,11 @@ func (e *GitProvider) DecodeBody(body hcl.Body) hcl.Diagnostics {
 	return diags
 }
 
+func init() {
+	h, _ := os.UserHomeDir()
+	setting.Git.HomePath = h
+}
+
 func (e *GitProvider) New() Provider {
 	return &GitProvider{
 		initialized: true,
@@ -292,7 +282,7 @@ func (e *GitProvider) Value(ctx context.Context, id string) (string, hcl.Diagnos
 	return "", nil
 }
 
-func (e *GitProvider) Attributes(ctx context.Context) (map[string]cty.Value, hcl.Diagnostics) {
+func (e *GitProvider) Attributes(ctx context.Context, id string) (map[string]cty.Value, hcl.Diagnostics) {
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField("provider", e.Name())
 	var diags hcl.Diagnostics
 	if !e.initialized {
@@ -301,352 +291,222 @@ func (e *GitProvider) Attributes(ctx context.Context) (map[string]cty.Value, hcl
 
 	var attrs = make(map[string]cty.Value)
 
-	// clone git repo
-	// git clone
-	var s storage.Storer
-	var authMethod transport.AuthMethod
-	repoUrl := e.cfg.repo
-
-	if e.cfg.auth.password != "" {
-		authMethod = &http.BasicAuth{
-			Username: e.cfg.auth.username,
-			Password: e.cfg.auth.password,
-		}
-	} else if e.cfg.auth.isSsh {
-		publicKeys, err := ssh.NewPublicKeys(e.cfg.auth.username, []byte(e.cfg.auth.sshPrivateKey), e.cfg.auth.sshPassword)
-		if err != nil {
-			diags = diags.Append(&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "ssh key error",
-				Detail:   err.Error(),
-			})
-			return nil, diags
-		}
-		authMethod = publicKeys
-	} else {
-		// fallback to inferring it from the environment
-		u, err := url.Parse(repoUrl)
-		if err != nil {
-			diags = diags.Append(&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "url parse error",
-				Detail:   err.Error(),
-			})
-			return nil, diags
-		}
-		if u.Scheme == "http" || u.Scheme == "https" {
-			usr, err := user.Current()
-			if err != nil {
-				panic(err)
-			}
-			homeDir := usr.HomeDir
-			gitCredentialsFilePath := filepath.Join(homeDir, ".git-credentials")
-			gitCredentialsFilePathDir := filepath.Join(homeDir, ".git", "credentials")
-			netrcFilePath := filepath.Join(homeDir, ".netrc")
-			if _, err := os.Stat(gitCredentialsFilePath); err == nil {
-				// TODO: we will replace this will the implicit auth method
-				// once go-git implements it
-				authMethod = parseGitCredentialsFile(logger, gitCredentialsFilePath, u)
-			} else if _, err := os.Stat(gitCredentialsFilePathDir); err == nil {
-				authMethod = parseGitCredentialsFile(logger, gitCredentialsFilePathDir, u)
-			} else if _, err := os.Stat(netrcFilePath); err == nil {
-				authMethod = parseNetrcFile(logger, netrcFilePath, u)
-			}
-		} else if u.Scheme == "ssh" || u.Scheme == "git" || u.Scheme == "" {
-			authMethod = nil
-		}
-
-	}
-
-	cloneOptions := &git.CloneOptions{
-		Tags:              git.AllTags,
-		Depth:             e.cfg.depth,
-		CABundle:          e.cfg.caBundle,
-		RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
-		Auth:              authMethod,
-		URL:               repoUrl,
-		Progress:          nil,
-	}
-	var repo *git.Repository
-	var err error
 	var cloneComplete = make(chan bool)
-	go func() {
-		pb := ui.NewProgressWriter(logger, fmt.Sprintf("pulling git repo %s", e.Identifier()))
-		for {
-			select {
-			case <-cloneComplete:
-				pb.Close()
-				return
-			default:
-				pb.Write([]byte("1"))
-			}
-		}
-	}()
+	go e.clonePassiveProgressBar(logger, cloneComplete)
 
-	if e.cfg.destination == "" || e.cfg.destination == "memory" {
-		logger.Debug("cloning into memory storage")
-		s = memory.NewStorage()
-		repo, err = git.CloneContext(ctx, s, memfs.New(), cloneOptions)
-	} else {
-		logger.Debugf("cloning to %s", e.cfg.destination)
-		repo, err = git.PlainCloneContext(ctx, e.cfg.destination, false, cloneOptions)
+	opts := git.CloneRepoOptions{
+		Depth:  e.cfg.depth,
+		Branch: e.cfg.branch,
+		Bare:   false,
+		// TODO: SkipTLSVerify: e.cfg.skipTLSVerify,
+		// TODO: make it configurable
+		Quiet: true,
 	}
+
+	// TODO: implement git submodules
+
+	destination, d := e.resolveDestination(ctx, id)
+	diags = diags.Extend(d)
+	if diags.HasErrors() {
+		return nil, diags
+	}
+
+	repoUrl, err := url.Parse(e.cfg.repo)
+	if err != nil {
+		return nil, diags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  "failed to parse git repo url",
+			Detail:   err.Error(),
+		})
+	}
+
+	if e.cfg.auth.username != "" || e.cfg.auth.password != "" {
+		username := e.cfg.auth.username
+		if e.cfg.auth.username == "" {
+			username = "oauth2"
+		}
+		repoUrl.User = url.UserPassword(username, e.cfg.auth.password)
+	}
+
+	logger.Debugf("cloning git repo to %s", destination)
+	err = git.CloneWithArgs(ctx, nil, repoUrl.String(), destination, opts)
 	cloneComplete <- true
-
 	if err != nil {
-		diags = diags.Append(&hcl.Diagnostic{
+		return nil, diags.Append(&hcl.Diagnostic{
 			Severity: hcl.DiagError,
-			Summary:  "git clone failed",
+			Summary:  "failed to clone git repo",
 			Detail:   err.Error(),
 		})
-		return nil, diags
 	}
-
-	w, err := repo.Worktree()
+	repo, closer, err := git.RepositoryFromContextOrOpen(ctx, destination)
 	if err != nil {
-		diags = diags.Append(&hcl.Diagnostic{
+		return nil, diags.Append(&hcl.Diagnostic{
 			Severity: hcl.DiagError,
-			Summary:  "checkout failed",
+			Summary:  "failed to open git repo",
 			Detail:   err.Error(),
 		})
-		return nil, diags
 	}
 
-	commitIter, err := repo.Log(&git.LogOptions{
-		Order: git.LogOrderCommitterTime,
-	})
+	gitBranch, err := repo.GetHEADBranch()
+	if err != nil {
+		diags = diags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagWarning,
+			Summary:  "failed to get git branch",
+			Detail:   err.Error(),
+		})
+	}
+	branch := ""
+	if gitBranch != nil {
+		branch = gitBranch.Name
+	}
 
-	count := 0
 	lastTag := ""
+	tags, err := repo.GetTags(0, 1)
 	if err != nil {
 		diags = diags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagWarning,
+			Summary:  "failed to get git tags",
+			Detail:   err.Error(),
+		})
+	}
+	noTags := false
+	if len(tags) == 0 {
+		noTags = true
+	} else if len(tags) > 1 {
+		panic("more than 1 tag returned when only one was supposed to be returned")
+	}
+	commitsSinceLastTag := cty.NullVal(cty.Number)
+	if !noTags {
+		lastTag = tags[0]
+
+		commitCount, err := repo.CommitsCountBetween(lastTag, "HEAD")
+		if err != nil {
+			diags = diags.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagWarning,
+				Summary:  "failed to get commits since last tag",
+				Detail:   err.Error(),
+			})
+		} else {
+			commitsSinceLastTag = cty.NumberIntVal(commitCount)
+		}
+
+	}
+
+	sha, err := repo.ConvertToSHA1("HEAD")
+	if err != nil {
+		return nil, diags.Append(&hcl.Diagnostic{
 			Severity: hcl.DiagError,
-			Summary:  "git log failed",
+			Summary:  "failed to get git sha",
+			Detail:   err.Error(),
+		})
+	}
+
+	err = closer.Close()
+	if err != nil {
+		diags = diags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagWarning,
+			Summary:  "failed to close git repo",
+			Detail:   err.Error(),
+		})
+	}
+
+	ref, err := repo.ResolveReference("HEAD")
+	if err != nil {
+		diags = diags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagWarning,
+			Summary:  "failed to resolve git reference",
+			Detail:   err.Error(),
+		})
+	}
+
+	_, err = repo.GetTagNameBySHA(sha.String())
+	isTagResolved := cty.NullVal(cty.Bool)
+	if git.IsErrNotExist(err) {
+		isTagResolved = cty.False
+	} else if err != nil {
+		diags = diags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagWarning,
+			Summary:  "failed to resolve git tag",
 			Detail:   err.Error(),
 		})
 	} else {
-		latestTag, latestTagCommit, err := GetLatestTagFromRepository(repo)
-		if err != nil {
-			diags = diags.Append(&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "git tags failed",
-				Detail:   err.Error(),
-			})
-			return nil, diags
-		}
-		if latestTag != nil {
-			lastTag = latestTag.Name().Short()
-		}
+		isTagResolved = cty.True
+	}
 
-		logger.Debugf("latest tag is %s", lastTag)
-		logger.Debugf("iterating over commits...")
-		foundTagError := errors.New("found tag")
-
-		if latestTagCommit != nil {
-			commitIterErr := commitIter.ForEach(func(commit *object.Commit) error {
-				ref, err := repo.Reference(latestTag.Name(), true)
-				if err != nil {
-					return err
-				}
-
-				commitRef, err := repo.CommitObject(ref.Hash())
-				if err != nil {
-					return err
-				}
-
-				fmt.Println("checking commits", commit.Hash.String(), "==", latestTagCommit.Hash.String(), ref.Hash().String(), commitRef.Hash.String())
-				if latestTagCommit.Hash == commit.Hash {
-					return foundTagError
-				}
-				count++
-				return nil
-			})
-			if foundTagError != commitIterErr && commitIterErr != nil {
-				logger.Warn(commitIterErr)
+	// read files and store them in the map if whitelisted
+	files := make(map[string]cty.Value)
+	for _, file := range e.cfg.files {
+		f := filepath.Join(destination, file)
+		if _, err := os.Stat(f); err == nil {
+			content, err := os.ReadFile(f)
+			if err != nil {
+				return nil, diags.Append(&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "failed to read file",
+					Detail:   err.Error(),
+				})
 			}
+			files[file] = cty.StringVal(string(content))
+		} else if !os.IsNotExist(err) {
+			return nil, diags.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "failed to read file",
+				Detail:   err.Error(),
+			})
 		}
 	}
-	commitsSinceLastTag := cty.NumberIntVal(int64(count))
 
-	var files = make(map[string]cty.Value)
-	for _, f := range e.cfg.files {
-		_, err := w.Filesystem.Stat(f)
-		if err != nil {
-			diags = diags.Append(&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "git file search failed",
-				Detail:   err.Error(),
-			})
-			continue
-		}
-		file, err := w.Filesystem.Open(f)
-		if err != nil {
-			diags = diags.Append(&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "git file open failed",
-				Detail:   err.Error(),
-			})
-			continue
-		}
-		defer file.Close()
-
-		data, err := io.ReadAll(file)
-		if err != nil {
-			diags = diags.Append(&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "git file read failed",
-				Detail:   err.Error(),
-			})
-			continue
-		}
-		files[f] = cty.StringVal(string(data[:]))
-	}
-
-	if files == nil || len(files) == 0 {
-		attrs[GitBlockArgumentFiles] = cty.MapValEmpty(cty.String)
+	var filesCty cty.Value
+	if len(files) > 0 {
+		filesCty = cty.MapVal(files)
 	} else {
-		attrs[GitBlockArgumentFiles] = cty.MapVal(files)
+		filesCty = cty.NullVal(cty.Map(cty.String))
 	}
 
-	attrs[GitBlockArgumentUrl] = cty.StringVal(e.cfg.repo)
+	attrs[GitBlockArgumentBranch] = cty.StringVal(branch)
 	attrs[GitBlockArgumentTag] = cty.StringVal(e.cfg.tag)
-
-	ref, err := repo.Head()
-	refString := cty.StringVal("")
-	branch := cty.StringVal("")
-	tag := cty.StringVal("")
-	isBranch := cty.False
-	isTag := cty.False
-	isRemote := cty.False
-	isNote := cty.False
-	sha := cty.StringVal("")
-
-	if err != nil {
-		diags = diags.Append(&hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  "git head failed",
-			Detail:   err.Error(),
-		})
-
-	} else {
-		refString = cty.StringVal(ref.Name().String())
-		branch = cty.StringVal(ref.Name().Short())
-		isBranch = cty.BoolVal(ref.Name().IsBranch())
-		isTag = cty.BoolVal(ref.Name().IsTag())
-		tag = cty.StringVal(ref.Name().Short())
-		isRemote = cty.BoolVal(ref.Name().IsRemote())
-		isNote = cty.BoolVal(ref.Name().IsNote())
-		sha = cty.StringVal(ref.Hash().String())
-	}
-
-	attrs[GitBlockArgumentBranch] = branch
-	attrs[GitBlockArgumentTag] = tag
-	attrs[GitBlockAttrIsBranch] = isBranch
-	attrs[GitBlockAttrRef] = refString
-	attrs[GitBlockAttrIsTag] = isTag
-	attrs[GitBlockAttrIsRemote] = isRemote
-	attrs[GitBlockAttrIsNote] = isNote
-	attrs[GitBlockAttrSha] = sha
+	attrs[GitBlockAttrIsTag] = isTagResolved
+	attrs[GitBlockAttrRef] = cty.StringVal(ref)
+	attrs[GitBlockArgumentUrl] = cty.StringVal(e.cfg.repo)
+	attrs[GitBlockAttrSha] = cty.StringVal(sha.String())
 	attrs[GitBlockAttrLastTag] = cty.StringVal(lastTag)
 	attrs[GitBlockAttrCommitsSinceLastTag] = commitsSinceLastTag
+	attrs[GitBlockAttrFiles] = filesCty
 
 	// get the commit
 	return attrs, diags
 }
 
-func parseNetrcFile(log *logrus.Entry, path string, u *url.URL) transport.AuthMethod {
-	logger := log.WithField("auth", "netrc")
-	n, err := netrc.Parse(path)
-	if err != nil {
-		logger.Warn("failed to parse netrc file: ", err)
-		return nil
+func (e *GitProvider) clonePassiveProgressBar(logger *logrus.Entry, cloneComplete chan bool) {
+	pb := ui.NewProgressWriter(logger, fmt.Sprintf("pulling git repo %s", e.Identifier()))
+	for {
+		select {
+		case <-cloneComplete:
+			pb.Close()
+			return
+		default:
+			pb.Write([]byte("1"))
+		}
 	}
-	username := n.Machine(u.Host).Get("login")
-	password := n.Machine(u.Host).Get("password")
-	authMethod := &http.BasicAuth{
-		Username: username,
-		Password: password,
-	}
-	return authMethod
 }
 
-func parseGitCredentialsFile(log *logrus.Entry, path string, u *url.URL) transport.AuthMethod {
-	logger := log.WithField("auth", "git-credentials")
-	data, err := os.ReadFile(path)
-	if err != nil {
-		logger.Warn("failed to read git-credentials file: ", err)
-		return nil
+func (e *GitProvider) resolveDestination(ctx context.Context, id string) (string, hcl.Diagnostics) {
+	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField("provider", e.Name())
+	tmpDir := ctx.Value(c.TogomakContextTempDir).(string)
+
+	var diags hcl.Diagnostics
+	destination := e.cfg.destination
+	if destination == "" || destination == "memory" {
+		if e.cfg.destination == "memory" {
+			// we deprecate this mode, warn the users
+			logger.Warn("git provider destination is set to memory, this mode is deprecated, currently it writes to a temporary directory")
+			diags = diags.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagWarning,
+				Summary:  "deprecated git destination",
+				Detail:   "git provider destination is set to memory, this mode is deprecated, currently it writes to a temporary directory",
+			})
+		}
+		destination = filepath.Join(tmpDir, e.Identifier(), id)
 	}
-
-	data = bytes.TrimSpace(data)
-	lines := bytes.Split(data, []byte("\n"))
-	for _, lineRaw := range lines {
-		lineRaw = bytes.TrimSpace(lineRaw)
-		line := string(lineRaw)
-		if strings.HasPrefix(line, "#") {
-			logger.Trace("skipping comment: ", line)
-			continue
-		}
-		credentialUrl, err := url.Parse(line)
-		if err != nil {
-			logger.Warn("failed to parse git-credentials line: ", err)
-			continue
-		}
-
-		if credentialUrl.Host == u.Host && credentialUrl.Scheme == u.Scheme && strings.HasPrefix(u.Path, credentialUrl.Path) {
-			username := credentialUrl.User.Username()
-			password, ok := credentialUrl.User.Password()
-			if !ok {
-				logger.Warn("failed to retrieve password from git-credentials file, falling back to '': ", line)
-			}
-			authMethod := &http.BasicAuth{
-				Username: username,
-				Password: password,
-			}
-			return authMethod
-		}
-	}
-	return nil
-
-}
-
-// GetLatestTagFromRepository returns the latest tag from a git repository
-// https://github.com/src-d/go-git/issues/1030#issuecomment-443679681
-func GetLatestTagFromRepository(repository *git.Repository) (*plumbing.Reference, *object.Commit, error) {
-	tagRefs, err := repository.Tags()
-	if err != nil {
-		return nil, nil, err
-	}
-	var commit *object.Commit
-	var latestTagCommit *object.Commit
-	var latestTagName *plumbing.Reference
-	err = tagRefs.ForEach(func(tagRef *plumbing.Reference) error {
-		revision := plumbing.Revision(tagRef.Name().String())
-		tagCommitHash, err := repository.ResolveRevision(revision)
-		if err != nil {
-			return err
-		}
-
-		commit, err = repository.CommitObject(*tagCommitHash)
-		if err != nil {
-			return err
-		}
-
-		if latestTagCommit == nil {
-			latestTagCommit = commit
-			latestTagName = tagRef
-		}
-
-		if commit.Committer.When.After(latestTagCommit.Committer.When) {
-			latestTagCommit = commit
-			latestTagName = tagRef
-		}
-
-		return nil
-	})
-	if err != nil {
-		return nil, commit, err
-	}
-
-	return latestTagName, commit, nil
+	return destination, diags
 }

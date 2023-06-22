@@ -17,7 +17,7 @@ type Provider interface {
 	SetContext(context context.Context)
 	DecodeBody(body hcl.Body) hcl.Diagnostics
 	Value(ctx context.Context, id string) (string, hcl.Diagnostics)
-	Attributes(ctx context.Context) (map[string]cty.Value, hcl.Diagnostics)
+	Attributes(ctx context.Context, id string) (map[string]cty.Value, hcl.Diagnostics)
 }
 
 func Variables(e Provider, body hcl.Body) []hcl.Traversal {

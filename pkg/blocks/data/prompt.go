@@ -88,7 +88,7 @@ func (e *PromptProvider) Schema() *hcl.BodySchema {
 	}
 }
 
-func (e *PromptProvider) Attributes(ctx context.Context) (map[string]cty.Value, hcl.Diagnostics) {
+func (e *PromptProvider) Attributes(ctx context.Context, id string) (map[string]cty.Value, hcl.Diagnostics) {
 	return map[string]cty.Value{
 		"prompt":  cty.StringVal(e.promptParsed),
 		"default": cty.StringVal(e.def),

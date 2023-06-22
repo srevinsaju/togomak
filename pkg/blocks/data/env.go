@@ -48,7 +48,7 @@ func (e *EnvProvider) New() Provider {
 	}
 }
 
-func (e *EnvProvider) Attributes(ctx context.Context) (map[string]cty.Value, hcl.Diagnostics) {
+func (e *EnvProvider) Attributes(ctx context.Context, id string) (map[string]cty.Value, hcl.Diagnostics) {
 	return map[string]cty.Value{
 		EnvProviderAttrKey:     cty.StringVal(e.keyParsed),
 		EnvProviderAttrDefault: cty.StringVal(e.def),

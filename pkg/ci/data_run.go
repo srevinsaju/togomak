@@ -43,7 +43,7 @@ func (s Data) Run(ctx context.Context) hcl.Diagnostics {
 			diags = diags.Extend(provide.DecodeBody(s.Body))
 			value, d = provide.Value(ctx, s.Id)
 			diags = diags.Extend(d)
-			attr, d = provide.Attributes(ctx)
+			attr, d = provide.Attributes(ctx, s.Id)
 			diags = diags.Extend(d)
 			break
 		}
