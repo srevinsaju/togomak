@@ -57,6 +57,7 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField(StageBlock, s.Id).WithField(MacroBlock, true)
 	pipe := ctx.Value(c.TogomakContextPipeline).(*Pipeline)
 	cwd := ctx.Value(c.TogomakContextCwd).(string)
+
 	tmpDir := ctx.Value(c.TogomakContextTempDir).(string)
 	ci := ctx.Value(c.TogomakContextCi).(bool)
 	unattended := ctx.Value(c.TogomakContextUnattended).(bool)
@@ -211,7 +212,7 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 				args = append(args, cty.StringVal("--unattended"))
 			}
 			childStatuses := s.Get(StageContextChildStatuses).([]string)
-			fmt.Println(childStatuses)
+			logger.Trace("child statuses: ", childStatuses)
 			if childStatuses != nil {
 				var ctyChildStatuses []cty.Value
 				for _, childStatus := range childStatuses {

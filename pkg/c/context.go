@@ -21,6 +21,7 @@ const (
 
 	TogomakContextCi         = "ci"
 	TogomakContextUnattended = "unattended"
+	TogomakContextVerbosity  = "verbosity"
 
 	TogomakContextLogger        = "logger"
 	TogomakContextHclDiagWriter = "hcl_diag_writer"
