@@ -6,6 +6,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/zclconf/go-cty/cty"
+	"sync"
 )
 
 const (
@@ -21,6 +22,7 @@ func (m *Macro) Run(ctx context.Context) hcl.Diagnostics {
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField(DataBlock, m.Id)
 	logger.Tracef("running %s.%s", MacroBlock, m.Id)
 	hclContext := ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
+	muMacro := ctx.Value(c.TogomakContextMutexMacro).(*sync.Mutex)
 	var diags hcl.Diagnostics
 
 	// region: mutating the data map
@@ -41,7 +43,9 @@ func (m *Macro) Run(ctx context.Context) hcl.Diagnostics {
 	macroMutated[m.Id] = cty.ObjectVal(map[string]cty.Value{
 		"files": f,
 	})
+	muMacro.Lock()
 	hclContext.Variables[MacroBlock] = cty.ObjectVal(macroMutated)
+	muMacro.Unlock()
 	// endregion
 
 	return diags
