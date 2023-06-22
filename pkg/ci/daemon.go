@@ -15,10 +15,14 @@ type Lifecycle struct {
 }
 
 func (l *Lifecycle) Parse(ctx context.Context) (*DaemonLifecycle, hcl.Diagnostics) {
+
 	pipe := ctx.Value(c.TogomakContextPipeline).(*Pipeline)
 	daemonLifecycle := &DaemonLifecycle{}
 	var diags hcl.Diagnostics
 
+	if l == nil || l.StopWhenComplete == nil {
+		return daemonLifecycle, diags
+	}
 	variables := l.StopWhenComplete.Variables()
 
 	var runnableString []string

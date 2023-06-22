@@ -472,6 +472,7 @@ func (e *GitProvider) Attributes(ctx context.Context, id string) (map[string]cty
 	attrs[GitBlockAttrLastTag] = cty.StringVal(lastTag)
 	attrs[GitBlockAttrCommitsSinceLastTag] = commitsSinceLastTag
 	attrs[GitBlockAttrFiles] = filesCty
+	attrs[GitBlockArgumentDestination] = cty.StringVal(destination)
 
 	// get the commit
 	return attrs, diags

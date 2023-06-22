@@ -90,7 +90,10 @@ stage "build" {
 {{#include ../../../examples/docker/togomak.hcl}}
 ```
 
-
+## Stage with daemons, with lifecycle rules 
+```hcl 
+{{#include ../../../examples/daemon-until/togomak.hcl}}
+```
 
 ## Arguments Reference
 * [`name`](#name) - The name of the stage
@@ -127,3 +130,8 @@ The `container` block supports:
 The `daemon` block supports:
 * [`enabled`](#enabled) - Whether the stage should be run as a daemon, defaults to `false`
 * [`timeout`](#timeout) - Time to wait until the stage is terminated, in seconds. Defaults to 0 (no timeout).
+* [`lifecycle`](#lifecycle) - Set of rules which decide if the daemon needs to be terminated, or not. Structure [documented below](#lifecycle)
+---
+<a id="lifecycle"></a>
+
+* [`stop_when_complete`] - Array of stages. `togomak` waits for all the stages mentioned in the `stop_when_complete` argument, before sending `SIGTERM` to the daemon process
