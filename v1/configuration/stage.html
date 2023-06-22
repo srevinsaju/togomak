@@ -243,6 +243,9 @@ stage &quot;example&quot; {
   EOT
 }
 </code></pre>
+<h2 id="stage-with-daemons-with-lifecycle-rules"><a class="header" href="#stage-with-daemons-with-lifecycle-rules">Stage with daemons, with lifecycle rules</a></h2>
+<pre><code class="language-hcl">{{#include ../../../examples/daemon-until/togomak.hcl}}
+</code></pre>
 <h2 id="arguments-reference"><a class="header" href="#arguments-reference">Arguments Reference</a></h2>
 <ul>
 <li>
@@ -304,6 +307,12 @@ The <code>container</code> block supports:</p>
 <ul>
 <li><a href="#enabled"><code>enabled</code></a> - Whether the stage should be run as a daemon, defaults to <code>false</code></li>
 <li><a href="#timeout"><code>timeout</code></a> - Time to wait until the stage is terminated, in seconds. Defaults to 0 (no timeout).</li>
+<li><a href="#lifecycle"><code>lifecycle</code></a> - Set of rules which decide if the daemon needs to be terminated, or not. Structure <a href="#lifecycle">documented below</a></li>
+</ul>
+<hr />
+<p><a id="lifecycle"></a></p>
+<ul>
+<li>[<code>stop_when_complete</code>] - Array of stages. <code>togomak</code> waits for all the stages mentioned in the <code>stop_when_complete</code> argument, before sending <code>SIGTERM</code> to the daemon process</li>
 </ul>
 
                     </main>

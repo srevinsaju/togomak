@@ -694,6 +694,9 @@ stage &quot;example&quot; {
   EOT
 }
 </code></pre>
+<h2 id="stage-with-daemons-with-lifecycle-rules"><a class="header" href="#stage-with-daemons-with-lifecycle-rules">Stage with daemons, with lifecycle rules</a></h2>
+<pre><code class="language-hcl">{{#include ../../../examples/daemon-until/togomak.hcl}}
+</code></pre>
 <h2 id="arguments-reference-1"><a class="header" href="#arguments-reference-1">Arguments Reference</a></h2>
 <ul>
 <li>
@@ -755,6 +758,12 @@ The <code>container</code> block supports:</p>
 <ul>
 <li><a href="configuration/stage.html#enabled"><code>enabled</code></a> - Whether the stage should be run as a daemon, defaults to <code>false</code></li>
 <li><a href="configuration/stage.html#timeout"><code>timeout</code></a> - Time to wait until the stage is terminated, in seconds. Defaults to 0 (no timeout).</li>
+<li><a href="configuration/stage.html#lifecycle"><code>lifecycle</code></a> - Set of rules which decide if the daemon needs to be terminated, or not. Structure <a href="configuration/stage.html#lifecycle">documented below</a></li>
+</ul>
+<hr />
+<p><a id="lifecycle"></a></p>
+<ul>
+<li>[<code>stop_when_complete</code>] - Array of stages. <code>togomak</code> waits for all the stages mentioned in the <code>stop_when_complete</code> argument, before sending <code>SIGTERM</code> to the daemon process</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="locals"><a class="header" href="#locals">Locals</a></h1>
 <p>If you plan to use a specific variable several times in your pipeline, you may use 
@@ -910,10 +919,10 @@ stage &quot;build_eva01&quot; {
 <li><a href="configuration/data_git.html#url"><code>url</code></a> - The URL of the repository to clone</li>
 <li><a href="configuration/data_git.html#tag"><code>tag</code></a> - The tag to checkout</li>
 <li><a href="configuration/data_git.html#branch"><code>branch</code></a> - The branch to checkout</li>
-<li><a href="configuration/data_git.html#destination"><code>destination</code></a> - The destination directory to clone the repository to, defaults to <code>&quot;memory&quot;</code>, which clones into memory</li>
+<li><a href="configuration/data_git.html#destination"><code>destination</code></a> - The destination directory to clone the repository to, defaults to <code>&quot;memory&quot;</code>, which clones into a temporary directory managed by <code>togomak</code></li>
 <li><a href="configuration/data_git.html#commit"><code>commit</code></a> - The commit to checkout</li>
 <li><a href="configuration/data_git.html#depth"><code>depth</code></a> - The depth of the clone</li>
-<li><a href="configuration/data_git.html#ca_bundle"><code>ca_bundle</code></a> - The path to a CA bundle file or directory</li>
+<li><a href="configuration/data_git.html#ca_bundle"><code>ca_bundle</code></a> - The path to a CA bundle file or directory, (deprecated, does nothing).</li>
 <li><a href="configuration/data_git.html#auth"><code>auth</code></a> - The authentication credentials to use when cloning the repository. Structure <a href="configuration/data_git.html#auth">documented below</a></li>
 <li><a href="configuration/data_git.html#files"><code>files</code></a> - The files to checkout from the repository. Accepts an array of file paths.</li>
 </ul>
@@ -924,12 +933,16 @@ stage &quot;build_eva01&quot; {
 <li><a href="configuration/data_git.html#sha"><code>sha</code></a> - The SHA of the commit, defaults to <code>&quot;&quot;</code></li>
 <li><a href="configuration/data_git.html#ref"><code>ref</code></a> - The ref of the commit, in the format <code>refs/heads/&lt;branch&gt;</code> or <code>refs/tags/&lt;tag&gt;</code>, defaults to <code>&quot;&quot;</code></li>
 <li><a href="configuration/data_git.html#is-tag"><code>is_tag</code></a> - Whether the ref is a tag, defaults to <code>false</code></li>
-<li><a href="configuration/data_git.html#is-branch"><code>is_branch</code></a> - Whether the ref is a branch, defaults to <code>false</code></li>
-<li><a href="configuration/data_git.html#is-note"><code>is_note</code></a> - Whether the ref is a note, defaults to <code>false</code></li>
-<li><a href="configuration/data_git.html#is-remote"><code>is_remote</code></a> - Whether the ref is remote, defaults to <code>false</code></li>
 <li><a href="configuration/data_git.html#files"><code>files</code></a> - The files checked out from the repository. Returns a map, with the keys being the file paths and the values being the file contents.</li>
 <li><a href="configuration/data_git.html#branch"><code>branch</code></a> - The branch checked out from the repository. Returns a string.</li>
-<li><a href="configuration/data_git.html#tag"><code>tag</code></a> - The tag checked out from the repository. Returns a string.</li>
+<li><a href="configuration/data_git.html#destination"><code>destination</code></a> - The destination where the repository is stored. </li>
+</ul>
+<hr />
+<p><a id="auth"></a>
+The <code>auth</code> block supports:</p>
+<ul>
+<li><a href="configuration/data_git.html#username"><code>username</code></a> - The username to be used. If password is specified, and if the username is empty, it falls back to <code>oauth2</code></li>
+<li><a href="configuration/data_git.html#password"><code>password</code></a> - The password to be used for connecting to the private repository. </li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="macro"><a class="header" href="#macro">Macro</a></h1>
 <p>Macros are reusable stages. If you would like to reuse the same stage multiple times 
