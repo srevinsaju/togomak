@@ -386,6 +386,11 @@ func (s *Stage) Run(ctx context.Context) hcl.Diagnostics {
 		logger.Trace("running command:", cmd.String())
 		if !isDryRun {
 			err = cmd.Run()
+
+			if err != nil && err.Error() == "signal: terminated" && s.Terminated() {
+				logger.Warnf("command terminated with signal: %s", cmd.ProcessState.String())
+				err = nil
+			}
 		} else {
 			fmt.Println(cmd.String())
 		}
@@ -622,8 +627,11 @@ func dockerContainerSourceFmt(containerId string) string {
 	return fmt.Sprintf("docker: container=%s", containerId)
 }
 
-func (s *Stage) Terminate() hcl.Diagnostics {
+func (s *Stage) Terminate(safe bool) hcl.Diagnostics {
 	var diags hcl.Diagnostics
+	if safe {
+		s.terminated = true
+	}
 	if s.Container != nil && s.ContainerId != "" {
 		ctx := context.Background()
 
@@ -644,8 +652,10 @@ func (s *Stage) Terminate() hcl.Diagnostics {
 			})
 		}
 	} else if s.process != nil && s.process.Process != nil {
-		if s.process.ProcessState.Exited() {
-			return diags
+		if s.process.ProcessState != nil {
+			if s.process.ProcessState.Exited() {
+				return diags
+			}
 		}
 		err := s.process.Process.Signal(syscall.SIGTERM)
 		if err != nil {
@@ -661,7 +671,7 @@ func (s *Stage) Terminate() hcl.Diagnostics {
 }
 
 func (s *Stage) Kill() hcl.Diagnostics {
-	diags := s.Terminate()
+	diags := s.Terminate(false)
 	if s.process != nil && !s.process.ProcessState.Exited() {
 		err := s.process.Process.Kill()
 		if err != nil {
@@ -673,4 +683,8 @@ func (s *Stage) Kill() hcl.Diagnostics {
 		}
 	}
 	return diags
+}
+
+func (s *Stage) Terminated() bool {
+	return s.terminated
 }

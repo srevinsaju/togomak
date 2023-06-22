@@ -95,3 +95,7 @@ func (s Data) Run(ctx context.Context) hcl.Diagnostics {
 func (s Data) CanRun(ctx context.Context) (bool, hcl.Diagnostics) {
 	return true, nil
 }
+
+func (s Data) Terminated() bool {
+	return true
+}

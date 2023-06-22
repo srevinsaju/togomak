@@ -45,7 +45,7 @@ func (m *Macro) IsDaemon() bool {
 	return false
 }
 
-func (m *Macro) Terminate() hcl.Diagnostics {
+func (m *Macro) Terminate(safe bool) hcl.Diagnostics {
 	return nil
 }
 

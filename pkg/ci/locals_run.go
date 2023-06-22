@@ -45,3 +45,7 @@ func (l *Local) CanRun(ctx context.Context) (bool, hcl.Diagnostics) {
 func (l *Local) Prepare(ctx context.Context, skip bool, overridden bool) hcl.Diagnostics {
 	return nil
 }
+
+func (l *Local) Terminated() bool {
+	return true
+}

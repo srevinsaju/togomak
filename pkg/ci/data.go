@@ -44,7 +44,7 @@ func (s Data) IsDaemon() bool {
 	return false
 }
 
-func (s Data) Terminate() hcl.Diagnostics {
+func (s Data) Terminate(safe bool) hcl.Diagnostics {
 	return nil
 }
 

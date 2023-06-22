@@ -14,6 +14,14 @@ func (e *StageContainerVolume) Variables() []hcl.Traversal {
 	return traversal
 }
 
+func (e *StageDaemon) Variables() []hcl.Traversal {
+	var traversal []hcl.Traversal
+	if e.Lifecycle != nil {
+		traversal = append(traversal, e.Lifecycle.Variables()...)
+	}
+	return traversal
+}
+
 func (e *StageContainerVolumes) Variables() []hcl.Traversal {
 	var traversal []hcl.Traversal
 	for _, volume := range *e {
@@ -37,6 +45,9 @@ func (s *Stage) Variables() []hcl.Traversal {
 	}
 	if s.Container != nil {
 		traversal = append(traversal, s.Container.Volumes.Variables()...)
+	}
+	if s.Daemon != nil {
+		traversal = append(traversal, s.Daemon.Variables()...)
 	}
 
 	for _, env := range s.Environment {

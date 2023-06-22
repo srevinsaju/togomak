@@ -35,7 +35,7 @@ func InterruptHandler(ctx context.Context, cancel context.CancelFunc, ch chan os
 		}()
 		for _, runnable := range *runnables {
 			logger.Debugf("stopping runnable %s", runnable.Identifier())
-			d := runnable.Terminate()
+			d := runnable.Terminate(false)
 			diags = diags.Extend(d)
 		}
 

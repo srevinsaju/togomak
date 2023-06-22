@@ -165,6 +165,11 @@ func Orchestra(cfg Config) int {
 	var daemonWg sync.WaitGroup
 	var hasDaemons bool
 	var runnables ci.Blocks
+	var daemons ci.Blocks
+	var daemonsMutex sync.Mutex
+	var completedRunnablesSignal = make(chan ci.Block, 1)
+	var completedRunnables ci.Blocks
+	var completedRunnablesMutex sync.Mutex
 
 	// region: interrupt handler
 	chInterrupt := make(chan os.Signal, 1)
@@ -174,6 +179,7 @@ func Orchestra(cfg Config) int {
 	signal.Notify(chKill, os.Kill)
 	go InterruptHandler(ctx, cancel, chInterrupt, &runnables)
 	go KillHandler(ctx, cancel, chKill, &runnables)
+	go daemonKiller(ctx, completedRunnablesSignal, &daemons)
 	// endregion: interrupt handler
 
 	for _, layer := range depGraph.TopoSortedLayers() {
@@ -288,14 +294,31 @@ func Orchestra(cfg Config) int {
 			if runnable.IsDaemon() {
 				hasDaemons = true
 				daemonWg.Add(1)
+
+				daemonsMutex.Lock()
+				daemons = append(daemons, runnable)
+				daemonsMutex.Unlock()
 			} else {
 				wg.Add(1)
 			}
 
 			go func(runnableId string) {
 				stageDiags := runnable.Run(ctx)
+
+				logger.Tracef("locking completedRunnablesMutex for runnable %s", runnableId)
+				completedRunnablesMutex.Lock()
+				completedRunnables = append(completedRunnables, runnable)
+				completedRunnablesMutex.Unlock()
+				logger.Tracef("unlocking completedRunnablesMutex for runnable %s", runnableId)
+				completedRunnablesSignal <- runnable
+				logger.Tracef("signaling runnable %s", runnableId)
+
 				if !stageDiags.HasErrors() {
-					wg.Done()
+					if runnable.IsDaemon() {
+						daemonWg.Done()
+					} else {
+						wg.Done()
+					}
 					return
 				}
 				if !runnable.CanRetry() {
@@ -368,9 +391,7 @@ func Orchestra(cfg Config) int {
 				cancel()
 			}
 			break
-
 		}
-
 	}
 
 	daemonWg.Wait()
@@ -398,4 +419,60 @@ func ok(ctx context.Context) int {
 
 func diagnostics(t *Togomak, diags *hcl.Diagnostics) {
 	x.Must(t.hclDiagWriter.WriteDiagnostics(*diags))
+}
+
+func daemonKiller(ctx context.Context, completed chan ci.Block, daemons *ci.Blocks) {
+	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField("watchdog", "")
+	var completedRunnables ci.Blocks
+	var diags hcl.Diagnostics
+	defer diagnostics(ctx.Value(c.Togomak).(*Togomak), &diags)
+	logger.Tracef("starting watchdog")
+
+	// execute the following function when we receive any message on the completed channel
+	for {
+		c := <-completed
+		logger.Debugf("received completed runnable, %s", c.Identifier())
+		completedRunnables = append(completedRunnables, c)
+
+		daemons := *daemons
+		for _, daemon := range daemons {
+			if daemon.Terminated() {
+				continue
+			}
+			logger.Tracef("checking daemon %s", daemon.Identifier())
+			lifecycle, d := daemon.Lifecycle(ctx)
+			if d.HasErrors() {
+				diags = diags.Extend(d)
+				d := daemon.Terminate(false)
+				diags = diags.Extend(d)
+				return
+			}
+			if lifecycle == nil {
+				continue
+			}
+
+			allCompleted := true
+			for _, block := range lifecycle.StopWhenComplete {
+				logger.Tracef("checking daemon %s, requires block %s to complete", daemon.Identifier(), block.Identifier())
+				completed := false
+				for _, completedBlocks := range completedRunnables {
+					if block.Identifier() == completedBlocks.Identifier() {
+						completed = true
+						break
+					}
+				}
+				if !completed {
+					allCompleted = false
+					break
+				}
+			}
+			if allCompleted {
+				logger.Infof("stopping daemon %s", daemon.Identifier())
+				d := daemon.Terminate(true)
+				if d.HasErrors() {
+					diags = diags.Extend(d)
+				}
+			}
+		}
+	}
 }

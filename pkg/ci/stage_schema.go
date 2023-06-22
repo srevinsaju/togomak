@@ -50,15 +50,17 @@ type StageUse struct {
 	Macro      hcl.Expression `hcl:"macro" json:"macro"`
 	Parameters hcl.Expression `hcl:"parameters,optional" json:"parameters"`
 }
-
 type StageDaemon struct {
 	Enabled bool `hcl:"enabled" json:"enabled"`
 	Timeout int  `hcl:"timeout,optional" json:"timeout"`
+
+	Lifecycle *Lifecycle `hcl:"lifecycle,block" json:"lifecycle"`
 }
 
 type Stage struct {
 	ctx            context.Context
 	ctxInitialised bool
+	terminated     bool
 
 	Id        string         `hcl:"id,label" json:"id"`
 	Condition hcl.Expression `hcl:"if,optional" json:"if"`

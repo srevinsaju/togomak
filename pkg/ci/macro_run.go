@@ -50,3 +50,7 @@ func (m *Macro) Run(ctx context.Context) hcl.Diagnostics {
 func (m *Macro) CanRun(ctx context.Context) (bool, hcl.Diagnostics) {
 	return true, nil
 }
+
+func (m *Macro) Terminated() bool {
+	return true
+}

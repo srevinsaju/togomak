@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/srevinsaju/togomak/v1/pkg/x"
 	"strings"
 
 	"sync"
@@ -49,13 +50,15 @@ type Contextual interface {
 }
 
 type Killable interface {
-	Terminate() hcl.Diagnostics
+	Terminate(safe bool) hcl.Diagnostics
 	Kill() hcl.Diagnostics
+	Terminated() bool
 }
 
 type Daemon interface {
 	// IsDaemon returns true if the runnable is a daemon
 	IsDaemon() bool
+	Lifecycle(ctx context.Context) (*DaemonLifecycle, hcl.Diagnostics)
 }
 
 type Block interface {
@@ -147,4 +150,36 @@ func Resolve(ctx context.Context, pipe *Pipeline, id string) (Block, hcl.Diagnos
 		Summary:  "Unsupported identifier",
 		Detail:   fmt.Sprintf("Expected a valid identifier, got %s", id),
 	})
+}
+
+func ResolveFromTraversal(variable hcl.Traversal) (string, hcl.Diagnostics) {
+	blockType := variable.RootName()
+	var parent string
+	var diags hcl.Diagnostics
+	switch blockType {
+	case DataBlock:
+		// the data block has the provider type as well as the name
+		provider := variable[1].(hcl.TraverseAttr).Name
+		name := variable[2].(hcl.TraverseAttr).Name
+		parent = x.RenderBlock(DataBlock, provider, name)
+	case StageBlock:
+		// the stage block has the name
+		name := variable[1].(hcl.TraverseAttr).Name
+		parent = x.RenderBlock(StageBlock, name)
+	case LocalBlock:
+		// the local block has the name
+		name := variable[1].(hcl.TraverseAttr).Name
+		parent = x.RenderBlock(LocalBlock, name)
+	case MacroBlock:
+		// the local block has the name
+		name := variable[1].(hcl.TraverseAttr).Name
+		parent = x.RenderBlock(MacroBlock, name)
+	case ParamBlock, ThisBlock, BuilderBlock:
+		return "", nil
+	default:
+		return "", nil
+
+	}
+	return parent, diags
+
 }

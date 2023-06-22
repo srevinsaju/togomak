@@ -250,6 +250,7 @@ func NewContextWithTogomak(cfg Config) (Togomak, context.Context) {
 		ectx:          hclContext,
 		tempDir:       tmpDir,
 	}
+	ctx = context.WithValue(ctx, c.Togomak, &t)
 
 	return t, ctx
 }
