@@ -23,12 +23,13 @@ data "git" "this" {
 
 ## Arguments Reference
 
-- [`url`](#url) - The URL of the repository to clone
-- [`tag`](#tag) - The tag to checkout
-- [`branch`](#branch) - The branch to checkout
+- [`url`](#url) - The URL of the repository to clone.
+- [`tag`](#tag) - The tag to checkout. `tag` takes precedence over `branch`.
+- [`ref`](#ref) - The reference to checkout, in the format `refs/tags/v3` for example. `ref` takes precedence over `tag` and `branch`.
+- [`branch`](#branch) - The branch to checkout. `ref` and `tag` takes precedence over `branch`.
 - [`destination`](#destination) - The destination directory to clone the repository to, defaults to `"memory"`, which clones into a temporary directory managed by `togomak`
-- [`commit`](#commit) - The commit to checkout
-- [`depth`](#depth) - The depth of the clone
+- [`commit`](#commit) - The commit to checkout.
+- [`depth`](#depth) - The depth of the clone.
 - [`ca_bundle`](#ca_bundle) - The path to a CA bundle file or directory, (deprecated, does nothing).
 - [`auth`](#auth) - The authentication credentials to use when cloning the repository. Structure [documented below](#auth)
 - [`files`](#files) - The files to checkout from the repository. Accepts an array of file paths.
