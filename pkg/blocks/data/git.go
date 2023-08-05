@@ -28,6 +28,7 @@ type gitProviderConfig struct {
 	repo        string
 	tag         string
 	branch      string
+	ref         string
 	destination string
 	commit      string
 
@@ -42,6 +43,7 @@ const (
 	GitBlockArgumentUrl         = "url"
 	GitBlockArgumentTag         = "tag"
 	GitBlockArgumentBranch      = "branch"
+	GitBlockArgumentRef         = "ref"
 	GitBlockArgumentDestination = "destination"
 	GitBlockArgumentCommit      = "commit"
 	GitBlockArgumentDepth       = "depth"
@@ -111,6 +113,13 @@ func (e *GitProvider) DecodeBody(body hcl.Body) hcl.Diagnostics {
 	branch := cty.StringVal("")
 	if ok {
 		branch, d = branchAttr.Expr.Value(hclContext)
+		diags = diags.Extend(d)
+	}
+
+	refAttr, ok := content.Attributes[GitBlockArgumentRef]
+	ref := cty.StringVal("")
+	if ok {
+		ref, d = refAttr.Expr.Value(hclContext)
 		diags = diags.Extend(d)
 	}
 
@@ -187,6 +196,7 @@ func (e *GitProvider) DecodeBody(body hcl.Body) hcl.Diagnostics {
 		tag:         tag.AsString(),
 		branch:      branch.AsString(),
 		commit:      commit.AsString(),
+		ref:         ref.AsString(),
 		destination: destination.AsString(),
 		depth:       int(depthInt),
 		caBundle:    []byte(caBundle.AsString()),
@@ -294,15 +304,20 @@ func (e *GitProvider) Attributes(ctx context.Context, id string) (map[string]cty
 	var cloneComplete = make(chan bool)
 	go e.clonePassiveProgressBar(logger, cloneComplete)
 
+	ref := e.cfg.ref
+	if e.cfg.tag != "" {
+		ref = e.cfg.tag
+	} else {
+		ref = e.cfg.branch
+	}
 	opts := git.CloneRepoOptions{
 		Depth:  e.cfg.depth,
-		Branch: e.cfg.branch,
+		Branch: ref,
 		Bare:   false,
 		// TODO: SkipTLSVerify: e.cfg.skipTLSVerify,
 		// TODO: make it configurable
 		Quiet: true,
 	}
-
 	// TODO: implement git submodules
 
 	destination, d := e.resolveDestination(ctx, id)
@@ -410,7 +425,7 @@ func (e *GitProvider) Attributes(ctx context.Context, id string) (map[string]cty
 		})
 	}
 
-	ref, err := repo.ResolveReference("HEAD")
+	ref, err = repo.ResolveReference("HEAD")
 	if err != nil {
 		diags = diags.Append(&hcl.Diagnostic{
 			Severity: hcl.DiagWarning,
