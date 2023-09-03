@@ -37,7 +37,7 @@ For example,
 files = {
     "togomak.hcl" = <<-EOT
     togomak {
-        version = 1
+        version = 2
     }
     stage "hello" {
         script = "echo hello world"

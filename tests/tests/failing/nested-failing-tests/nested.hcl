@@ -1,5 +1,5 @@
 togomak {
-  version = 1
+  version = 2
 }
 
 stage "test" {
