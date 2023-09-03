@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-// configFilePath returns the path to the configuration file. If the path is not absolute, it is assumed to be
+// ConfigFilePath returns the path to the configuration file. If the path is not absolute, it is assumed to be
 // relative to the working directory
 // DEPRECATED: use configFileDir instead
 func ConfigFilePath(ctx context.Context) string {
@@ -64,11 +64,7 @@ func ReadDir(ctx context.Context, parser *hclparse.Parser) (*ci.Pipeline, hcl.Di
 	dir := ConfigFileDir(ctx)
 	togomakFiles, err := os.ReadDir(dir)
 	if err != nil {
-		return nil, diags.Append(&hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  "directory not found",
-			Detail:   err.Error(),
-		})
+		panic(err)
 	}
 	var pipes []*pipelineMeta
 	for _, file := range togomakFiles {
@@ -128,12 +124,41 @@ func createRawPipeline(pipelines ...*pipelineMeta) (*ci.Pipeline, hcl.Diagnostic
 		}
 
 		// TODO: create an error if there are duplicate resource definition
+		if pipe.Stages.CheckIfDistinct(p.pipe.Stages).HasErrors() {
+			return nil, diags.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "duplicate stage",
+				Detail:   fmt.Sprintf("duplicate stage definition in %s", p.filename),
+			})
+		}
+		if pipe.Data.CheckIfDistinct(p.pipe.Data).HasErrors() {
+			return nil, diags.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "duplicate data block",
+				Detail:   fmt.Sprintf("duplicate data block definition in %s", p.filename),
+			})
+		}
+		if pipe.Local.CheckIfDistinct(p.pipe.Local).HasErrors() {
+			return nil, diags.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "duplicate local",
+				Detail:   fmt.Sprintf("duplicate local definition in %s", p.filename),
+			})
+		}
+		if pipe.Macros.CheckIfDistinct(p.pipe.Macros).HasErrors() {
+			return nil, diags.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "duplicate macro",
+				Detail:   fmt.Sprintf("duplicate macro definition in %s", p.filename),
+			})
+		}
+
 		pipe.Stages = append(pipe.Stages, p.pipe.Stages...)
 		pipe.Data = append(pipe.Data, p.pipe.Data...)
 		pipe.DataProviders = append(pipe.DataProviders, p.pipe.DataProviders...)
 		pipe.Macros = append(pipe.Macros, p.pipe.Macros...)
-		pipe.Locals = append(pipe.Locals, p.pipe.Locals...)
 		pipe.Local = append(pipe.Local, p.pipe.Local...)
+		pipe.Locals = append(pipe.Locals, p.pipe.Locals...)
 	}
 	return pipe, diags
 }

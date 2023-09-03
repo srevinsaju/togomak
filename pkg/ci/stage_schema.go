@@ -33,24 +33,6 @@ type StageContainer struct {
 
 type Stages []Stage
 
-// IsDistinct checks if the stages in s and ss are distinct
-// TODO: check if this is a good way to do this
-func (s Stages) CheckIfDistinct(ss Stages) hcl.Diagnostics {
-	var diags hcl.Diagnostics
-	for _, stage := range s {
-		for _, stage2 := range ss {
-			if stage.Id == stage2.Id {
-				diags = append(diags, &hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  "Duplicate stage",
-					Detail:   "Stage with id " + stage.Id + " is defined more than once",
-				})
-			}
-		}
-	}
-	return diags
-}
-
 type StageEnvironment struct {
 	Name  string         `hcl:"name" json:"name"`
 	Value hcl.Expression `hcl:"value" json:"value"`
