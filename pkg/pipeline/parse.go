@@ -181,6 +181,7 @@ func Merge(pipelines MetaList) (*ci.Pipeline, hcl.Diagnostics) {
 		pipe.Macros = append(pipe.Macros, p.pipe.Macros...)
 		pipe.Local = append(pipe.Local, p.pipe.Local...)
 		pipe.Locals = append(pipe.Locals, p.pipe.Locals...)
+		pipe.Imports = append(pipe.Imports, p.pipe.Imports...)
 	}
 	return pipe, diags
 }
