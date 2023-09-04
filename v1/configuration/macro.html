@@ -181,7 +181,7 @@ another child process which will run the contents of the file, as an independant
 </ul>
 <h3 id="example-usage-inline-stages"><a class="header" href="#example-usage-inline-stages">Example usage (Inline stages)</a></h3>
 <pre><code class="language-tf">togomak {
-  version = 1
+  version = 2
 }
 
 macro &quot;explode&quot; {
@@ -240,7 +240,7 @@ and the &quot;value&quot; is the content of the file. </p>
 <pre><code class="language-hcl">files = {
     &quot;togomak.hcl&quot; = &lt;&lt;-EOT
     togomak {
-        version = 1
+        version = 2
     }
     stage &quot;hello&quot; {
         script = &quot;echo hello world&quot;
