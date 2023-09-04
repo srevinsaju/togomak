@@ -141,6 +141,12 @@ func Orchestra(cfg Config) int {
 
 	pipe.Local = locals
 
+	pipe, d = pipeline.ExpandImports(ctx, pipe)
+	diags = diags.Extend(d)
+	if d.HasErrors() {
+		return fatal(ctx)
+	}
+
 	// store the pipe in the context
 	ctx = context.WithValue(ctx, c.TogomakContextPipeline, pipe)
 
