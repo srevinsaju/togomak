@@ -90,10 +90,6 @@ stage "build" {
 {{#include ../../../examples/docker/togomak.hcl}}
 ```
 
-## Stage with daemons, with lifecycle rules 
-```hcl 
-{{#include ../../../examples/daemon-until/togomak.hcl}}
-```
 
 ## Arguments Reference
 * [`name`](#name) - The name of the stage

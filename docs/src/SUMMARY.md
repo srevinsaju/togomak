@@ -24,6 +24,7 @@
         - [`data.file`]()
         - [`data.git`](./configuration/data_git.md)
     - [Macro](./configuration/macro.md)
+    - [Import](./configuration/import.md)
 
 - [Plugins](./contrib/plugins/introduction.md)
 
