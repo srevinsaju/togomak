@@ -9,7 +9,7 @@ block for the file to be recognized as a valid
 
 togomak {
     # ...
-    version = 1
+    version = 2
 }
 ```
 The above block, with `version` parameter 

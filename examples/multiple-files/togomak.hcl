@@ -1,0 +1,4 @@
+togomak {
+  version = 2
+}
+

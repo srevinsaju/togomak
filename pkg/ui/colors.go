@@ -13,6 +13,7 @@ var Bold = color.New(color.Bold).SprintFunc()
 var Blue = color.New(color.FgBlue).SprintFunc()
 var Grey = color.New(color.FgHiBlack).SprintFunc()
 var Yellow = color.New(color.FgYellow).SprintFunc()
+var HiYellow = color.New(color.FgHiYellow).SprintFunc()
 var Italic = color.New(color.Italic).SprintFunc()
 var Plus = color.New(color.FgHiWhite).SprintFunc()("+")
 var SubStage = Grey("==>")
@@ -32,4 +33,8 @@ func Error(message string) {
 
 func Success(message string, args ...interface{}) {
 	fmt.Println(Green(fmt.Sprintf(message, args...)))
+}
+
+func DeprecationWarning(message string, args ...string) {
+	fmt.Println(HiYellow("[deprecated] "), message, args)
 }

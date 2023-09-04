@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/srevinsaju/togomak/v1/pkg/pipeline"
 	"os"
+	"path/filepath"
 )
 
 func Format(cfg Config, check bool, recursive bool) error {
@@ -32,15 +33,23 @@ func Format(cfg Config, check bool, recursive bool) error {
 			t.Logger.Fatalf("Error while globbing for **/*.hcl: %s", err)
 		}
 	} else {
-		fn := pipeline.ConfigFilePath(ctx)
-		data, err := os.ReadFile(fn)
+		fDir := pipeline.ConfigFileDir(ctx)
+		fNames, err := os.ReadDir(fDir)
 		if err != nil {
-			return err
+			panic(err)
 		}
-		outSrc := hclwrite.Format(data)
-		if !bytes.Equal(outSrc, data) {
-			t.Logger.Tracef("%s needs formatting", fn)
-			toFormat = append(toFormat, fn)
+
+		for _, f := range fNames {
+			fn := filepath.Join(fDir, f.Name())
+			data, err := os.ReadFile(fn)
+			if err != nil {
+				return err
+			}
+			outSrc := hclwrite.Format(data)
+			if !bytes.Equal(outSrc, data) {
+				t.Logger.Tracef("%s needs formatting", fn)
+				toFormat = append(toFormat, fn)
+			}
 		}
 	}
 	for _, fn := range toFormat {

@@ -1,5 +1,5 @@
 togomak {
-  version = 1
+  version = 2
 }
 
 data "env" "quit_if_not_shinji" {
