@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"github.com/hashicorp/go-getter"
 	"github.com/hashicorp/hcl/v2"
@@ -13,7 +14,8 @@ import (
 
 func expandImport(m ci.Import, ctx context.Context, pwd string, dst string) (*ci.Pipeline, hcl.Diagnostics) {
 	var diags hcl.Diagnostics
-	clientImportPath := filepath.Join(dst, m.Identifier())
+	shaIdentifier := sha256.Sum256([]byte(m.Source))
+	clientImportPath := filepath.Join(dst, fmt.Sprintf("%x", shaIdentifier))
 
 	get := getter.Client{
 		Ctx: ctx,
