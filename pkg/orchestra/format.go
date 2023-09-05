@@ -40,6 +40,12 @@ func Format(cfg Config, check bool, recursive bool) error {
 		}
 
 		for _, f := range fNames {
+			if f.IsDir() {
+				continue
+			}
+			if filepath.Ext(f.Name()) != ".hcl" {
+				continue
+			}
 			fn := filepath.Join(fDir, f.Name())
 			data, err := os.ReadFile(fn)
 			if err != nil {
