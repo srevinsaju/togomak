@@ -25,7 +25,7 @@ a piece of cake.
 
 ```hcl 
 togomak {
-  version = 1
+  version = 2
 }
 
 stage "hello" {
