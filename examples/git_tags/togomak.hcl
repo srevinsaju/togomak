@@ -5,7 +5,7 @@ togomak {
 data "git" "repo" {
   url   = "https://github.com/srevinsaju/togomak"
   files = ["togomak.hcl"]
-  tag = "v1.2.0"
+  tag   = "v1.2.0"
 }
 
 stage "example" {
