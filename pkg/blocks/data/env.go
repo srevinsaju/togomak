@@ -94,7 +94,11 @@ func (e *EnvProvider) DecodeBody(body hcl.Body) hcl.Diagnostics {
 
 	e.keyParsed = key.AsString()
 
-	attr = content.Attributes["default"]
+	attr, ok := content.Attributes["default"]
+	if !ok {
+		e.def = ""
+		return diags
+	}
 	key, d = attr.Expr.Value(hclContext)
 	diags = diags.Extend(d)
 

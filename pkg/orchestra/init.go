@@ -14,7 +14,7 @@ func InitPipeline(dir string) {
 	f := hclwrite.NewEmptyFile()
 	rootBody := f.Body()
 	togomakBlock := rootBody.AppendNewBlock("togomak", nil)
-	togomakBlock.Body().SetAttributeValue("version", cty.NumberIntVal(1))
+	togomakBlock.Body().SetAttributeValue("version", cty.NumberIntVal(2))
 
 	// add the data block
 	stageBlock := rootBody.AppendNewBlock("stage", []string{"example"})

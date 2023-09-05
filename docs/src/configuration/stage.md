@@ -10,7 +10,7 @@ of arguments, or a macro.
 ### Stage with Script 
 ```hcl 
 ~togomak {
-~  version = 1
+~  version = 2
 ~}
 ~
 stage "script" {
@@ -21,7 +21,7 @@ stage "script" {
 ### Stage with Command and Arguments
 ```hcl
 ~togomak {
-~  version = 1
+~  version = 2
 ~}
 ~
 stage "command" {
@@ -32,7 +32,7 @@ stage "command" {
 ### Stage with Macro
 ```hcl
 ~togomak {
-~  version = 1
+~  version = 2
 ~}
 ~
 macro "echo" {
@@ -51,7 +51,7 @@ stage "macro" {
 ### Stage with Dependencies
 ```hcl
 ~togomak {
-~  version = 1
+~  version = 2
 ~}
 ~
 stage "build" {
@@ -67,7 +67,7 @@ stage "install" {
 ### Stage with Retry
 ```hcl
 ~togomak {
-~  version = 1
+~  version = 2
 ~}
 ~
 stage "build" {
@@ -90,10 +90,6 @@ stage "build" {
 {{#include ../../../examples/docker/togomak.hcl}}
 ```
 
-## Stage with daemons, with lifecycle rules 
-```hcl 
-{{#include ../../../examples/daemon-until/togomak.hcl}}
-```
 
 ## Arguments Reference
 * [`name`](#name) - The name of the stage

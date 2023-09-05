@@ -1,3 +1,6 @@
+![since v1.0.0](https://img.shields.io/badge/since-v1.0.0-green)
+![config v1](https://img.shields.io/badge/config-%201-green)
+
 # Data
 
 The `data` block allows fetching static data from different sources known 

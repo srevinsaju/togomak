@@ -12,6 +12,9 @@ See [Reusable Stages section](../features/macros.md) for more information.
 * **Pipeline content** (`files` argument): A map containing files inline, which will be used by togomak, to create 
 another child process which will run the contents of the file, as an independant stage. 
 
+Before you decide to use `macro`, you might be interested in seeeing 
+[`import` block](./import.md). See also [_What's the difference between macro and import?_](./import.md#whats-the-difference-between-macro-and-import)
+
 ### Example usage (Inline stages)
 
 ```tf
@@ -37,7 +40,7 @@ For example,
 files = {
     "togomak.hcl" = <<-EOT
     togomak {
-        version = 1
+        version = 2
     }
     stage "hello" {
         script = "echo hello world"
