@@ -60,13 +60,18 @@ func Read(ctx context.Context, parser *hclparse.Parser) (*ci.Pipeline, hcl.Diagn
 // ReadDir parses an entire directory of *.hcl files and merges them together. This is useful when you want to
 // split your pipeline into multiple files, without having to import them individually
 func ReadDir(ctx context.Context, parser *hclparse.Parser) (*ci.Pipeline, hcl.Diagnostics) {
-	var diags hcl.Diagnostics
 	dir := ConfigFileDir(ctx)
+	return ReadDirFromPath(dir, parser)
+
+}
+
+func ReadDirFromPath(dir string, parser *hclparse.Parser) (*ci.Pipeline, hcl.Diagnostics) {
+	var diags hcl.Diagnostics
 	togomakFiles, err := os.ReadDir(dir)
 	if err != nil {
 		panic(err)
 	}
-	var pipes []*pipelineMeta
+	var pipes []*Meta
 	for _, file := range togomakFiles {
 		if file.IsDir() {
 			continue
@@ -81,28 +86,45 @@ func ReadDir(ctx context.Context, parser *hclparse.Parser) (*ci.Pipeline, hcl.Di
 
 		d = gohcl.DecodeBody(f.Body, nil, p)
 		diags = diags.Extend(d)
-		pipes = append(pipes, &pipelineMeta{
+		pipes = append(pipes, &Meta{
 			pipe:     p,
 			f:        f,
 			filename: file.Name(),
 		})
 
 	}
-	return createRawPipeline(pipes...)
-
+	return Merge(pipes)
 }
 
-// pipelineMeta is a helper struct to create a pipeline from multiple pipelines
+// Meta is a helper struct to create a pipeline from multiple pipelines
 // this additionally includes the file pointer f, and the filename
-type pipelineMeta struct {
+type Meta struct {
 	pipe     *ci.Pipeline
 	f        *hcl.File
 	filename string
 }
 
-// createRawPipeline creates a pipeline from multiple pipelines. This is useful when you want to merge multiple
+func NewMeta(pipe *ci.Pipeline, f *hcl.File, filename string) *Meta {
+	return &Meta{
+		pipe:     pipe,
+		f:        f,
+		filename: filename,
+	}
+}
+
+type MetaList []*Meta
+
+func (m MetaList) Append(p *Meta) MetaList {
+	return append(m, p)
+}
+
+func (m MetaList) Extend(p MetaList) MetaList {
+	return append(m, p...)
+}
+
+// Merge creates a pipeline from multiple pipelines. This is useful when you want to merge multiple
 // pipelines together, without having to import them individually
-func createRawPipeline(pipelines ...*pipelineMeta) (*ci.Pipeline, hcl.Diagnostics) {
+func Merge(pipelines MetaList) (*ci.Pipeline, hcl.Diagnostics) {
 	pipe := &ci.Pipeline{}
 
 	var diags hcl.Diagnostics
@@ -159,6 +181,7 @@ func createRawPipeline(pipelines ...*pipelineMeta) (*ci.Pipeline, hcl.Diagnostic
 		pipe.Macros = append(pipe.Macros, p.pipe.Macros...)
 		pipe.Local = append(pipe.Local, p.pipe.Local...)
 		pipe.Locals = append(pipe.Locals, p.pipe.Locals...)
+		pipe.Imports = append(pipe.Imports, p.pipe.Imports...)
 	}
 	return pipe, diags
 }
