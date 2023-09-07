@@ -7,6 +7,7 @@ var DefaultProviders = Providers{
 	&PromptProvider{},
 	// FileProvider{},
 	&GitProvider{},
+	&TfProvider{},
 }
 
 type Providers []Provider
