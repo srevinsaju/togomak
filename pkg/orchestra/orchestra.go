@@ -3,6 +3,7 @@ package orchestra
 import (
 	"context"
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/hashicorp/go-envparse"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/kendru/darwin/go/depgraph"
@@ -425,6 +426,13 @@ func ok(ctx context.Context) int {
 }
 
 func diagnostics(t *Togomak, diags *hcl.Diagnostics) {
+	if diags == nil {
+		return
+	}
+	for _, diag := range *diags {
+
+		spew.Println(diag)
+	}
 	x.Must(t.hclDiagWriter.WriteDiagnostics(*diags))
 }
 
