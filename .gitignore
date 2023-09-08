@@ -5,4 +5,10 @@ cmd/togomak/*.hcl
 examples/*/.togomak/
 cmd/togomak/.togomak/
 docs/book/
+.terraform
+*.tfstate 
+*.tfstate.backup
+*.tfplan
+*.out 
+.terraform.lock.hcl
 coverage*.out
