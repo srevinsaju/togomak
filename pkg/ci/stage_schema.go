@@ -79,7 +79,8 @@ type Stage struct {
 	Container   *StageContainer     `hcl:"container,block" json:"container"`
 	Environment []*StageEnvironment `hcl:"env,block" json:"environment"`
 
-	process                *exec.Cmd
-	macroWhitelistedStages []string
-	ContainerId            string
+	process                 *exec.Cmd
+	macroWhitelistedStages  []string
+	dependsOnVariablesMacro []hcl.Traversal
+	ContainerId             string
 }

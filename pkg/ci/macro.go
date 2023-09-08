@@ -38,6 +38,7 @@ func (m *Macro) Variables() []hcl.Traversal {
 	var traversal []hcl.Traversal
 
 	traversal = append(traversal, m.Files.Variables()...)
+	traversal = append(traversal, m.Stage.Variables()...)
 	return traversal
 }
 

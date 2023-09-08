@@ -124,6 +124,7 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 	} else if macro.Stage != nil {
 		logger.Debugf("merging %s with %s", s.Identifier(), macro.Identifier())
 		err = mergo.Merge(s, macro.Stage, mergo.WithOverride)
+		s.dependsOnVariablesMacro = macro.Stage.DependsOn.Variables()
 
 	} else {
 		f, d := macro.Files.Value(hclContext)
@@ -233,6 +234,7 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 	s.Id = oldStageId
 	s.Name = oldStageName
 	s.DependsOn = oldStageDependsOn
+	s.dependsOnVariablesMacro = append(s.dependsOnVariablesMacro, oldStageDependsOn.Variables()...)
 
 	return s, nil
 
