@@ -5,8 +5,8 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
+	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/zclconf/go-cty/cty"
-	"sync"
 )
 
 func (l *Local) Run(ctx context.Context) hcl.Diagnostics {
@@ -15,13 +15,17 @@ func (l *Local) Run(ctx context.Context) hcl.Diagnostics {
 	logger.Debugf("running %s.%s", LocalBlock, l.Key)
 	hclContext := ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
 
-	muLocals := ctx.Value(c.TogomakContextMutexLocals).(*sync.Mutex)
 	var diags hcl.Diagnostics
 
 	// region: mutating the data map
 	// TODO: move it to a dedicated helper function
-	muLocals.Lock()
+
+	global.LocalBlockEvalContextMutex.Lock()
+
+	global.EvalContextMutex.RLock()
 	locals := hclContext.Variables[LocalBlock]
+	global.EvalContextMutex.RUnlock()
+
 	var localMutated map[string]cty.Value
 	if locals.IsNull() {
 		localMutated = make(map[string]cty.Value)
@@ -31,8 +35,13 @@ func (l *Local) Run(ctx context.Context) hcl.Diagnostics {
 	v, d := l.Value.Value(hclContext)
 	diags = diags.Extend(d)
 	localMutated[l.Key] = v
+
+	global.EvalContextMutex.Lock()
 	hclContext.Variables[LocalBlock] = cty.ObjectVal(localMutated)
-	muLocals.Unlock()
+	global.EvalContextMutex.Unlock()
+
+	global.LocalBlockEvalContextMutex.Unlock()
+
 	// endregion
 
 	return diags

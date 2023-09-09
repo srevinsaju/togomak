@@ -18,7 +18,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sync"
 	"time"
 )
 
@@ -68,11 +67,6 @@ func NewContextWithTogomak(cfg Config) (Togomak, context.Context) {
 	ctx = context.WithValue(ctx, c.TogomakContextPipelineFilePath, cfg.Pipeline.FilePath)
 	ctx = context.WithValue(ctx, c.TogomakContextPipelineDryRun, cfg.Pipeline.DryRun)
 	ctx = context.WithValue(ctx, c.TogomakContextPipelineTmpDir, tmpDir)
-
-	ctx = context.WithValue(ctx, c.TogomakContextMutexStages, &sync.Mutex{})
-	ctx = context.WithValue(ctx, c.TogomakContextMutexData, &sync.Mutex{})
-	ctx = context.WithValue(ctx, c.TogomakContextMutexLocals, &sync.Mutex{})
-	ctx = context.WithValue(ctx, c.TogomakContextMutexMacro, &sync.Mutex{})
 
 	// --> set up HCL context
 	hclContext := &hcl.EvalContext{

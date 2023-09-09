@@ -7,8 +7,8 @@ import (
 	"github.com/sirupsen/logrus"
 	dataBlock "github.com/srevinsaju/togomak/v1/pkg/blocks/data"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
+	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/zclconf/go-cty/cty"
-	"sync"
 )
 
 const (
@@ -24,7 +24,6 @@ func (s Data) Run(ctx context.Context) hcl.Diagnostics {
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField(DataBlock, s.Id)
 	logger.Debugf("running %s.%s.%s", DataBlock, s.Provider, s.Id)
 	hclContext := ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
-	muData := ctx.Value(c.TogomakContextMutexData).(*sync.Mutex)
 	var diags hcl.Diagnostics
 	var d hcl.Diagnostics
 
@@ -62,8 +61,12 @@ func (s Data) Run(ctx context.Context) hcl.Diagnostics {
 		m[k] = v
 	}
 
-	muData.Lock()
+	global.DataBlockEvalContextMutex.Lock()
+
+	global.EvalContextMutex.RLock()
 	data := hclContext.Variables[DataBlock]
+	global.EvalContextMutex.RUnlock()
+
 	var dataMutated map[string]cty.Value
 	if data.IsNull() {
 		dataMutated = make(map[string]cty.Value)
@@ -79,8 +82,12 @@ func (s Data) Run(ctx context.Context) hcl.Diagnostics {
 	}
 	providerMutated[s.Id] = cty.ObjectVal(m)
 	dataMutated[s.Provider] = cty.ObjectVal(providerMutated)
+
+	global.EvalContextMutex.Lock()
 	hclContext.Variables[DataBlock] = cty.ObjectVal(dataMutated)
-	muData.Unlock()
+	global.EvalContextMutex.Unlock()
+
+	global.DataBlockEvalContextMutex.Unlock()
 	// endregion
 
 	if diags.HasErrors() {

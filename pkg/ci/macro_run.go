@@ -5,8 +5,8 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
+	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/zclconf/go-cty/cty"
-	"sync"
 )
 
 const (
@@ -22,12 +22,16 @@ func (m *Macro) Run(ctx context.Context) hcl.Diagnostics {
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField(DataBlock, m.Id)
 	logger.Tracef("running %s.%s", MacroBlock, m.Id)
 	hclContext := ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
-	muMacro := ctx.Value(c.TogomakContextMutexMacro).(*sync.Mutex)
 	var diags hcl.Diagnostics
 
 	// region: mutating the data map
 	// TODO: move it to a dedicated helper function
+
+	global.MacroBlockEvalContextMutex.Lock()
+	global.EvalContextMutex.RLock()
 	macro := hclContext.Variables[MacroBlock]
+	global.EvalContextMutex.RUnlock()
+
 	var macroMutated map[string]cty.Value
 	if macro.IsNull() {
 		macroMutated = make(map[string]cty.Value)
@@ -43,9 +47,12 @@ func (m *Macro) Run(ctx context.Context) hcl.Diagnostics {
 	macroMutated[m.Id] = cty.ObjectVal(map[string]cty.Value{
 		"files": f,
 	})
-	muMacro.Lock()
+
+	global.EvalContextMutex.Lock()
 	hclContext.Variables[MacroBlock] = cty.ObjectVal(macroMutated)
-	muMacro.Unlock()
+	global.EvalContextMutex.Unlock()
+
+	global.MacroBlockEvalContextMutex.Unlock()
 	// endregion
 
 	return diags
