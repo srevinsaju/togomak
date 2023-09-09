@@ -132,6 +132,14 @@ func Orchestra(cfg Config) int {
 	if err != nil {
 		return fatal(ctx)
 	}
+	var d hcl.Diagnostics
+	if len(pipe.Imports) != 0 {
+		pipe, d = pipeline.ExpandImports(ctx, pipe)
+		diags = diags.Extend(d)
+		if d.HasErrors() {
+			return fatal(ctx)
+		}
+	}
 
 	/// we will first expand all local blocks
 	locals, d := pipe.Locals.Expand()
@@ -141,13 +149,6 @@ func Orchestra(cfg Config) int {
 	}
 
 	pipe.Local = locals
-	if len(pipe.Imports) != 0 {
-		pipe, d = pipeline.ExpandImports(ctx, pipe)
-		diags = diags.Extend(d)
-		if d.HasErrors() {
-			return fatal(ctx)
-		}
-	}
 
 	// store the pipe in the context
 	ctx = context.WithValue(ctx, c.TogomakContextPipeline, pipe)

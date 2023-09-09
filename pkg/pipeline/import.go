@@ -15,8 +15,12 @@ import (
 func expandImport(m ci.Import, ctx context.Context, pwd string, dst string) (*ci.Pipeline, hcl.Diagnostics) {
 	var diags hcl.Diagnostics
 	shaIdentifier := sha256.Sum256([]byte(m.Source))
-	clientImportPath := filepath.Join(dst, fmt.Sprintf("%x", shaIdentifier))
+	clientImportPath, err := filepath.Abs(filepath.Join(dst, fmt.Sprintf("%x", shaIdentifier)))
+	if err != nil {
+		panic(err)
+	}
 
+	// fmt.Println(pwd, dst, m.Source, fmt.Sprintf("%x", shaIdentifier))
 	get := getter.Client{
 		Ctx: ctx,
 		Src: m.Source,
@@ -25,7 +29,7 @@ func expandImport(m ci.Import, ctx context.Context, pwd string, dst string) (*ci
 		// TODO: implement progress tracker
 		Dst: clientImportPath,
 	}
-	err := get.Get()
+	err = get.Get()
 	if err != nil {
 		diags = diags.Append(&hcl.Diagnostic{
 			Severity: hcl.DiagError,
@@ -58,8 +62,10 @@ func expandImports(ctx context.Context, pipe *ci.Pipeline, pwd string) (*ci.Pipe
 	pipes = pipes.Append(NewMeta(pipe, nil, "memory"))
 	tmpDir := ctx.Value(c.TogomakContextTempDir).(string)
 
-	dst := filepath.Join(tmpDir, "import")
-
+	dst, err := filepath.Abs(filepath.Join(tmpDir, "import"))
+	if err != nil {
+		panic(err)
+	}
 	m := pipe.Imports
 	for _, im := range m {
 		p, d := expandImport(im, ctx, pwd, dst)
