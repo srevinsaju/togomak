@@ -17,6 +17,9 @@ type Pipeline struct {
 
 	// private stuff
 	Local LocalGroup
+
+	Pre  *PreStage  `hcl:"pre,block" json:"pre"`
+	Post *PostStage `hcl:"post,block" json:"post"`
 }
 
 func (p Pipeline) Variables() []hcl.Traversal {

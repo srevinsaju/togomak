@@ -46,6 +46,9 @@ func TopoSort(ctx context.Context, pipe *ci.Pipeline) (*depgraph.Graph, hcl.Diag
 	var diags hcl.Diagnostics
 	logger := ctx.Value("logger").(*logrus.Logger).WithField("component", "graph")
 
+	x.Must(g.DependOn(meta.PreStage, meta.RootStage))
+	x.Must(g.DependOn(meta.PostStage, meta.PreStage))
+
 	for _, local := range pipe.Local {
 		self := x.RenderBlock(ci.LocalBlock, local.Key)
 		err := g.DependOn(self, meta.RootStage)
@@ -88,7 +91,12 @@ func TopoSort(ctx context.Context, pipe *ci.Pipeline) (*depgraph.Graph, hcl.Diag
 	}
 	for _, stage := range pipe.Stages {
 		self := x.RenderBlock(ci.StageBlock, stage.Id)
-		err := g.DependOn(self, meta.RootStage)
+		err := g.DependOn(self, meta.PreStage)
+		if err != nil {
+			panic(err)
+		}
+
+		err = g.DependOn(meta.PostStage, self)
 		if err != nil {
 			panic(err)
 		}

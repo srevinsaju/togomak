@@ -227,13 +227,28 @@ func Orchestra(cfg Config) int {
 				continue
 			}
 
-			runnable, d = ci.Resolve(ctx, pipe, runnableId)
-			if d.HasErrors() {
-				diagsMutex.Lock()
-				diags = diags.Extend(d)
-				diagsMutex.Unlock()
-				break
+			if runnableId == meta.PreStage {
+				if pipe.Pre == nil {
+					logger.Debugf("skipping runnable pre block %s, not defined", runnableId)
+					continue
+				}
+				runnable = &ci.Stage{Id: runnableId, CoreStage: pipe.Pre.CoreStage}
+			} else if runnableId == meta.PostStage {
+				if pipe.Post == nil {
+					logger.Debugf("skipping runnable post block %s, not defined", runnableId)
+					continue
+				}
+				runnable = &ci.Stage{Id: runnableId, CoreStage: pipe.Post.CoreStage}
+			} else {
+				runnable, d = ci.Resolve(ctx, pipe, runnableId)
+				if d.HasErrors() {
+					diagsMutex.Lock()
+					diags = diags.Extend(d)
+					diagsMutex.Unlock()
+					break
+				}
 			}
+
 			logger.Debugf("runnable %s is %T", runnableId, runnable)
 			runnables = append(runnables, runnable)
 

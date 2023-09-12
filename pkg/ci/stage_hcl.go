@@ -57,6 +57,16 @@ func (s *Stage) Variables() []hcl.Traversal {
 	for _, env := range s.Environment {
 		traversal = append(traversal, env.Variables()...)
 	}
+	if s.PostHook != nil {
+		for _, hook := range s.PostHook {
+			traversal = append(traversal, hook.Stage.Variables()...)
+		}
+	}
+	if s.PreHook != nil {
+		for _, hook := range s.PreHook {
+			traversal = append(traversal, hook.Stage.Variables()...)
+		}
+	}
 	return traversal
 }
 

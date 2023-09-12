@@ -10,6 +10,7 @@ import (
 	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/third-party/hashicorp/terraform/lang/funcs"
+	"github.com/srevinsaju/togomak/v1/pkg/ui"
 	"github.com/srevinsaju/togomak/v1/pkg/x"
 	ctyyaml "github.com/zclconf/go-cty-yaml"
 	"github.com/zclconf/go-cty/cty"
@@ -200,6 +201,8 @@ func NewContextWithTogomak(cfg Config) (Togomak, context.Context) {
 			"yamldecode": ctyyaml.YAMLDecodeFunc,
 			"yamlencode": ctyyaml.YAMLEncodeFunc,
 			"zipmap":     stdlib.ZipmapFunc,
+
+			"ansifmt": ui.AnsiFunc,
 		},
 
 		Variables: map[string]cty.Value{
@@ -225,6 +228,35 @@ func NewContextWithTogomak(cfg Config) (Togomak, context.Context) {
 				"pipeline_id":    cty.StringVal(pipelineId),
 				"ci":             cty.BoolVal(cfg.Ci),
 				"unattended":     cty.BoolVal(cfg.Unattended),
+			}),
+
+			// introduced in v1.5.0
+			"ansi": cty.ObjectVal(map[string]cty.Value{
+				"bg": cty.ObjectVal(map[string]cty.Value{
+					"red":    cty.StringVal("\033[41m"),
+					"green":  cty.StringVal("\033[42m"),
+					"yellow": cty.StringVal("\033[43m"),
+					"blue":   cty.StringVal("\033[44m"),
+					"purple": cty.StringVal("\033[45m"),
+					"cyan":   cty.StringVal("\033[46m"),
+					"white":  cty.StringVal("\033[47m"),
+					"grey":   cty.StringVal("\033[100m"),
+				}),
+				"fg": cty.ObjectVal(map[string]cty.Value{
+					"red":       cty.StringVal("\033[31m"),
+					"green":     cty.StringVal("\033[32m"),
+					"yellow":    cty.StringVal("\033[33m"),
+					"blue":      cty.StringVal("\033[34m"),
+					"purple":    cty.StringVal("\033[35m"),
+					"cyan":      cty.StringVal("\033[36m"),
+					"white":     cty.StringVal("\033[37m"),
+					"grey":      cty.StringVal("\033[90m"),
+					"bold":      cty.StringVal("\033[1m"),
+					"italic":    cty.StringVal("\033[3m"),
+					"underline": cty.StringVal("\033[4m"),
+				}),
+
+				"reset": cty.StringVal("\033[0m"),
 			}),
 		},
 	}
