@@ -3,6 +3,7 @@ package ci
 import (
 	"github.com/docker/go-connections/nat"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -12,7 +13,10 @@ func (s StageContainerPorts) Nat(evalCtx *hcl.EvalContext) (map[nat.Port]struct{
 	var hclDiags hcl.Diagnostics
 	var rawPortSpecs []string
 	for _, port := range s {
+		global.EvalContextMutex.RLock()
 		p, d := port.Port.Value(evalCtx)
+		global.EvalContextMutex.RUnlock()
+
 		hclDiags = hclDiags.Extend(d)
 		if d.HasErrors() {
 			continue

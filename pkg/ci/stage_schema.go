@@ -57,14 +57,26 @@ type StageDaemon struct {
 	Lifecycle *Lifecycle `hcl:"lifecycle,block" json:"lifecycle"`
 }
 
+type StagePostHook struct {
+	Stage Stage `hcl:"stage,block" json:"stage"`
+}
+
+type StagePreHook struct {
+	Stage Stage `hcl:"stage,block" json:"stage"`
+}
+
 type Stage struct {
+	Id        string         `hcl:"id,label" json:"id"`
+	DependsOn hcl.Expression `hcl:"depends_on,optional" json:"depends_on"`
+	CoreStage `hcl:",remain"`
+}
+
+type CoreStage struct {
 	ctx            context.Context
 	ctxInitialised bool
 	terminated     bool
 
-	Id        string         `hcl:"id,label" json:"id"`
 	Condition hcl.Expression `hcl:"if,optional" json:"if"`
-	DependsOn hcl.Expression `hcl:"depends_on,optional" json:"depends_on"`
 	ForEach   hcl.Expression `hcl:"for_each,optional" json:"for_each"`
 	Use       *StageUse      `hcl:"use,block" json:"use"`
 
@@ -79,7 +91,19 @@ type Stage struct {
 	Container   *StageContainer     `hcl:"container,block" json:"container"`
 	Environment []*StageEnvironment `hcl:"env,block" json:"environment"`
 
-	process                *exec.Cmd
-	macroWhitelistedStages []string
-	ContainerId            string
+	PreHook  []*StagePreHook  `hcl:"pre_hook,block" json:"pre_hook"`
+	PostHook []*StagePostHook `hcl:"post_hook,block" json:"post_hook"`
+
+	process                 *exec.Cmd
+	macroWhitelistedStages  []string
+	dependsOnVariablesMacro []hcl.Traversal
+	ContainerId             string
+}
+
+type PreStage struct {
+	CoreStage `hcl:",remain"`
+}
+
+type PostStage struct {
+	CoreStage `hcl:",remain"`
 }

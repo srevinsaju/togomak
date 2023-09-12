@@ -18,4 +18,6 @@ const (
 	OutputEnvVar  = "TOGOMAK_OUTPUTS"
 
 	RootStage = "togomak.root"
+	PreStage  = "togomak.pre"
+	PostStage = "togomak.post"
 )

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/srevinsaju/togomak/v1/pkg/runnable"
 	"github.com/srevinsaju/togomak/v1/pkg/x"
 	"strings"
 
@@ -36,8 +37,14 @@ type Describable interface {
 type Runnable interface {
 	// Prepare is called before the runnable is run
 	Prepare(ctx context.Context, skip bool, overridden bool) hcl.Diagnostics
-	Run(ctx context.Context) hcl.Diagnostics
-	CanRun(ctx context.Context) (bool, hcl.Diagnostics)
+	Run(ctx context.Context, options ...runnable.Option) (diags hcl.Diagnostics)
+	CanRun(ctx context.Context, options ...runnable.Option) (ok bool, diags hcl.Diagnostics)
+}
+
+type RunnableWithHooks interface {
+	Runnable
+	BeforeRun(ctx context.Context, opts ...runnable.Option) hcl.Diagnostics
+	AfterRun(ctx context.Context, opts ...runnable.Option) hcl.Diagnostics
 }
 
 type Traversable interface {

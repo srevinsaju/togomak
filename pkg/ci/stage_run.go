@@ -8,11 +8,14 @@ import (
 	dockerContainer "github.com/docker/docker/api/types/container"
 	dockerClient "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/google/uuid"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/imdario/mergo"
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
+	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
+	"github.com/srevinsaju/togomak/v1/pkg/runnable"
 	"github.com/srevinsaju/togomak/v1/pkg/ui"
 	"github.com/zclconf/go-cty/cty"
 	"io"
@@ -67,40 +70,52 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 	var err error
 
 	v := s.Use.Macro.Variables()
-	if v == nil || len(v) == 0 {
-		// this stage does not use a macro
-		return s, diags
-	}
 
-	if len(v) != 1 {
-		diags = diags.Append(&hcl.Diagnostic{
-			Severity:    hcl.DiagError,
-			Summary:     "invalid macro",
-			Detail:      fmt.Sprintf("%s can only use a single macro", s.Identifier()),
-			EvalContext: hclContext,
-			Subject:     v[0].SourceRange().Ptr(),
-		})
-		return s, diags
-	}
-	variable := v[0]
-	if variable.RootName() != MacroBlock {
-		diags = diags.Append(&hcl.Diagnostic{
-			Severity:    hcl.DiagError,
-			Summary:     "invalid macro",
-			Detail:      fmt.Sprintf("%s uses an invalid macro, got '%s'", s.Identifier(), variable.RootName()),
-			EvalContext: hclContext,
-			Subject:     v[0].SourceRange().Ptr(),
-		})
-		return s, diags
-	}
+	var macro *Macro
+	if len(v) == 1 && v[0].RootName() == MacroBlock {
+		variable := v[0]
+		macroName := variable[1].(hcl.TraverseAttr).Name
+		logger.Debugf("stage.%s uses macro.%s", s.Id, macroName)
+		macroRunnable, d := Resolve(ctx, pipe, fmt.Sprintf("macro.%s", macroName))
+		if d.HasErrors() {
+			return nil, diags.Extend(d)
+		}
+		macro = macroRunnable.(*Macro)
+	} else {
+		global.EvalContextMutex.RLock()
+		source, d := s.Use.Macro.Value(hclContext)
+		global.EvalContextMutex.RUnlock()
 
-	macroName := variable[1].(hcl.TraverseAttr).Name
-	logger.Debugf("stage.%s uses macro.%s", s.Id, macroName)
-	macroRunnable, d := Resolve(ctx, pipe, fmt.Sprintf("macro.%s", macroName))
-	if d.HasErrors() {
-		return nil, diags.Extend(d)
+		if d.HasErrors() {
+			return s, diags.Extend(d)
+		}
+		if source.IsNull() {
+			return s, diags.Append(&hcl.Diagnostic{
+				Severity:    hcl.DiagError,
+				Summary:     "invalid macro",
+				Detail:      fmt.Sprintf("%s uses a macro with an invalid source", s.Identifier()),
+				EvalContext: hclContext,
+				Subject:     s.Use.Macro.Range().Ptr(),
+			})
+		}
+		if source.Type() != cty.String {
+			return s, diags.Append(&hcl.Diagnostic{
+				Severity:    hcl.DiagError,
+				Summary:     "invalid macro",
+				Detail:      fmt.Sprintf("%s uses a macro with an invalid source", s.Identifier()),
+				EvalContext: hclContext,
+				Subject:     s.Use.Macro.Range().Ptr(),
+			})
+		}
+		sourceEvaluated := source.AsString()
+		if !strings.HasSuffix(sourceEvaluated, ".hcl") {
+			sourceEvaluated = filepath.Join(sourceEvaluated, meta.ConfigFileName)
+		}
+		macro = &Macro{
+			Source: sourceEvaluated,
+			Id:     uuid.New().String(),
+		}
 	}
-	macro := macroRunnable.(*Macro)
 
 	oldStageId := s.Id
 	oldStageName := s.Name
@@ -124,9 +139,13 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 	} else if macro.Stage != nil {
 		logger.Debugf("merging %s with %s", s.Identifier(), macro.Identifier())
 		err = mergo.Merge(s, macro.Stage, mergo.WithOverride)
+		s.dependsOnVariablesMacro = macro.Stage.DependsOn.Variables()
 
 	} else {
+		global.EvalContextMutex.RLock()
 		f, d := macro.Files.Value(hclContext)
+		global.EvalContextMutex.RUnlock()
+
 		if d.HasErrors() {
 			return s, diags.Extend(d)
 		}
@@ -139,7 +158,7 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 					Severity:    hcl.DiagError,
 					Summary:     "failed to create temporary directory",
 					Detail:      fmt.Sprintf("failed to create temporary directory for stage %s", s.Id),
-					Subject:     variable.SourceRange().Ptr(),
+					Subject:     s.Use.Macro.Range().Ptr(),
 					EvalContext: hclContext,
 				})
 			}
@@ -162,7 +181,7 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 						Summary:     "invalid macro",
 						Detail:      fmt.Sprintf("%s uses a macro with an invalid file %s", s.Identifier(), fName),
 						EvalContext: hclContext,
-						Subject:     variable.SourceRange().Ptr(),
+						Subject:     s.Use.Macro.Range().Ptr(),
 					})
 				}
 				err = os.WriteFile(fpath, []byte(fContent.AsString()), 0644)
@@ -173,7 +192,7 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 						Summary:     "invalid macro",
 						Detail:      fmt.Sprintf("%s uses a macro with an invalid file %s", s.Identifier(), fName),
 						EvalContext: hclContext,
-						Subject:     variable.SourceRange().Ptr(),
+						Subject:     s.Use.Macro.Range().Ptr(),
 					})
 				}
 			}
@@ -188,7 +207,7 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 					Summary:     "invalid macro",
 					Detail:      fmt.Sprintf("%s uses a macro without a default execution file. include a file named togomak.hcl to avoid this error", s.Identifier()),
 					EvalContext: hclContext,
-					Subject:     variable.SourceRange().Ptr(),
+					Subject:     s.Use.Macro.Range().Ptr(),
 				})
 				return s, diags
 			}
@@ -233,30 +252,89 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 	s.Id = oldStageId
 	s.Name = oldStageName
 	s.DependsOn = oldStageDependsOn
+	s.dependsOnVariablesMacro = append(s.dependsOnVariablesMacro, oldStageDependsOn.Variables()...)
 
 	return s, nil
 
 }
 
-func (s *Stage) Run(ctx context.Context) hcl.Diagnostics {
+func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.Diagnostics) {
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField(StageBlock, s.Id)
 	cwd := ctx.Value(c.TogomakContextCwd).(string)
 	tmpDir := ctx.Value(c.TogomakContextTempDir).(string)
 	logger.Debugf("running %s.%s", StageBlock, s.Id)
 	isDryRun := ctx.Value(c.TogomakContextPipelineDryRun).(bool)
 
-	var hclDiags hcl.Diagnostics
+	status := runnable.StatusRunning
+
 	var err error
 	evalCtx := ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
 
+	defer func() {
+		logger.Debug("running post hooks")
+		success := !diags.HasErrors()
+		if !success {
+			status = runnable.StatusFailure
+		} else {
+			status = runnable.StatusSuccess
+		}
+		diags = diags.Extend(s.AfterRun(ctx,
+			runnable.WithStatus(status),
+			runnable.WithHook(),
+			runnable.WithParent(runnable.ParentConfig{Name: s.Name, Id: s.Id})))
+		logger.Debug("finished running post hooks")
+	}()
+
+	logger.Debugf("running pre hooks")
+	diags = diags.Extend(s.BeforeRun(ctx, runnable.WithStatus(status), runnable.WithHook(), runnable.WithParent(runnable.ParentConfig{Name: s.Name, Id: s.Id})))
+	logger.Debugf("finished running pre hooks")
+
+	cfg := runnable.NewConfig(options...)
+
 	// expand stages using macros
+	logger.Debugf("expanding macros")
 	s, d := s.expandMacros(ctx)
-	hclDiags = hclDiags.Extend(d)
+	diags = diags.Extend(d)
+	logger.Debugf("finished expanding macros with %d errors", len(diags.Errs()))
 
 	paramsGo := map[string]cty.Value{}
+
+	logger.Debugf("expanding global macro parameters")
+	global.EvalContextMutex.RLock()
+	oldParam, ok := evalCtx.Variables[ParamBlock]
+	global.EvalContextMutex.RUnlock()
+	if ok {
+		oldParamMap := oldParam.AsValueMap()
+		for k, v := range oldParamMap {
+			paramsGo[k] = v
+		}
+	}
+
+	id := s.Id
+	name := s.Name
+	if cfg.Parent != nil {
+		logger.Debugf("using parent %s.%s", cfg.Parent.Name, cfg.Parent.Id)
+		id = cfg.Parent.Id
+		name = cfg.Parent.Name
+	}
+
+	logger.Debug("creating new evaluation context")
+	evalCtx = evalCtx.NewChild()
+	evalCtx.Variables = map[string]cty.Value{
+		ThisBlock: cty.ObjectVal(map[string]cty.Value{
+			"name":   cty.StringVal(name),
+			"id":     cty.StringVal(id),
+			"hook":   cty.BoolVal(cfg.Hook),
+			"status": cty.StringVal(string(cfg.Status.Status)),
+		}),
+	}
+
+	logger.Debugf("expanding macro parameters")
 	if s.Use != nil && s.Use.Parameters != nil {
+		global.EvalContextMutex.RLock()
 		parameters, d := s.Use.Parameters.Value(evalCtx)
-		hclDiags = hclDiags.Extend(d)
+		global.EvalContextMutex.RUnlock()
+		diags = diags.Extend(d)
 		if !parameters.IsNull() {
 			for k, v := range parameters.AsValueMap() {
 				paramsGo[k] = v
@@ -264,43 +342,40 @@ func (s *Stage) Run(ctx context.Context) hcl.Diagnostics {
 		}
 	}
 
-	oldParam, ok := evalCtx.Variables[ParamBlock]
-	if ok {
-		oldParamMap := oldParam.AsValueMap()
-		for k, v := range oldParamMap {
-			paramsGo[k] = v
-		}
-	}
-	evalCtx = evalCtx.NewChild()
-	evalCtx.Variables = map[string]cty.Value{
-		ThisBlock: cty.ObjectVal(map[string]cty.Value{
-			"name": cty.StringVal(s.Name),
-			"id":   cty.StringVal(s.Id),
-		}),
-		ParamBlock: cty.ObjectVal(paramsGo),
-	}
+	evalCtx.Variables[ParamBlock] = cty.ObjectVal(paramsGo)
 
+	logger.Debug("evaluating script value")
+	global.EvalContextMutex.RLock()
 	script, d := s.Script.Value(evalCtx)
+	global.EvalContextMutex.RUnlock()
+
 	if d.HasErrors() && isDryRun {
 		script = cty.StringVal(ui.Italic(ui.Yellow("(will be evaluated later)")))
 	} else {
-		hclDiags = hclDiags.Extend(d)
+		diags = diags.Extend(d)
 	}
 	shell := s.Shell
 
+	global.EvalContextMutex.RLock()
 	args, d := s.Args.Value(evalCtx)
-	hclDiags = hclDiags.Extend(d)
+	global.EvalContextMutex.RUnlock()
+	diags = diags.Extend(d)
 
+	logger.Debug("evaluating environment variables")
 	var environment map[string]cty.Value
 	environment = make(map[string]cty.Value)
 	for _, env := range s.Environment {
+		global.EvalContextMutex.RLock()
 		v, d := env.Value.Value(evalCtx)
-		hclDiags = hclDiags.Extend(d)
+		global.EvalContextMutex.RUnlock()
+
+		diags = diags.Extend(d)
 		environment[env.Name] = v
 	}
 
-	if hclDiags.HasErrors() {
-		return hclDiags
+	logger.Debugf("%d diagnostics so far", len(diags.Errs()))
+	if diags.HasErrors() {
+		return diags
 	}
 
 	envStrings := make([]string, len(environment))
@@ -335,9 +410,12 @@ func (s *Stage) Run(ctx context.Context) hcl.Diagnostics {
 
 	// emptyCommands - specifies if both args and scripts were unset
 	emptyCommands := false
-
 	if script.Type() == cty.String {
-		runArgs = append(runArgs, "-e", "-c", script.AsString())
+		if shell == "bash" {
+			runArgs = append(runArgs, "-e", "-u", "-c", script.AsString())
+		} else {
+			runArgs = append(runArgs, "-e", "-c", script.AsString())
+		}
 	} else if !args.IsNull() && len(args.AsValueSlice()) != 0 {
 		runCommand = args.AsValueSlice()[0].AsString()
 		for i, a := range args.AsValueSlice() {
@@ -348,7 +426,7 @@ func (s *Stage) Run(ctx context.Context) hcl.Diagnostics {
 		}
 	} else if s.Container == nil {
 		// if the container is not null, we may rely on internal args or entrypoint scripts
-		return hclDiags.Append(&hcl.Diagnostic{
+		return diags.Append(&hcl.Diagnostic{
 			Severity:    hcl.DiagError,
 			Summary:     "No commands specified",
 			Detail:      "Either script or args must be specified",
@@ -360,9 +438,13 @@ func (s *Stage) Run(ctx context.Context) hcl.Diagnostics {
 		emptyCommands = true
 	}
 	dir := cwd
+
+	global.EvalContextMutex.RLock()
 	dirParsed, d := s.Dir.Value(evalCtx)
+	global.EvalContextMutex.RUnlock()
+
 	if d.HasErrors() {
-		hclDiags = hclDiags.Extend(d)
+		diags = diags.Extend(d)
 	} else {
 		if !dirParsed.IsNull() && dirParsed.AsString() != "" {
 			dir = dirParsed.AsString()
@@ -397,11 +479,14 @@ func (s *Stage) Run(ctx context.Context) hcl.Diagnostics {
 	} else {
 		logger := logger.WithField("🐳", "")
 
+		global.EvalContextMutex.RLock()
 		imageRaw, d := s.Container.Image.Value(evalCtx)
+		global.EvalContextMutex.RUnlock()
+
 		if d.HasErrors() {
-			hclDiags = hclDiags.Extend(d)
+			diags = diags.Extend(d)
 		} else if imageRaw.Type() != cty.String {
-			hclDiags = hclDiags.Append(&hcl.Diagnostic{
+			diags = diags.Append(&hcl.Diagnostic{
 				Severity:    hcl.DiagError,
 				Summary:     "image must be a string",
 				Detail:      fmt.Sprintf("the provided image, was not recognized as a valid string. received image='''%s'''", imageRaw),
@@ -409,14 +494,14 @@ func (s *Stage) Run(ctx context.Context) hcl.Diagnostics {
 				EvalContext: evalCtx,
 			})
 		}
-		if hclDiags.HasErrors() {
-			return hclDiags
+		if diags.HasErrors() {
+			return diags
 		}
 		image := imageRaw.AsString()
 
 		cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
 		if err != nil {
-			return hclDiags.Append(&hcl.Diagnostic{
+			return diags.Append(&hcl.Diagnostic{
 				Severity:    hcl.DiagError,
 				Summary:     "could not create docker client",
 				Detail:      err.Error(),
@@ -432,7 +517,7 @@ func (s *Stage) Run(ctx context.Context) hcl.Diagnostics {
 			logger.Infof("image %s does not exist, pulling...", image)
 			reader, err := cli.ImagePull(ctx, image, types.ImagePullOptions{})
 			if err != nil {
-				return hclDiags.Append(&hcl.Diagnostic{
+				return diags.Append(&hcl.Diagnostic{
 					Severity:    hcl.DiagError,
 					Summary:     "could not pull image",
 					Detail:      err.Error(),
@@ -457,24 +542,29 @@ func (s *Stage) Run(ctx context.Context) hcl.Diagnostics {
 		}
 
 		for _, m := range s.Container.Volumes {
+			global.EvalContextMutex.RLock()
 			source, d := m.Source.Value(evalCtx)
-			hclDiags = hclDiags.Extend(d)
+			global.EvalContextMutex.RUnlock()
+			diags = diags.Extend(d)
+
+			global.EvalContextMutex.RLock()
 			dest, d := m.Destination.Value(evalCtx)
-			hclDiags = hclDiags.Extend(d)
-			if hclDiags.HasErrors() {
+			global.EvalContextMutex.RUnlock()
+			diags = diags.Extend(d)
+			if diags.HasErrors() {
 				continue
 			}
 			binds = append(binds, fmt.Sprintf("%s:%s", source.AsString(), dest.AsString()))
 		}
-		if hclDiags.HasErrors() {
-			return hclDiags
+		if diags.HasErrors() {
+			return diags
 		}
 
 		if !isDryRun {
 			exposedPorts, bindings, d := s.Container.Ports.Nat(evalCtx)
-			hclDiags = hclDiags.Extend(d)
-			if hclDiags.HasErrors() {
-				return hclDiags
+			diags = diags.Extend(d)
+			if diags.HasErrors() {
+				return diags
 			}
 
 			resp, err := cli.ContainerCreate(ctx, &dockerContainer.Config{
@@ -495,7 +585,7 @@ func (s *Stage) Run(ctx context.Context) hcl.Diagnostics {
 				PortBindings: bindings,
 			}, nil, nil, "")
 			if err != nil {
-				return hclDiags.Append(&hcl.Diagnostic{
+				return diags.Append(&hcl.Diagnostic{
 					Severity:    hcl.DiagError,
 					Summary:     "could not create container",
 					Detail:      err.Error(),
@@ -505,7 +595,7 @@ func (s *Stage) Run(ctx context.Context) hcl.Diagnostics {
 			}
 
 			if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
-				return hclDiags.Append(&hcl.Diagnostic{
+				return diags.Append(&hcl.Diagnostic{
 					Severity: hcl.DiagError,
 					Summary:  "could not start container",
 					Detail:   err.Error(),
@@ -524,7 +614,7 @@ func (s *Stage) Run(ctx context.Context) hcl.Diagnostics {
 				Follow: true,
 			})
 			if err != nil {
-				return hclDiags.Append(&hcl.Diagnostic{
+				return diags.Append(&hcl.Diagnostic{
 					Severity: hcl.DiagError,
 					Summary:  "could not get container logs",
 					Detail:   err.Error(),
@@ -540,9 +630,9 @@ func (s *Stage) Run(ctx context.Context) hcl.Diagnostics {
 			}
 			if err != nil && err != io.EOF {
 				if err == context.Canceled {
-					return hclDiags
+					return diags
 				}
-				hclDiags = hclDiags.Append(&hcl.Diagnostic{
+				diags = diags.Append(&hcl.Diagnostic{
 					Severity: hcl.DiagError,
 					Summary:  "failed to copy container logs",
 					Detail:   err.Error(),
@@ -553,13 +643,13 @@ func (s *Stage) Run(ctx context.Context) hcl.Diagnostics {
 				RemoveVolumes: true,
 			})
 			if err != nil {
-				hclDiags = hclDiags.Append(&hcl.Diagnostic{
+				diags = diags.Append(&hcl.Diagnostic{
 					Severity: hcl.DiagError,
 					Summary:  "failed to remove container",
 					Detail:   err.Error(),
 					Subject:  s.Container.Image.Range().Ptr(),
 				})
-				return hclDiags
+				return diags
 			}
 		} else {
 			fmt.Println(ui.Blue("docker:run.image"), ui.Green(image))
@@ -574,25 +664,48 @@ func (s *Stage) Run(ctx context.Context) hcl.Diagnostics {
 	}
 
 	if err != nil {
-		hclDiags = hclDiags.Append(&hcl.Diagnostic{
+		diags = diags.Append(&hcl.Diagnostic{
 			Severity: hcl.DiagError,
 			Summary:  fmt.Sprintf("failed to run command (%s)", s.Identifier()),
 			Detail:   err.Error(),
 		})
 	}
 
-	return hclDiags
+	return diags
 }
 
-func (s *Stage) CanRun(ctx context.Context) (bool, hcl.Diagnostics) {
+func (s *Stage) CanRun(ctx context.Context, options ...runnable.Option) (ok bool, diags hcl.Diagnostics) {
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField("stage", s.Id)
 	logger.Debugf("checking if stage.%s can run", s.Id)
 	evalCtx := ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
-	var diags hcl.Diagnostics
+
+	cfg := runnable.NewConfig(options...)
 
 	paramsGo := map[string]cty.Value{}
+
+	evalCtx = evalCtx.NewChild()
+	name := s.Name
+	id := s.Id
+	if cfg.Parent != nil {
+		name = cfg.Parent.Name
+		id = cfg.Parent.Id
+	}
+
+	evalCtx.Variables = map[string]cty.Value{
+		"this": cty.ObjectVal(map[string]cty.Value{
+			"name":   cty.StringVal(name),
+			"id":     cty.StringVal(id),
+			"hook":   cty.BoolVal(cfg.Hook),
+			"status": cty.StringVal(string(cfg.Status.Status)),
+		}),
+		"param": cty.ObjectVal(paramsGo),
+	}
+
 	if s.Use != nil && s.Use.Parameters != nil {
+		global.EvalContextMutex.RLock()
 		parameters, d := s.Use.Parameters.Value(evalCtx)
+		global.EvalContextMutex.RUnlock()
+
 		diags = diags.Extend(d)
 		if !parameters.IsNull() {
 			for k, v := range parameters.AsValueMap() {
@@ -601,15 +714,9 @@ func (s *Stage) CanRun(ctx context.Context) (bool, hcl.Diagnostics) {
 		}
 	}
 
-	evalCtx = evalCtx.NewChild()
-	evalCtx.Variables = map[string]cty.Value{
-		"this": cty.ObjectVal(map[string]cty.Value{
-			"name": cty.StringVal(s.Name),
-			"id":   cty.StringVal(s.Id),
-		}),
-		"param": cty.ObjectVal(paramsGo),
-	}
+	global.EvalContextMutex.RLock()
 	v, d := s.Condition.Value(evalCtx)
+	global.EvalContextMutex.RUnlock()
 	if d.HasErrors() {
 		return false, diags.Extend(d)
 	}
@@ -628,12 +735,22 @@ func dockerContainerSourceFmt(containerId string) string {
 }
 
 func (s *Stage) Terminate(safe bool) hcl.Diagnostics {
+	ctx := context.Background()
 	var diags hcl.Diagnostics
 	if safe {
 		s.terminated = true
 	}
+
+	defer func() {
+		diags = diags.Extend(s.AfterRun(
+			ctx,
+			runnable.WithHook(),
+			runnable.WithStatus(runnable.StatusTerminated),
+			runnable.WithParent(runnable.ParentConfig{Name: s.Name, Id: s.Id}),
+		))
+	}()
+
 	if s.Container != nil && s.ContainerId != "" {
-		ctx := context.Background()
 
 		cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
 		if err != nil {

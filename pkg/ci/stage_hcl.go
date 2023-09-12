@@ -1,6 +1,8 @@
 package ci
 
-import "github.com/hashicorp/hcl/v2"
+import (
+	"github.com/hashicorp/hcl/v2"
+)
 
 func (e *StageEnvironment) Variables() []hcl.Traversal {
 	var traversal []hcl.Traversal
@@ -39,6 +41,8 @@ func (s *Stage) Variables() []hcl.Traversal {
 	traversal = append(traversal, s.Script.Variables()...)
 	traversal = append(traversal, s.Args.Variables()...)
 
+	traversal = append(traversal, s.dependsOnVariablesMacro...)
+
 	if s.Use != nil {
 		traversal = append(traversal, s.Use.Macro.Variables()...)
 		traversal = append(traversal, s.Use.Parameters.Variables()...)
@@ -52,6 +56,16 @@ func (s *Stage) Variables() []hcl.Traversal {
 
 	for _, env := range s.Environment {
 		traversal = append(traversal, env.Variables()...)
+	}
+	if s.PostHook != nil {
+		for _, hook := range s.PostHook {
+			traversal = append(traversal, hook.Stage.Variables()...)
+		}
+	}
+	if s.PreHook != nil {
+		for _, hook := range s.PreHook {
+			traversal = append(traversal, hook.Stage.Variables()...)
+		}
 	}
 	return traversal
 }
