@@ -6,16 +6,15 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/global"
+	"github.com/srevinsaju/togomak/v1/pkg/runnable"
 	"github.com/zclconf/go-cty/cty"
 )
 
-func (l *Local) Run(ctx context.Context) hcl.Diagnostics {
+func (l *Local) Run(ctx context.Context, options ...runnable.Option) (diags hcl.Diagnostics) {
 
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField(LocalBlock, l.Key)
 	logger.Debugf("running %s.%s", LocalBlock, l.Key)
 	hclContext := ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
-
-	var diags hcl.Diagnostics
 
 	// region: mutating the data map
 	// TODO: move it to a dedicated helper function
@@ -24,8 +23,6 @@ func (l *Local) Run(ctx context.Context) hcl.Diagnostics {
 
 	global.EvalContextMutex.RLock()
 	locals := hclContext.Variables[LocalBlock]
-	global.EvalContextMutex.RUnlock()
-
 	var localMutated map[string]cty.Value
 	if locals.IsNull() {
 		localMutated = make(map[string]cty.Value)
@@ -33,6 +30,8 @@ func (l *Local) Run(ctx context.Context) hcl.Diagnostics {
 		localMutated = locals.AsValueMap()
 	}
 	v, d := l.Value.Value(hclContext)
+	global.EvalContextMutex.RUnlock()
+
 	diags = diags.Extend(d)
 	localMutated[l.Key] = v
 
@@ -47,7 +46,7 @@ func (l *Local) Run(ctx context.Context) hcl.Diagnostics {
 	return diags
 }
 
-func (l *Local) CanRun(ctx context.Context) (bool, hcl.Diagnostics) {
+func (l *Local) CanRun(ctx context.Context, options ...runnable.Option) (bool, hcl.Diagnostics) {
 	return true, nil
 }
 

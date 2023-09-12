@@ -8,6 +8,7 @@ import (
 	dataBlock "github.com/srevinsaju/togomak/v1/pkg/blocks/data"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/global"
+	"github.com/srevinsaju/togomak/v1/pkg/runnable"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -19,12 +20,12 @@ func (s Data) Prepare(ctx context.Context, skip bool, overridden bool) hcl.Diagn
 	return nil // no-op
 }
 
-func (s Data) Run(ctx context.Context) hcl.Diagnostics {
+func (s Data) Run(ctx context.Context, options ...runnable.Option) (diags hcl.Diagnostics) {
 	// _ := ctx.Value(TogomakContextHclDiagWriter).(hcl.DiagnosticWriter)
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField(DataBlock, s.Id)
 	logger.Debugf("running %s.%s.%s", DataBlock, s.Provider, s.Id)
 	hclContext := ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
-	var diags hcl.Diagnostics
+
 	var d hcl.Diagnostics
 
 	// region: mutating the data map
@@ -65,7 +66,6 @@ func (s Data) Run(ctx context.Context) hcl.Diagnostics {
 
 	global.EvalContextMutex.RLock()
 	data := hclContext.Variables[DataBlock]
-	global.EvalContextMutex.RUnlock()
 
 	var dataMutated map[string]cty.Value
 	if data.IsNull() {
@@ -82,6 +82,7 @@ func (s Data) Run(ctx context.Context) hcl.Diagnostics {
 	}
 	providerMutated[s.Id] = cty.ObjectVal(m)
 	dataMutated[s.Provider] = cty.ObjectVal(providerMutated)
+	global.EvalContextMutex.RUnlock()
 
 	global.EvalContextMutex.Lock()
 	hclContext.Variables[DataBlock] = cty.ObjectVal(dataMutated)
@@ -99,7 +100,7 @@ func (s Data) Run(ctx context.Context) hcl.Diagnostics {
 	return nil
 }
 
-func (s Data) CanRun(ctx context.Context) (bool, hcl.Diagnostics) {
+func (s Data) CanRun(ctx context.Context, options ...runnable.Option) (bool, hcl.Diagnostics) {
 	return true, nil
 }
 

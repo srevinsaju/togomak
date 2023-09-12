@@ -6,6 +6,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/global"
+	"github.com/srevinsaju/togomak/v1/pkg/runnable"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -17,20 +18,19 @@ func (m *Macro) Prepare(ctx context.Context, skip bool, overridden bool) hcl.Dia
 	return nil // no-op
 }
 
-func (m *Macro) Run(ctx context.Context) hcl.Diagnostics {
+func (m *Macro) Run(ctx context.Context, options ...runnable.Option) (diags hcl.Diagnostics) {
 	// _ := ctx.Value(TogomakContextHclDiagWriter).(hcl.DiagnosticWriter)
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField(DataBlock, m.Id)
 	logger.Tracef("running %s.%s", MacroBlock, m.Id)
 	hclContext := ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
-	var diags hcl.Diagnostics
 
 	// region: mutating the data map
 	// TODO: move it to a dedicated helper function
 
 	global.MacroBlockEvalContextMutex.Lock()
+
 	global.EvalContextMutex.RLock()
 	macro := hclContext.Variables[MacroBlock]
-	global.EvalContextMutex.RUnlock()
 
 	var macroMutated map[string]cty.Value
 	if macro.IsNull() {
@@ -38,9 +38,10 @@ func (m *Macro) Run(ctx context.Context) hcl.Diagnostics {
 	} else {
 		macroMutated = macro.AsValueMap()
 	}
-
 	// -> update r.Value accordingly
 	f, d := m.Files.Value(hclContext)
+	global.EvalContextMutex.RUnlock()
+
 	if d != nil {
 		diags = diags.Extend(d)
 	}
@@ -58,8 +59,8 @@ func (m *Macro) Run(ctx context.Context) hcl.Diagnostics {
 	return diags
 }
 
-func (m *Macro) CanRun(ctx context.Context) (bool, hcl.Diagnostics) {
-	return true, nil
+func (m *Macro) CanRun(ctx context.Context, options ...runnable.Option) (ok bool, diags hcl.Diagnostics) {
+	return false, diags
 }
 
 func (m *Macro) Terminated() bool {
