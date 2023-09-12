@@ -130,6 +130,9 @@ func Merge(pipelines MetaList) (*ci.Pipeline, hcl.Diagnostics) {
 	var diags hcl.Diagnostics
 
 	var versionDefinedFromFilename string
+	var pre *ci.PreStage
+	var post *ci.PostStage
+
 	for _, p := range pipelines {
 		if pipe.Builder.Version == 0 && p.pipe.Builder.Version != 0 {
 			pipe.Builder.Version = p.pipe.Builder.Version
@@ -175,6 +178,28 @@ func Merge(pipelines MetaList) (*ci.Pipeline, hcl.Diagnostics) {
 			})
 		}
 
+		if p.pipe.Pre != nil {
+			if pre != nil {
+				return nil, diags.Append(&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "duplicate pre stage",
+					Detail:   fmt.Sprintf("duplicate pre stage definition in %s", p.filename),
+				})
+			}
+			pre = p.pipe.Pre
+		}
+
+		if p.pipe.Post != nil {
+			if post != nil {
+				return nil, diags.Append(&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "duplicate post stage",
+					Detail:   fmt.Sprintf("duplicate post stage definition in %s", p.filename),
+				})
+			}
+			post = p.pipe.Post
+		}
+
 		pipe.Stages = append(pipe.Stages, p.pipe.Stages...)
 		pipe.Data = append(pipe.Data, p.pipe.Data...)
 		pipe.DataProviders = append(pipe.DataProviders, p.pipe.DataProviders...)
@@ -182,6 +207,9 @@ func Merge(pipelines MetaList) (*ci.Pipeline, hcl.Diagnostics) {
 		pipe.Local = append(pipe.Local, p.pipe.Local...)
 		pipe.Locals = append(pipe.Locals, p.pipe.Locals...)
 		pipe.Imports = append(pipe.Imports, p.pipe.Imports...)
+
 	}
+	pipe.Pre = pre
+	pipe.Post = post
 	return pipe, diags
 }
