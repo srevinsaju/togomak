@@ -5,7 +5,7 @@ togomak {
 
 stage "example" {
   script = "echo hello world && exit 1"
-  
+
   pre_hook {
     stage "echo" {
       script = "echo before the script for stage ${this.id} runs"
@@ -21,7 +21,7 @@ stage "example" {
 
 stage "example_2" {
   script = "echo bye_world && exit 1"
-  
+
   pre_hook {
     stage "echo" {
       script = "echo before the script for stage ${this.id} runs"
