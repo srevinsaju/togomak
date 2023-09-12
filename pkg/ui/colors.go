@@ -3,6 +3,8 @@ package ui
 import (
 	"fmt"
 	"github.com/fatih/color"
+	"github.com/zclconf/go-cty/cty"
+	"github.com/zclconf/go-cty/cty/function"
 	"os"
 )
 
@@ -37,4 +39,48 @@ func Success(message string, args ...interface{}) {
 
 func DeprecationWarning(message string, args ...string) {
 	fmt.Println(HiYellow("[deprecated] "), message, args)
+}
+
+var AnsiFunc = function.New(&function.Spec{
+	Params: []function.Parameter{
+		{
+			Name: "color",
+			Type: cty.String,
+		},
+		{
+			Name: "message",
+			Type: cty.String,
+		},
+	},
+	Type: function.StaticReturnType(cty.String),
+	Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+		color := args[0].AsString()
+		message := args[1].AsString()
+		return cty.StringVal(Color(color, message)), nil
+	},
+})
+
+func Color(color string, message string) string {
+	switch color {
+	case "green":
+		return Green(message)
+	case "red":
+		return Red(message)
+	case "blue":
+		return Blue(message)
+	case "yellow":
+		return Yellow(message)
+	case "bold":
+		return Bold(message)
+	case "italic":
+		return Italic(message)
+	case "cyan":
+		return HiCyan(message)
+	case "grey":
+		return Grey(message)
+	case "hi-yellow":
+		return HiYellow(message)
+	default:
+		return message
+	}
 }
