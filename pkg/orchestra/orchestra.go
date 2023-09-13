@@ -134,20 +134,22 @@ func Orchestra(cfg Config) int {
 	}
 	var d hcl.Diagnostics
 	if len(pipe.Imports) != 0 {
+		logger.Debugf("expanding imports")
 		pipe, d = pipeline.ExpandImports(ctx, pipe)
 		diags = diags.Extend(d)
+		logger.Debugf("expanding imports completed with %d error(s)", len(d.Errs()))
 		if d.HasErrors() {
 			return fatal(ctx)
 		}
 	}
 
 	/// we will first expand all local blocks
+	logger.Debugf("expanding local blocks")
 	locals, d := pipe.Locals.Expand()
 	diags = diags.Extend(d)
 	if d.HasErrors() {
 		return fatal(ctx)
 	}
-
 	pipe.Local = locals
 
 	// store the pipe in the context
@@ -159,6 +161,7 @@ func Orchestra(cfg Config) int {
 	// --> generate a dependency graph
 	// we will now generate a dependency graph from the pipeline
 	// this will be used to generate the pipeline
+	logger.Debugf("generating dependency graph")
 	var depGraph *depgraph.Graph
 	depGraph, d = graph.TopoSort(ctx, pipe)
 	diags = diags.Extend(d)
@@ -180,6 +183,7 @@ func Orchestra(cfg Config) int {
 	var completedRunnables ci.Blocks
 	var completedRunnablesMutex sync.Mutex
 
+	logger.Debugf("starting watchdogs and signal handlers")
 	// region: interrupt handler
 	chInterrupt := make(chan os.Signal, 1)
 	chKill := make(chan os.Signal, 1)
@@ -191,6 +195,7 @@ func Orchestra(cfg Config) int {
 	go daemonKiller(ctx, completedRunnablesSignal, &daemons)
 	// endregion: interrupt handler
 
+	logger.Debugf("starting runnables")
 	for _, layer := range depGraph.TopoSortedLayers() {
 		// we parse the TOGOMAK_ENV file at the beginning of every layer
 		// this allows us to have different environments for different layers
