@@ -85,10 +85,17 @@ func TopoSort(ctx context.Context, pipe *ci.Pipeline) (*depgraph.Graph, hcl.Diag
 			panic(err)
 		}
 
+		// all pre-stage blocks depend on the data block
+		err = g.DependOn(meta.PreStage, self)
+		if err != nil {
+			panic(err)
+		}
+
 		v := data.Variables()
 		d := Resolve(ctx, pipe, g, v, self)
 		diags = diags.Extend(d)
 	}
+
 	for _, stage := range pipe.Stages {
 		self := x.RenderBlock(ci.StageBlock, stage.Id)
 		err := g.DependOn(self, meta.PreStage)
