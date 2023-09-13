@@ -66,8 +66,7 @@ type StagePreHook struct {
 }
 
 type Stage struct {
-	Id        string         `hcl:"id,label" json:"id"`
-	DependsOn hcl.Expression `hcl:"depends_on,optional" json:"depends_on"`
+	Id        string `hcl:"id,label" json:"id"`
 	CoreStage `hcl:",remain"`
 }
 
@@ -75,6 +74,8 @@ type CoreStage struct {
 	ctx            context.Context
 	ctxInitialised bool
 	terminated     bool
+
+	DependsOn hcl.Expression `hcl:"depends_on,optional" json:"depends_on"`
 
 	Condition hcl.Expression `hcl:"if,optional" json:"if"`
 	ForEach   hcl.Expression `hcl:"for_each,optional" json:"for_each"`
