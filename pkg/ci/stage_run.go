@@ -355,7 +355,21 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 	} else {
 		diags = diags.Extend(d)
 	}
-	shell := s.Shell
+
+	global.EvalContextMutex.RLock()
+	shellRaw, d := s.Shell.Value(evalCtx)
+	global.EvalContextMutex.RUnlock()
+
+	shell := ""
+	if d.HasErrors() {
+		diags = diags.Extend(d)
+	} else {
+		if shellRaw.IsNull() {
+			shell = "bash"
+		} else {
+			shell = shellRaw.AsString()
+		}
+	}
 
 	global.EvalContextMutex.RLock()
 	args, d := s.Args.Value(evalCtx)
@@ -404,9 +418,6 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 	}
 
 	runArgs := make([]string, 0)
-	if shell == "" {
-		shell = "bash"
-	}
 	runCommand := shell
 
 	// emptyCommands - specifies if both args and scripts were unset
@@ -414,8 +425,10 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 	if script.Type() == cty.String {
 		if shell == "bash" {
 			runArgs = append(runArgs, "-e", "-u", "-c", script.AsString())
-		} else {
+		} else if shell == "sh" {
 			runArgs = append(runArgs, "-e", "-c", script.AsString())
+		} else {
+			runArgs = append(runArgs, script.AsString())
 		}
 	} else if !args.IsNull() && len(args.AsValueSlice()) != 0 {
 		runCommand = args.AsValueSlice()[0].AsString()
@@ -703,10 +716,10 @@ func (s *Stage) hclEndpoint(evalCtx *hcl.EvalContext) ([]string, hcl.Diagnostics
 		diags = diags.Extend(d)
 	} else if entrypointRaw.IsNull() {
 		entrypoint = nil
-	} else if entrypointRaw.Type() != cty.List(cty.String) {
+	} else if !entrypointRaw.CanIterateElements() {
 		diags = diags.Append(&hcl.Diagnostic{
 			Severity:    hcl.DiagError,
-			Summary:     "entrypoint must be a string",
+			Summary:     "entrypoint must be a list of strings",
 			Detail:      fmt.Sprintf("the provided entrypoint, was not recognized as a valid string. received entrypoint='''%s'''", entrypointRaw),
 			Subject:     s.Container.Entrypoint.Range().Ptr(),
 			EvalContext: evalCtx,
