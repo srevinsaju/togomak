@@ -7,6 +7,7 @@ import (
 	"github.com/docker/docker/api/types"
 	dockerContainer "github.com/docker/docker/api/types/container"
 	dockerClient "github.com/docker/docker/client"
+
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/google/uuid"
 	"github.com/hashicorp/hcl/v2"
@@ -354,7 +355,21 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 	} else {
 		diags = diags.Extend(d)
 	}
-	shell := s.Shell
+
+	global.EvalContextMutex.RLock()
+	shellRaw, d := s.Shell.Value(evalCtx)
+	global.EvalContextMutex.RUnlock()
+
+	shell := ""
+	if d.HasErrors() {
+		diags = diags.Extend(d)
+	} else {
+		if shellRaw.IsNull() {
+			shell = "bash"
+		} else {
+			shell = shellRaw.AsString()
+		}
+	}
 
 	global.EvalContextMutex.RLock()
 	args, d := s.Args.Value(evalCtx)
@@ -403,9 +418,6 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 	}
 
 	runArgs := make([]string, 0)
-	if shell == "" {
-		shell = "bash"
-	}
 	runCommand := shell
 
 	// emptyCommands - specifies if both args and scripts were unset
@@ -413,8 +425,10 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 	if script.Type() == cty.String {
 		if shell == "bash" {
 			runArgs = append(runArgs, "-e", "-u", "-c", script.AsString())
-		} else {
+		} else if shell == "sh" {
 			runArgs = append(runArgs, "-e", "-c", script.AsString())
+		} else {
+			runArgs = append(runArgs, script.AsString())
 		}
 	} else if !args.IsNull() && len(args.AsValueSlice()) != 0 {
 		runCommand = args.AsValueSlice()[0].AsString()
@@ -479,25 +493,16 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 	} else {
 		logger := logger.WithField("🐳", "")
 
-		global.EvalContextMutex.RLock()
-		imageRaw, d := s.Container.Image.Value(evalCtx)
-		global.EvalContextMutex.RUnlock()
+		image, d := s.hclImage(evalCtx)
+		diags = diags.Extend(d)
 
-		if d.HasErrors() {
-			diags = diags.Extend(d)
-		} else if imageRaw.Type() != cty.String {
-			diags = diags.Append(&hcl.Diagnostic{
-				Severity:    hcl.DiagError,
-				Summary:     "image must be a string",
-				Detail:      fmt.Sprintf("the provided image, was not recognized as a valid string. received image='''%s'''", imageRaw),
-				Subject:     s.Container.Image.Range().Ptr(),
-				EvalContext: evalCtx,
-			})
-		}
+		// begin entrypoint evaluation
+		entrypoint, d := s.hclEndpoint(evalCtx)
+		diags = diags.Extend(d)
+
 		if diags.HasErrors() {
 			return diags
 		}
-		image := imageRaw.AsString()
 
 		cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
 		if err != nil {
@@ -568,15 +573,19 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 			}
 
 			resp, err := cli.ContainerCreate(ctx, &dockerContainer.Config{
-				Image:        image,
-				Cmd:          containerArgs,
-				WorkingDir:   "/workspace",
+				Image:      image,
+				Cmd:        containerArgs,
+				WorkingDir: "/workspace",
+				Volumes: map[string]struct{}{
+					"/workspace": {},
+				},
 				Tty:          true,
 				AttachStdout: true,
 				AttachStderr: true,
 				AttachStdin:  s.Container.Stdin,
 				OpenStdin:    s.Container.Stdin,
 				StdinOnce:    s.Container.Stdin,
+				Entrypoint:   entrypoint,
 				Env:          envStrings,
 				ExposedPorts: exposedPorts,
 				// User: s.Container.User,
@@ -672,6 +681,56 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 	}
 
 	return diags
+}
+
+func (s *Stage) hclImage(evalCtx *hcl.EvalContext) (image string, diags hcl.Diagnostics) {
+	global.EvalContextMutex.RLock()
+	imageRaw, d := s.Container.Image.Value(evalCtx)
+	global.EvalContextMutex.RUnlock()
+
+	if d.HasErrors() {
+		diags = diags.Extend(d)
+	} else if imageRaw.Type() != cty.String {
+		diags = diags.Append(&hcl.Diagnostic{
+			Severity:    hcl.DiagError,
+			Summary:     "image must be a string",
+			Detail:      fmt.Sprintf("the provided image, was not recognized as a valid string. received image='''%s'''", imageRaw),
+			Subject:     s.Container.Image.Range().Ptr(),
+			EvalContext: evalCtx,
+		})
+	} else {
+		image = imageRaw.AsString()
+	}
+	return image, diags
+}
+
+func (s *Stage) hclEndpoint(evalCtx *hcl.EvalContext) ([]string, hcl.Diagnostics) {
+	var diags hcl.Diagnostics
+
+	global.EvalContextMutex.RLock()
+	entrypointRaw, d := s.Container.Entrypoint.Value(evalCtx)
+	global.EvalContextMutex.RUnlock()
+
+	var entrypoint []string
+	if d.HasErrors() {
+		diags = diags.Extend(d)
+	} else if entrypointRaw.IsNull() {
+		entrypoint = nil
+	} else if !entrypointRaw.CanIterateElements() {
+		diags = diags.Append(&hcl.Diagnostic{
+			Severity:    hcl.DiagError,
+			Summary:     "entrypoint must be a list of strings",
+			Detail:      fmt.Sprintf("the provided entrypoint, was not recognized as a valid string. received entrypoint='''%s'''", entrypointRaw),
+			Subject:     s.Container.Entrypoint.Range().Ptr(),
+			EvalContext: evalCtx,
+		})
+	} else {
+		v := entrypointRaw.AsValueSlice()
+		for _, e := range v {
+			entrypoint = append(entrypoint, e.AsString())
+		}
+	}
+	return entrypoint, diags
 }
 
 func (s *Stage) CanRun(ctx context.Context, options ...runnable.Option) (ok bool, diags hcl.Diagnostics) {

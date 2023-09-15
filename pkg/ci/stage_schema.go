@@ -24,11 +24,12 @@ type StageContainerPort struct {
 type StageContainerPorts []StageContainerPort
 
 type StageContainer struct {
-	Image   hcl.Expression        `hcl:"image" json:"image"`
-	Volumes StageContainerVolumes `hcl:"volume,block" json:"volumes"`
-	Ports   StageContainerPorts   `hcl:"ports,optional" json:"ports"`
-	Host    hcl.Expression        `hcl:"host,optional" json:"host"`
-	Stdin   bool                  `hcl:"stdin,optional" json:"stdin"`
+	Image      hcl.Expression        `hcl:"image" json:"image"`
+	Volumes    StageContainerVolumes `hcl:"volume,block" json:"volumes"`
+	Ports      StageContainerPorts   `hcl:"ports,optional" json:"ports"`
+	Host       hcl.Expression        `hcl:"host,optional" json:"host"`
+	Entrypoint hcl.Expression        `hcl:"entrypoint,optional" json:"entrypoint"`
+	Stdin      bool                  `hcl:"stdin,optional" json:"stdin"`
 }
 
 type Stages []Stage
@@ -87,7 +88,7 @@ type CoreStage struct {
 	Name        string              `hcl:"name,optional" json:"name"`
 	Dir         hcl.Expression      `hcl:"dir,optional" json:"dir"`
 	Script      hcl.Expression      `hcl:"script,optional" json:"script"`
-	Shell       string              `hcl:"shell,optional" json:"shell"`
+	Shell       hcl.Expression      `hcl:"shell,optional" json:"shell"`
 	Args        hcl.Expression      `hcl:"args,optional" json:"args"`
 	Container   *StageContainer     `hcl:"container,block" json:"container"`
 	Environment []*StageEnvironment `hcl:"env,block" json:"environment"`
