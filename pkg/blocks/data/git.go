@@ -301,8 +301,11 @@ func (e *GitProvider) Attributes(ctx context.Context, id string) (map[string]cty
 
 	var attrs = make(map[string]cty.Value)
 
-	var cloneComplete = make(chan bool)
-	go e.clonePassiveProgressBar(logger, cloneComplete)
+	ppb := &ui.PassiveProgressBar{
+		Logger:  logger,
+		Message: fmt.Sprintf("pulling git repo %s", e.Identifier()),
+	}
+	ppb.Init()
 
 	ref := e.cfg.ref
 	if e.cfg.tag != "" {
@@ -335,17 +338,10 @@ func (e *GitProvider) Attributes(ctx context.Context, id string) (map[string]cty
 		})
 	}
 
-	if e.cfg.auth.username != "" || e.cfg.auth.password != "" {
-		username := e.cfg.auth.username
-		if e.cfg.auth.username == "" {
-			username = "oauth2"
-		}
-		repoUrl.User = url.UserPassword(username, e.cfg.auth.password)
-	}
-
 	logger.Debugf("cloning git repo to %s", destination)
 	err = git.CloneWithArgs(ctx, nil, repoUrl.String(), destination, opts)
-	cloneComplete <- true
+	ppb.Done()
+
 	if err != nil {
 		return nil, diags.Append(&hcl.Diagnostic{
 			Severity: hcl.DiagError,
@@ -491,19 +487,6 @@ func (e *GitProvider) Attributes(ctx context.Context, id string) (map[string]cty
 
 	// get the commit
 	return attrs, diags
-}
-
-func (e *GitProvider) clonePassiveProgressBar(logger *logrus.Entry, cloneComplete chan bool) {
-	pb := ui.NewProgressWriter(logger, fmt.Sprintf("pulling git repo %s", e.Identifier()))
-	for {
-		select {
-		case <-cloneComplete:
-			pb.Close()
-			return
-		default:
-			pb.Write([]byte("1"))
-		}
-	}
 }
 
 func (e *GitProvider) resolveDestination(ctx context.Context, id string) (string, hcl.Diagnostics) {
