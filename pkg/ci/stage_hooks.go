@@ -8,6 +8,7 @@ import (
 
 func (s *Stage) BeforeRun(ctx context.Context, opts ...runnable.Option) hcl.Diagnostics {
 	if s.PreHook == nil {
+		s.Logger().Debug("no pre-hook defined")
 		return nil
 	}
 	var diags hcl.Diagnostics
@@ -20,6 +21,7 @@ func (s *Stage) BeforeRun(ctx context.Context, opts ...runnable.Option) hcl.Diag
 
 func (s *Stage) AfterRun(ctx context.Context, opts ...runnable.Option) hcl.Diagnostics {
 	if s.PostHook == nil {
+		s.Logger().Debug("no post-hook defined")
 		return nil
 	}
 	var diags hcl.Diagnostics
