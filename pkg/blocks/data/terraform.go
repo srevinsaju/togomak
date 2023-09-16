@@ -13,7 +13,6 @@ import (
 	"github.com/srevinsaju/togomak/v1/pkg/x"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/gocty"
-	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -157,12 +156,13 @@ func (e *TfProvider) Attributes(ctx context.Context, id string) (map[string]cty.
 		Dst: dst,
 		Dir: true,
 		Pwd: cwd,
-
-		ProgressListener: (&TfProgressBar{logger: logger}).Init(),
 	}
 
 	logger.Tracef("downloading source")
+	ppb := ui.NewPassiveProgressBar(logger, fmt.Sprintf("pulling %s", e.cfg.source))
+	ppb.Init()
 	err := client.Get()
+	ppb.Done()
 	if err != nil {
 		diags = diags.Append(&hcl.Diagnostic{
 			Severity: hcl.DiagError,
@@ -193,6 +193,10 @@ func (e *TfProvider) Attributes(ctx context.Context, id string) (map[string]cty.
 			Detail:   err.Error(),
 		})
 	}
+
+	ppb = ui.NewPassiveProgressBar(logger, fmt.Sprintf("reading %s.%s", e.Identifier(), id))
+	ppb.Init()
+	defer ppb.Done()
 	logger.Tracef("running terraform init on %s", dst)
 	err = tf.Init(ctx, tfexec.Upgrade(true))
 	if err != nil {
