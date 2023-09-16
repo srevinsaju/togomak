@@ -30,9 +30,10 @@ func expandImport(m ci.Import, ctx context.Context, parser *hclparse.Parser, pwd
 		Src: m.Source,
 		Dir: true,
 		Pwd: pwd,
-		// TODO: implement progress tracker
 		Dst: clientImportPath,
 	}
+	ppb := ui.NewPassiveProgressBar(logger, fmt.Sprintf("pulling %s", m.Source))
+	ppb.Init()
 	err = get.Get()
 	if err != nil {
 		diags = diags.Append(&hcl.Diagnostic{
@@ -41,7 +42,8 @@ func expandImport(m ci.Import, ctx context.Context, parser *hclparse.Parser, pwd
 			Detail:   fmt.Sprintf("import of %s failed: %s", m.Source, err.Error()),
 		})
 	}
-	parser := hclparse.NewParser()
+	ppb.Done()
+
 	p, d := ReadDirFromPath(clientImportPath, parser)
 	diags = diags.Extend(d)
 	if diags.HasErrors() {
