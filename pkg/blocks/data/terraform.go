@@ -217,6 +217,7 @@ func (e *TfProvider) Attributes(ctx context.Context, id string) (map[string]cty.
 
 	var vars []tfexec.PlanOption
 	for k, v := range e.cfg.vars {
+		logger.Tracef("setting variable %s to %s", k, v.AsString())
 		vars = append(vars, tfexec.Var(fmt.Sprintf("%s=%s", k, v.AsString())))
 	}
 	planOpts := []tfexec.PlanOption{tfexec.Lock(false), tfexec.Out(planFile)}
