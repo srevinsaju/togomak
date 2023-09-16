@@ -385,7 +385,25 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 		global.EvalContextMutex.RUnlock()
 
 		diags = diags.Extend(d)
-		environment[env.Name] = v
+		if v.IsNull() {
+			diags = diags.Append(&hcl.Diagnostic{
+				Severity:    hcl.DiagError,
+				Summary:     "invalid environment variable",
+				Detail:      fmt.Sprintf("environment variable %s is null", env.Name),
+				EvalContext: evalCtx,
+				Subject:     env.Value.Range().Ptr(),
+			})
+		} else if v.Type() != cty.String {
+			diags = diags.Append(&hcl.Diagnostic{
+				Severity:    hcl.DiagError,
+				Summary:     "invalid environment variable",
+				Detail:      fmt.Sprintf("environment variable %s is not a string", env.Name),
+				EvalContext: evalCtx,
+				Subject:     env.Value.Range().Ptr(),
+			})
+		} else {
+			environment[env.Name] = v
+		}
 	}
 
 	logger.Debugf("%d diagnostics so far", len(diags.Errs()))
