@@ -59,11 +59,11 @@ type StageDaemon struct {
 }
 
 type StagePostHook struct {
-	Stage Stage `hcl:"stage,block" json:"stage"`
+	Stage CoreStage `hcl:"stage,block" json:"stage"`
 }
 
 type StagePreHook struct {
-	Stage Stage `hcl:"stage,block" json:"stage"`
+	Stage CoreStage `hcl:"stage,block" json:"stage"`
 }
 
 type Stage struct {
