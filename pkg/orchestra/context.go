@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
+	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/third-party/hashicorp/terraform/lang/funcs"
 	"github.com/srevinsaju/togomak/v1/pkg/ui"
@@ -40,6 +41,8 @@ func (t Togomak) Parser() *hclparse.Parser {
 func NewContextWithTogomak(cfg Config) (Togomak, context.Context) {
 
 	logger := NewLogger(cfg)
+
+	global.SetLogger(logger)
 	if !cfg.Child {
 		logger.Infof("%s (version=%s)", meta.AppName, meta.AppVersion)
 	}
