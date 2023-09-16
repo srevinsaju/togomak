@@ -271,6 +271,12 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 	var err error
 	evalCtx := ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
 
+	// expand stages using macros
+	logger.Debugf("expanding macros")
+	s, d := s.expandMacros(ctx)
+	diags = diags.Extend(d)
+	logger.Debugf("finished expanding macros with %d errors", len(diags.Errs()))
+
 	defer func() {
 		logger.Debug("running post hooks")
 		success := !diags.HasErrors()
@@ -291,12 +297,6 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 	logger.Debugf("finished running pre hooks")
 
 	cfg := runnable.NewConfig(options...)
-
-	// expand stages using macros
-	logger.Debugf("expanding macros")
-	s, d := s.expandMacros(ctx)
-	diags = diags.Extend(d)
-	logger.Debugf("finished expanding macros with %d errors", len(diags.Errs()))
 
 	paramsGo := map[string]cty.Value{}
 
