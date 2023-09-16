@@ -3,13 +3,13 @@ package orchestra
 import (
 	"context"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/hashicorp/go-envparse"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/kendru/darwin/go/depgraph"
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/ci"
+	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/graph"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/pipeline"
@@ -351,7 +351,7 @@ func Orchestra(cfg Config) int {
 					return
 				}
 				if !runnable.CanRetry() {
-					logger.Error(stageDiags.Error())
+					logger.Debug("runnable cannot be retried")
 				} else {
 					logger.Infof("retrying runnable %s", runnableId)
 					retryCount := 0
@@ -431,7 +431,7 @@ func Orchestra(cfg Config) int {
 }
 
 func Finale(ctx context.Context, logLevel logrus.Level) {
-	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger)
+	logger := global.Logger()
 	bootTime := ctx.Value(c.TogomakContextBootTime).(time.Time)
 	logger.Log(logLevel, ui.Grey(fmt.Sprintf("took %s", time.Since(bootTime).Round(time.Millisecond))))
 }
@@ -449,10 +449,6 @@ func ok(ctx context.Context) int {
 func diagnostics(t *Togomak, diags *hcl.Diagnostics) {
 	if diags == nil {
 		return
-	}
-	for _, diag := range *diags {
-
-		spew.Println(diag)
 	}
 	x.Must(t.hclDiagWriter.WriteDiagnostics(*diags))
 }
