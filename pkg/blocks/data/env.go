@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"fmt"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/zclconf/go-cty/cty"
@@ -20,6 +21,7 @@ type EnvProvider struct {
 
 	keyParsed string
 	def       string
+	defOk     bool
 	ctx       context.Context
 }
 
@@ -96,6 +98,7 @@ func (e *EnvProvider) DecodeBody(body hcl.Body) hcl.Diagnostics {
 
 	attr, ok := content.Attributes["default"]
 	if !ok {
+		e.defOk = false
 		e.def = ""
 		return diags
 	}
@@ -103,6 +106,7 @@ func (e *EnvProvider) DecodeBody(body hcl.Body) hcl.Diagnostics {
 	diags = diags.Extend(d)
 
 	e.def = key.AsString()
+	e.defOk = true
 
 	return diags
 
@@ -115,6 +119,15 @@ func (e *EnvProvider) Value(ctx context.Context, id string) (string, hcl.Diagnos
 	v, exists := os.LookupEnv(e.keyParsed)
 	if exists {
 		return v, nil
+	}
+	if !e.defOk {
+		return "", hcl.Diagnostics{
+			{
+				Severity: hcl.DiagError,
+				Summary:  "environment variable not found",
+				Detail:   fmt.Sprintf("environment variable %s not found", e.keyParsed),
+			},
+		}
 	}
 	return e.def, nil
 }
