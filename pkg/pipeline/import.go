@@ -9,10 +9,14 @@ import (
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/ci"
+	"github.com/srevinsaju/togomak/v1/pkg/global"
+	"github.com/srevinsaju/togomak/v1/pkg/ui"
 	"path/filepath"
 )
 
-func expandImport(m ci.Import, ctx context.Context, pwd string, dst string) (*ci.Pipeline, hcl.Diagnostics) {
+var logger = global.Logger().WithField("import", "")
+
+func expandImport(m ci.Import, ctx context.Context, parser *hclparse.Parser, pwd string, dst string) (*ci.Pipeline, hcl.Diagnostics) {
 	var diags hcl.Diagnostics
 	shaIdentifier := sha256.Sum256([]byte(m.Source))
 	clientImportPath, err := filepath.Abs(filepath.Join(dst, fmt.Sprintf("%x", shaIdentifier)))
@@ -44,19 +48,19 @@ func expandImport(m ci.Import, ctx context.Context, pwd string, dst string) (*ci
 		return nil, diags
 	}
 	if p.Imports != nil {
-		p, d = expandImports(ctx, p, clientImportPath)
+		p, d = expandImports(ctx, p, parser, clientImportPath)
 		diags = diags.Extend(d)
 	}
 	return p, diags
 
 }
 
-func ExpandImports(ctx context.Context, pipe *ci.Pipeline) (*ci.Pipeline, hcl.Diagnostics) {
+func ExpandImports(ctx context.Context, pipe *ci.Pipeline, parser *hclparse.Parser) (*ci.Pipeline, hcl.Diagnostics) {
 	pwd := ctx.Value(c.TogomakContextCwd).(string)
-	return expandImports(ctx, pipe, pwd)
+	return expandImports(ctx, pipe, parser, pwd)
 }
 
-func expandImports(ctx context.Context, pipe *ci.Pipeline, pwd string) (*ci.Pipeline, hcl.Diagnostics) {
+func expandImports(ctx context.Context, pipe *ci.Pipeline, parser *hclparse.Parser, pwd string) (*ci.Pipeline, hcl.Diagnostics) {
 	var pipes MetaList
 	var diags hcl.Diagnostics
 	pipes = pipes.Append(NewMeta(pipe, nil, "memory"))
@@ -68,8 +72,11 @@ func expandImports(ctx context.Context, pipe *ci.Pipeline, pwd string) (*ci.Pipe
 	}
 	m := pipe.Imports
 	for _, im := range m {
-		p, d := expandImport(im, ctx, pwd, dst)
+		p, d := expandImport(im, ctx, parser, pwd, dst)
 		diags = diags.Extend(d)
+		if d.HasErrors() {
+			continue
+		}
 		pipes = pipes.Append(NewMeta(p, nil, im.Source))
 	}
 	p, d := Merge(pipes)

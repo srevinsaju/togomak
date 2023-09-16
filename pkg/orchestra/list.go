@@ -42,7 +42,7 @@ func List(cfg Config) error {
 		logger.Fatal(dgwriter.WriteDiagnostics(hclDiags))
 	}
 
-	pipe, d := pipeline.ExpandImports(ctx, pipe)
+	pipe, d := pipeline.ExpandImports(ctx, pipe, parser)
 	hclDiags = hclDiags.Extend(d)
 
 	for _, stage := range pipe.Stages {
