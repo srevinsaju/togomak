@@ -48,14 +48,19 @@ func (s Data) Run(ctx context.Context, options ...runnable.Option) (diags hcl.Di
 			break
 		}
 	}
-	if !validProvider || diags.HasErrors() {
+	if !validProvider {
 		diags = diags.Append(&hcl.Diagnostic{
 			Severity: hcl.DiagError,
 			Summary:  fmt.Sprintf("invalid provider %s", s.Provider),
-			Detail:   fmt.Sprintf("built-in providers are %v", dataBlock.DefaultProviders),
+			Detail:   fmt.Sprintf("built-in providers are %s", dataBlock.DefaultProviders),
 		})
 		return diags
 	}
+
+	if diags.HasErrors() {
+		return diags
+	}
+
 	m := make(map[string]cty.Value)
 	m[DataAttrValue] = cty.StringVal(value)
 	for k, v := range attr {
