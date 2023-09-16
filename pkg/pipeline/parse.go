@@ -86,6 +86,10 @@ func ReadDirFromPath(dir string, parser *hclparse.Parser) (*ci.Pipeline, hcl.Dia
 
 		d = gohcl.DecodeBody(f.Body, nil, p)
 		diags = diags.Extend(d)
+		if d.HasErrors() {
+			logger.Debugf("error parsing %s", file.Name())
+			continue
+		}
 		pipes = append(pipes, &Meta{
 			pipe:     p,
 			f:        f,
@@ -93,7 +97,9 @@ func ReadDirFromPath(dir string, parser *hclparse.Parser) (*ci.Pipeline, hcl.Dia
 		})
 
 	}
-	return Merge(pipes)
+	pipe, d := Merge(pipes)
+	diags = diags.Extend(d)
+	return pipe, diags
 }
 
 // Meta is a helper struct to create a pipeline from multiple pipelines
@@ -134,6 +140,10 @@ func Merge(pipelines MetaList) (*ci.Pipeline, hcl.Diagnostics) {
 	var post *ci.PostStage
 
 	for _, p := range pipelines {
+		if p.pipe == nil {
+			logger.Debugf("pipeline %s is nil", p.filename)
+			panic("pipeline is nil")
+		}
 		if pipe.Builder.Version == 0 && p.pipe.Builder.Version != 0 {
 			pipe.Builder.Version = p.pipe.Builder.Version
 			versionDefinedFromFilename = p.filename
