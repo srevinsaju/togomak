@@ -256,38 +256,14 @@ func (e *TfProvider) Attributes(ctx context.Context, id string) (map[string]cty.
 	}
 
 	for k, v := range tfMap {
-		attrs[k] = cty.MapVal(getMapType(v.(map[string]interface{})))
+		attrs[k] = cty.ObjectVal(getObjectType(v.(map[string]interface{})))
 	}
 	// get the commit
 	return attrs, diags
 }
 
-// TfProgressBar is a progress bar implementation for terraform downloads
-type TfProgressBar struct {
-	logger *logrus.Entry
-	src    string
-	pb     *ui.ProgressWriter
-}
-
-// Init initializes the progress bar
-func (e *TfProgressBar) Init() *TfProgressBar {
-	e.pb = ui.NewProgressWriter(e.logger, fmt.Sprintf("downloading %s", e.src))
-	return e
-}
-
-// TrackProgress tracks the progress of the download using the default ui.ProgressWriter implementation
-func (e *TfProgressBar) TrackProgress(src string, currentSize, totalSize int64, stream io.ReadCloser) (body io.ReadCloser) {
-	for {
-		_, err := io.CopyN(e.pb, stream, 1)
-		if err != nil {
-			e.pb.Close()
-			return stream
-		}
-	}
-}
-
-// getMapType recursively converts a map[string]interface{} to map[string]cty.Value
-func getMapType(m map[string]interface{}) map[string]cty.Value {
+// getObjectType recursively converts a map[string]interface{} to map[string]cty.Value
+func getObjectType(m map[string]interface{}) map[string]cty.Value {
 	s := map[string]cty.Value{}
 	for k, v := range m {
 		typeRaw := reflect.TypeOf(v)
@@ -297,7 +273,7 @@ func getMapType(m map[string]interface{}) map[string]cty.Value {
 		}
 		typeOf := typeRaw.Kind()
 		if typeOf == reflect.Map {
-			s[k] = cty.MapVal(getMapType(v.(map[string]interface{})))
+			s[k] = cty.ObjectVal(getObjectType(v.(map[string]interface{})))
 		} else if typeOf == reflect.Slice {
 			s[k] = cty.ListVal(getListType(v.([]interface{})))
 		} else {
@@ -321,7 +297,7 @@ func getListType(m []interface{}) []cty.Value {
 	for _, v := range m {
 		typeOf := reflect.TypeOf(v).Kind()
 		if typeOf == reflect.Map {
-			s = append(s, cty.MapVal(getMapType(v.(map[string]interface{}))))
+			s = append(s, cty.ObjectVal(getObjectType(v.(map[string]interface{}))))
 		} else if typeOf == reflect.Slice {
 			s = append(s, cty.ListVal(getListType(v.([]interface{}))))
 		} else {
