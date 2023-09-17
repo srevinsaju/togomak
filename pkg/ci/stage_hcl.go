@@ -32,7 +32,7 @@ func (e *StageContainerVolumes) Variables() []hcl.Traversal {
 	return traversal
 }
 
-func (s *Stage) Variables() []hcl.Traversal {
+func (s *CoreStage) Variables() []hcl.Traversal {
 	var traversal []hcl.Traversal
 	traversal = append(traversal, s.Condition.Variables()...)
 	traversal = append(traversal, s.Dir.Variables()...)

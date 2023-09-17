@@ -263,6 +263,7 @@ func NewContextWithTogomak(cfg Config) (Togomak, context.Context) {
 			}),
 		},
 	}
+	global.SetHclEvalContext(hclContext)
 
 	parser := hclparse.NewParser()
 	diagnosticTextWriter := hcl.NewDiagnosticTextWriter(os.Stdout, parser.Files(), 0, true)

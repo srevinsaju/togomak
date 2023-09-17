@@ -18,7 +18,7 @@ var logger = global.Logger().WithField("import", "")
 
 func expandImport(m ci.Import, ctx context.Context, parser *hclparse.Parser, pwd string, dst string) (*ci.Pipeline, hcl.Diagnostics) {
 	var diags hcl.Diagnostics
-	shaIdentifier := sha256.Sum256([]byte(m.Source))
+	shaIdentifier := sha256.Sum256([]byte(m.Identifier()))
 	clientImportPath, err := filepath.Abs(filepath.Join(dst, fmt.Sprintf("%x", shaIdentifier)))
 	if err != nil {
 		panic(err)
@@ -27,7 +27,7 @@ func expandImport(m ci.Import, ctx context.Context, parser *hclparse.Parser, pwd
 	// fmt.Println(pwd, dst, m.Source, fmt.Sprintf("%x", shaIdentifier))
 	get := getter.Client{
 		Ctx: ctx,
-		Src: m.Source,
+		Src: m.Identifier(),
 		Dir: true,
 		Pwd: pwd,
 		Dst: clientImportPath,
@@ -79,7 +79,7 @@ func expandImports(ctx context.Context, pipe *ci.Pipeline, parser *hclparse.Pars
 		if d.HasErrors() {
 			continue
 		}
-		pipes = pipes.Append(NewMeta(p, nil, im.Source))
+		pipes = pipes.Append(NewMeta(p, nil, im.Identifier()))
 	}
 	p, d := Merge(pipes)
 	diags = diags.Extend(d)

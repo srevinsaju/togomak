@@ -50,6 +50,8 @@ type StageRetry struct {
 type StageUse struct {
 	Macro      hcl.Expression `hcl:"macro" json:"macro"`
 	Parameters hcl.Expression `hcl:"parameters,optional" json:"parameters"`
+
+	Chdir hcl.Expression `hcl:"Chdir,optional" json:"chdir"`
 }
 type StageDaemon struct {
 	Enabled bool `hcl:"enabled" json:"enabled"`

@@ -135,6 +135,11 @@ func Orchestra(cfg Config) int {
 	var d hcl.Diagnostics
 	if len(pipe.Imports) != 0 {
 		logger.Debugf("expanding imports")
+		d = pipe.Imports.PopulateProperties()
+		diags = diags.Extend(d)
+		if d.HasErrors() {
+			return fatal(ctx)
+		}
 		pipe, d = pipeline.ExpandImports(ctx, pipe, t.parser)
 		diags = diags.Extend(d)
 		logger.Debugf("expanding imports completed with %d error(s)", len(d.Errs()))

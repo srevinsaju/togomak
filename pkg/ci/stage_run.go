@@ -122,17 +122,36 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 	oldStageName := s.Name
 	oldStageDependsOn := s.DependsOn
 
+	// chdir
+	global.EvalContextMutex.RLock()
+	chdirRaw, d := s.Use.Chdir.Value(hclContext)
+	global.EvalContextMutex.RUnlock()
+	if d.HasErrors() {
+		return s, diags.Extend(d)
+	}
+	chdir := true
+	if chdirRaw.IsNull() {
+		chdir = true
+	} else if chdirRaw.Type() == cty.Bool {
+		chdir = chdirRaw.True()
+	}
+	dir := cwd
+	if chdir {
+		dir = filepath.Join(tmpDir, s.Id)
+	}
+
 	if macro.Source != "" {
 		executable, err := os.Executable()
 		if err != nil {
 			panic(err)
 		}
 		parent := shellescape.Quote(s.Id)
+
 		s.Args = hcl.StaticExpr(
 			cty.ListVal([]cty.Value{
 				cty.StringVal(executable),
 				cty.StringVal("--child"),
-				cty.StringVal("--dir"), cty.StringVal(cwd),
+				cty.StringVal("--dir"), cty.StringVal(dir),
 				cty.StringVal("--file"), cty.StringVal(macro.Source),
 				cty.StringVal("--parent"), cty.StringVal(parent),
 			}), hcl.Range{Filename: "memory"})
@@ -146,10 +165,10 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 		global.EvalContextMutex.RLock()
 		f, d := macro.Files.Value(hclContext)
 		global.EvalContextMutex.RUnlock()
-
 		if d.HasErrors() {
 			return s, diags.Extend(d)
 		}
+
 		if !f.IsNull() {
 			files := f.AsValueMap()
 			logger.Debugf("using %d files from %s", len(files), macro.Identifier())
@@ -221,7 +240,7 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 			args := []cty.Value{
 				cty.StringVal(executable),
 				cty.StringVal("--child"),
-				cty.StringVal("--dir"), cty.StringVal(cwd),
+				cty.StringVal("--dir"), cty.StringVal(dir),
 				cty.StringVal("--file"), cty.StringVal(defaultExecutionPath),
 				cty.StringVal("--parent"), cty.StringVal(parent),
 			}
