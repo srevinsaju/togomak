@@ -37,7 +37,6 @@ func (s *CoreStage) Variables() []hcl.Traversal {
 	traversal = append(traversal, s.Condition.Variables()...)
 	traversal = append(traversal, s.Dir.Variables()...)
 	traversal = append(traversal, s.DependsOn.Variables()...)
-	traversal = append(traversal, s.ForEach.Variables()...)
 	traversal = append(traversal, s.Script.Variables()...)
 	traversal = append(traversal, s.Args.Variables()...)
 
