@@ -206,6 +206,30 @@ func NewContextWithTogomak(cfg Config) (Togomak, context.Context) {
 			"zipmap":     stdlib.ZipmapFunc,
 
 			"ansifmt": ui.AnsiFunc,
+			"env": function.New(&function.Spec{
+				Params: []function.Parameter{
+					{
+						Name:             "Key of the environment variable",
+						AllowDynamicType: true,
+						Type:             cty.String,
+					},
+				},
+				VarParam: &function.Parameter{
+					Name:        "lists",
+					Description: "One or more lists of strings to join.",
+					Type:        cty.String,
+				},
+				Type: function.StaticReturnType(cty.String),
+				Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+					v, ok := os.LookupEnv(args[0].AsString())
+					if ok {
+						return cty.StringVal(v), nil
+					}
+					def := args[1]
+					return def, nil
+				},
+				Description: "Returns the value of the environment variable, returns the default value if environment variable is empty, else returns empty string.",
+			}),
 		},
 
 		Variables: map[string]cty.Value{
