@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/mattn/go-isatty"
 	"github.com/srevinsaju/togomak/v1/pkg/cache"
+	"github.com/srevinsaju/togomak/v1/pkg/filter"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/orchestra"
 	"github.com/urfave/cli/v2"
@@ -178,9 +179,9 @@ func newConfigFromCliContext(ctx *cli.Context) orchestra.Config {
 		hostname = "localhost"
 	}
 
-	var stages []orchestra.FilterItem
+	var stages []filter.Item
 	for _, stage := range ctx.Args().Slice() {
-		stages = append(stages, orchestra.NewConfigPipelineStage(stage))
+		stages = append(stages, filter.NewFilterItem(stage))
 	}
 	cfg := orchestra.Config{
 		Owd: owd,

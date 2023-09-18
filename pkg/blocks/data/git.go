@@ -105,6 +105,7 @@ func (e *GitProvider) DecodeBody(body hcl.Body) hcl.Diagnostics {
 
 	global.EvalContextMutex.RLock()
 	repo, d := content.Attributes[GitBlockArgumentUrl].Expr.Value(evalContext)
+	global.EvalContextMutex.RUnlock()
 	diags = diags.Extend(d)
 
 	tagAttr, ok := content.Attributes[GitBlockArgumentTag]

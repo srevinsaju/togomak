@@ -4,6 +4,7 @@ togomak {
 
 data "git" "repo" {
   url   = "https://github.com/srevinsaju/togomak"
+  branch = "v1"
   files = ["togomak.hcl"]
 }
 

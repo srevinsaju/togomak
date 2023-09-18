@@ -7,6 +7,7 @@ import (
 	"github.com/kendru/darwin/go/depgraph"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/ci"
+	"github.com/srevinsaju/togomak/v1/pkg/filter"
 	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/graph"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
@@ -231,10 +232,10 @@ func Orchestra(cfg Config) int {
 				// - hello_3
 				// - hello_4 (depends on hello_1)
 				// if 'hello_1' is explicitly requested, we will run 'hello_4' as well
-				if stageStatuses.HasOperationType(FilterOperationRun) && !stageStatusOk {
+				if stageStatuses.HasOperationType(filter.OperationRun) && !stageStatusOk {
 					isDependentOfRequestedStage := false
 					for _, ss := range stageStatuses {
-						if ss.Operation == FilterOperationRun {
+						if ss.Operation == filter.OperationRun {
 							if depGraph.DependsOn(runnableId, ss.RunnableId()) {
 								isDependentOfRequestedStage = true
 								break
@@ -253,8 +254,8 @@ func Orchestra(cfg Config) int {
 					// stage is explicitly whitelisted or blacklisted
 					// using the ^ or + prefix
 					overridden = true
-					ok = ok || stageStatus.AnyOperations(FilterOperationWhitelist)
-					if stageStatus.AllOperations(FilterOperationBlacklist) {
+					ok = ok || stageStatus.AnyOperations(filter.OperationWhitelist)
+					if stageStatus.AllOperations(filter.OperationBlacklist) {
 						ok = false
 					}
 				}
@@ -287,7 +288,6 @@ func Orchestra(cfg Config) int {
 
 			go func(runnableId string) {
 				stageDiags := runnable.Run(ctx)
-
 				logger.Tracef("locking completedRunnablesMutex for runnable %s", runnableId)
 				completedRunnablesMutex.Lock()
 				completedRunnables = append(completedRunnables, runnable)

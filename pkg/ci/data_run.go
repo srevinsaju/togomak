@@ -67,6 +67,7 @@ func (s *Data) Run(ctx context.Context, options ...runnable.Option) (diags hcl.D
 	global.DataBlockEvalContextMutex.Lock()
 
 	global.EvalContextMutex.RLock()
+
 	data := hclContext.Variables[DataBlock]
 
 	var dataMutated map[string]cty.Value
