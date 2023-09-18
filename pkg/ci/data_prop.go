@@ -2,7 +2,7 @@ package ci
 
 import "github.com/hashicorp/hcl/v2"
 
-func (d *Data) Override() bool {
+func (s *Data) Override() bool {
 	return false
 }
 
