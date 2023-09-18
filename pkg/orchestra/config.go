@@ -6,34 +6,34 @@ import (
 	"strings"
 )
 
-type ConfigPipelineStageOperation string
+type FilterOperation string
 
 const (
-	ConfigPipelineStageDaemonizeOperation    ConfigPipelineStageOperation = "&"
-	ConfigPipelineStageRunBlacklistOperation ConfigPipelineStageOperation = "^"
-	ConfigPipelineStageRunWhitelistOperation ConfigPipelineStageOperation = "+"
-	ConfigPipelineStageRunOperation          ConfigPipelineStageOperation = ""
+	FilterOperationDaemonize FilterOperation = "&"
+	FilterOperationBlacklist FilterOperation = "^"
+	FilterOperationWhitelist FilterOperation = "+"
+	FilterOperationRun       FilterOperation = ""
 )
 
-type ConfigPipelineStage struct {
+type FilterItem struct {
 	Id        string
 	Type      string
-	Operation ConfigPipelineStageOperation
+	Operation FilterOperation
 }
 
-func (c ConfigPipelineStage) RunnableId() string {
+func (c FilterItem) RunnableId() string {
 
 	return fmt.Sprintf("%s.%s", c.Type, c.Id)
 }
 
-func (c ConfigPipelineStage) Identifier() string {
+func (c FilterItem) Identifier() string {
 	return c.RunnableId()
 }
 
-type ConfigPipelineStageList []ConfigPipelineStage
+type FilterList []FilterItem
 
-func (c ConfigPipelineStageList) Get(runnableId string) (ConfigPipelineStageList, bool) {
-	var stages []ConfigPipelineStage
+func (c FilterList) Get(runnableId string) (FilterList, bool) {
+	var stages []FilterItem
 	for _, stage := range c {
 		if strings.HasPrefix(stage.Identifier(), runnableId) {
 			stages = append(stages, stage)
@@ -42,16 +42,16 @@ func (c ConfigPipelineStageList) Get(runnableId string) (ConfigPipelineStageList
 	return stages, len(stages) > 0
 }
 
-func (c ConfigPipelineStage) Child() ConfigPipelineStage {
-	return ConfigPipelineStage{
+func (c FilterItem) Child() FilterItem {
+	return FilterItem{
 		Id:        c.Id[strings.IndexRune(c.Id, '.')+1:],
 		Operation: c.Operation,
 	}
 
 }
 
-func (c ConfigPipelineStageList) Children(runnableId string) ConfigPipelineStageList {
-	var stages []ConfigPipelineStage
+func (c FilterList) Children(runnableId string) FilterList {
+	var stages []FilterItem
 	for _, stage := range c {
 		if strings.HasPrefix(stage.Identifier(), runnableId) && stage.Identifier() != runnableId {
 			stages = append(stages, stage.Child())
@@ -60,7 +60,7 @@ func (c ConfigPipelineStageList) Children(runnableId string) ConfigPipelineStage
 	return stages
 }
 
-func (c ConfigPipelineStageList) AllOperations(operation ConfigPipelineStageOperation) bool {
+func (c FilterList) AllOperations(operation FilterOperation) bool {
 	for _, stage := range c {
 		if stage.Operation != operation {
 			return false
@@ -69,7 +69,7 @@ func (c ConfigPipelineStageList) AllOperations(operation ConfigPipelineStageOper
 	return true
 }
 
-func (c ConfigPipelineStageList) AnyOperations(operation ConfigPipelineStageOperation) bool {
+func (c FilterList) AnyOperations(operation FilterOperation) bool {
 	for _, stage := range c {
 		if stage.Operation == operation {
 			return true
@@ -78,7 +78,7 @@ func (c ConfigPipelineStageList) AnyOperations(operation ConfigPipelineStageOper
 	return false
 }
 
-func (c ConfigPipelineStageList) Marshall() []string {
+func (c FilterList) Marshall() []string {
 	var stages []string
 	for _, stage := range c {
 		stages = append(stages, string(stage.Operation)+stage.Type+"."+stage.Id)
@@ -86,7 +86,7 @@ func (c ConfigPipelineStageList) Marshall() []string {
 	return stages
 }
 
-func (c ConfigPipelineStageList) HasOperationType(operation ConfigPipelineStageOperation) bool {
+func (c FilterList) HasOperationType(operation FilterOperation) bool {
 	for _, stage := range c {
 		if stage.Operation == operation {
 			return true
@@ -95,19 +95,19 @@ func (c ConfigPipelineStageList) HasOperationType(operation ConfigPipelineStageO
 	return false
 }
 
-func NewConfigPipelineStage(arg string) ConfigPipelineStage {
-	var operation ConfigPipelineStageOperation
+func NewConfigPipelineStage(arg string) FilterItem {
+	var operation FilterOperation
 
 	ty := ci.StageBlock
 
-	if strings.HasPrefix(arg, string(ConfigPipelineStageRunWhitelistOperation)) {
-		operation = ConfigPipelineStageRunWhitelistOperation
-	} else if strings.HasPrefix(arg, string(ConfigPipelineStageRunBlacklistOperation)) {
-		operation = ConfigPipelineStageRunBlacklistOperation
-	} else if strings.HasPrefix(arg, string(ConfigPipelineStageDaemonizeOperation)) {
-		operation = ConfigPipelineStageDaemonizeOperation
+	if strings.HasPrefix(arg, string(FilterOperationWhitelist)) {
+		operation = FilterOperationWhitelist
+	} else if strings.HasPrefix(arg, string(FilterOperationBlacklist)) {
+		operation = FilterOperationBlacklist
+	} else if strings.HasPrefix(arg, string(FilterOperationDaemonize)) {
+		operation = FilterOperationDaemonize
 	} else {
-		operation = ConfigPipelineStageRunOperation
+		operation = FilterOperationRun
 	}
 
 	// TODO: improve this
@@ -119,7 +119,7 @@ func NewConfigPipelineStage(arg string) ConfigPipelineStage {
 
 	id := strings.TrimPrefix(arg, string(operation))
 	id = strings.TrimPrefix(id, ty+".")
-	return ConfigPipelineStage{
+	return FilterItem{
 		Id:        id,
 		Type:      ty,
 		Operation: operation,
@@ -128,7 +128,7 @@ func NewConfigPipelineStage(arg string) ConfigPipelineStage {
 
 type ConfigPipeline struct {
 	FilePath string
-	Stages   ConfigPipelineStageList
+	Filtered FilterList
 	DryRun   bool
 }
 

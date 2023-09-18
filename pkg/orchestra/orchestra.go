@@ -66,7 +66,7 @@ func Orchestra(cfg Config) int {
 	}
 
 	// whitelist all stages if unspecified
-	stageStatuses := cfg.Pipeline.Stages
+	stageStatuses := cfg.Pipeline.Filtered
 
 	// write the pipeline to the temporary directory
 	pipelineFilePath := filepath.Join(t.cwd, t.tempDir, meta.ConfigFileName)
@@ -231,10 +231,10 @@ func Orchestra(cfg Config) int {
 				// - hello_3
 				// - hello_4 (depends on hello_1)
 				// if 'hello_1' is explicitly requested, we will run 'hello_4' as well
-				if stageStatuses.HasOperationType(ConfigPipelineStageRunOperation) && !stageStatusOk {
+				if stageStatuses.HasOperationType(FilterOperationRun) && !stageStatusOk {
 					isDependentOfRequestedStage := false
 					for _, ss := range stageStatuses {
-						if ss.Operation == ConfigPipelineStageRunOperation {
+						if ss.Operation == FilterOperationRun {
 							if depGraph.DependsOn(runnableId, ss.RunnableId()) {
 								isDependentOfRequestedStage = true
 								break
@@ -253,8 +253,8 @@ func Orchestra(cfg Config) int {
 					// stage is explicitly whitelisted or blacklisted
 					// using the ^ or + prefix
 					overridden = true
-					ok = ok || stageStatus.AnyOperations(ConfigPipelineStageRunWhitelistOperation)
-					if stageStatus.AllOperations(ConfigPipelineStageRunBlacklistOperation) {
+					ok = ok || stageStatus.AnyOperations(FilterOperationWhitelist)
+					if stageStatus.AllOperations(FilterOperationBlacklist) {
 						ok = false
 					}
 				}
