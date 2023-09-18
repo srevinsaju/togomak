@@ -14,9 +14,8 @@ import (
 	"path/filepath"
 )
 
-var logger = global.Logger().WithField("import", "")
-
 func expandImport(m *ci.Import, ctx context.Context, parser *hclparse.Parser, pwd string, dst string) (*ci.Pipeline, hcl.Diagnostics) {
+	logger := global.Logger().WithField("import", "")
 	var diags hcl.Diagnostics
 	shaIdentifier := sha256.Sum256([]byte(m.Identifier()))
 	clientImportPath, err := filepath.Abs(filepath.Join(dst, fmt.Sprintf("%x", shaIdentifier)))
