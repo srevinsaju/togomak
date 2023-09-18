@@ -56,9 +56,9 @@ func NewContextWithTogomak(cfg Config) (Togomak, context.Context) {
 	x.Must(err)
 	tmpDir, err = os.MkdirTemp(tmpDir, pipelineId)
 	x.Must(err)
+	global.SetTempDir(tmpDir)
 
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, c.TogomakContextTempDir, tmpDir)
 	ctx = context.WithValue(ctx, c.TogomakContextCi, cfg.Ci)
 	ctx = context.WithValue(ctx, c.TogomakContextUnattended, cfg.Unattended)
 	ctx = context.WithValue(ctx, c.TogomakContextLogger, logger)
@@ -290,7 +290,9 @@ func NewContextWithTogomak(cfg Config) (Togomak, context.Context) {
 	global.SetHclEvalContext(hclContext)
 
 	parser := hclparse.NewParser()
+	global.SetHclParser(parser)
 	diagnosticTextWriter := hcl.NewDiagnosticTextWriter(os.Stdout, parser.Files(), 0, true)
+	global.SetHclDiagWriter(diagnosticTextWriter)
 	ctx = context.WithValue(ctx, c.TogomakContextHclDiagWriter, diagnosticTextWriter)
 
 	ctx = context.WithValue(ctx, c.TogomakContextHclEval, hclContext)

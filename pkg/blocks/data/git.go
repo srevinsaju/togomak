@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
-	"github.com/srevinsaju/togomak/v1/pkg/c"
+	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/ui"
 	"github.com/zclconf/go-cty/cty"
 	"net/url"
@@ -68,6 +68,10 @@ type GitProvider struct {
 	cfg gitProviderConfig
 }
 
+func (e *GitProvider) Logger() *logrus.Entry {
+	return global.Logger().WithField("provider", e.Name())
+}
+
 func (e *GitProvider) Name() string {
 	return "git"
 }
@@ -93,68 +97,85 @@ func (e *GitProvider) DecodeBody(body hcl.Body) hcl.Diagnostics {
 		panic("provider not initialized")
 	}
 	var diags hcl.Diagnostics
-	hclContext := e.ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
+	evalContext := global.HclEvalContext()
 
 	schema := e.Schema()
 	content, d := body.Content(schema)
 	diags = diags.Extend(d)
 
-	repo, d := content.Attributes[GitBlockArgumentUrl].Expr.Value(hclContext)
+	global.EvalContextMutex.RLock()
+	repo, d := content.Attributes[GitBlockArgumentUrl].Expr.Value(evalContext)
 	diags = diags.Extend(d)
 
 	tagAttr, ok := content.Attributes[GitBlockArgumentTag]
 	tag := cty.StringVal("")
 	if ok {
-		tag, d = tagAttr.Expr.Value(hclContext)
+		global.EvalContextMutex.RLock()
+		tag, d = tagAttr.Expr.Value(evalContext)
+		global.EvalContextMutex.RUnlock()
 		diags = diags.Extend(d)
 	}
 
 	branchAttr, ok := content.Attributes[GitBlockArgumentBranch]
 	branch := cty.StringVal("")
 	if ok {
-		branch, d = branchAttr.Expr.Value(hclContext)
+		global.EvalContextMutex.RLock()
+		branch, d = branchAttr.Expr.Value(evalContext)
+		global.EvalContextMutex.RUnlock()
 		diags = diags.Extend(d)
 	}
 
 	refAttr, ok := content.Attributes[GitBlockArgumentRef]
 	ref := cty.StringVal("")
 	if ok {
-		ref, d = refAttr.Expr.Value(hclContext)
+		global.EvalContextMutex.RLock()
+		ref, d = refAttr.Expr.Value(evalContext)
+		global.EvalContextMutex.RUnlock()
 		diags = diags.Extend(d)
 	}
 
 	commitAttr, ok := content.Attributes[GitBlockArgumentCommit]
 	commit := cty.StringVal("")
 	if ok {
-		commit, d = commitAttr.Expr.Value(hclContext)
+		global.EvalContextMutex.RLock()
+		commit, d = commitAttr.Expr.Value(evalContext)
+		global.EvalContextMutex.RUnlock()
 		diags = diags.Extend(d)
 	}
 
 	destinationAttr, ok := content.Attributes[GitBlockArgumentDestination]
 	destination := cty.StringVal("")
 	if ok {
-		destination, d = destinationAttr.Expr.Value(hclContext)
+		global.EvalContextMutex.RLock()
+		destination, d = destinationAttr.Expr.Value(evalContext)
+		global.EvalContextMutex.RUnlock()
 		diags = diags.Extend(d)
 	}
 
 	depthAttr, ok := content.Attributes[GitBlockArgumentDepth]
 	depth := cty.NumberIntVal(0)
 	if ok {
-		depth, d = depthAttr.Expr.Value(hclContext)
+		global.EvalContextMutex.RLock()
+		depth, d = depthAttr.Expr.Value(evalContext)
+		global.EvalContextMutex.RUnlock()
 		diags = diags.Extend(d)
 	}
 
 	caBundleAttr, ok := content.Attributes[GitBlockArgumentCaBundle]
 	caBundle := cty.StringVal("")
 	if ok {
-		caBundle, d = caBundleAttr.Expr.Value(hclContext)
+		global.EvalContextMutex.RLock()
+		caBundle, d = caBundleAttr.Expr.Value(evalContext)
+		global.EvalContextMutex.RUnlock()
 		diags = diags.Extend(d)
 	}
 
 	filesAttr, ok := content.Attributes[GitBlockArgumentFiles]
 	files := cty.ListValEmpty(cty.String)
 	if ok {
-		files, d = filesAttr.Expr.Value(hclContext)
+		global.EvalContextMutex.RLock()
+		files, d = filesAttr.Expr.Value(evalContext)
+		global.EvalContextMutex.RUnlock()
 		diags = diags.Extend(d)
 	}
 
@@ -164,17 +185,19 @@ func (e *GitProvider) DecodeBody(body hcl.Body) hcl.Diagnostics {
 		auth, d := content.Blocks.OfType(GitBlockArgumentAuth)[0].Body.Content(GitProviderAuthSchema())
 		diags = diags.Extend(d)
 
-		authUsername, d := auth.Attributes["username"].Expr.Value(hclContext)
+		global.EvalContextMutex.RLock()
+		authUsername, d := auth.Attributes["username"].Expr.Value(evalContext)
 		diags = diags.Extend(d)
 
-		authPassword, d := auth.Attributes["password"].Expr.Value(hclContext)
+		authPassword, d := auth.Attributes["password"].Expr.Value(evalContext)
 		diags = diags.Extend(d)
 
-		authSshPassword, d := auth.Attributes["ssh_password"].Expr.Value(hclContext)
+		authSshPassword, d := auth.Attributes["ssh_password"].Expr.Value(evalContext)
 		diags = diags.Extend(d)
 
-		authSshPrivateKey, d := auth.Attributes["ssh_private_key"].Expr.Value(hclContext)
+		authSshPrivateKey, d := auth.Attributes["ssh_private_key"].Expr.Value(evalContext)
 		diags = diags.Extend(d)
+		global.EvalContextMutex.RUnlock()
 
 		authConfig = gitProviderAuthConfig{
 			username:      authUsername.AsString(),
@@ -293,7 +316,7 @@ func (e *GitProvider) Value(ctx context.Context, id string) (string, hcl.Diagnos
 }
 
 func (e *GitProvider) Attributes(ctx context.Context, id string) (map[string]cty.Value, hcl.Diagnostics) {
-	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField("provider", e.Name())
+	logger := e.Logger()
 	var diags hcl.Diagnostics
 	if !e.initialized {
 		panic("provider not initialized")
@@ -490,8 +513,8 @@ func (e *GitProvider) Attributes(ctx context.Context, id string) (map[string]cty
 }
 
 func (e *GitProvider) resolveDestination(ctx context.Context, id string) (string, hcl.Diagnostics) {
-	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField("provider", e.Name())
-	tmpDir := ctx.Value(c.TogomakContextTempDir).(string)
+	logger := e.Logger()
+	tmpDir := global.TempDir()
 
 	var diags hcl.Diagnostics
 	destination := e.cfg.destination

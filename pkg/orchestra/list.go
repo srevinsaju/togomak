@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
+	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/pipeline"
 	"github.com/srevinsaju/togomak/v1/pkg/ui"
@@ -27,6 +28,7 @@ func List(cfg Config) error {
 	x.Must(err)
 	tmpDir, err = os.MkdirTemp(tmpDir, pipelineId)
 	x.Must(err)
+	global.SetTempDir(tmpDir)
 
 	// TODO: move this to a function
 	ctx := context.Background()
@@ -34,7 +36,6 @@ func List(cfg Config) error {
 	ctx = context.WithValue(ctx, c.TogomakContextOwd, cfg.Owd)
 	ctx = context.WithValue(ctx, c.TogomakContextCwd, cwd)
 	ctx = context.WithValue(ctx, c.TogomakContextPipelineFilePath, cfg.Pipeline.FilePath)
-	ctx = context.WithValue(ctx, c.TogomakContextTempDir, tmpDir)
 
 	dgwriter := hcl.NewDiagnosticTextWriter(os.Stdout, parser.Files(), 0, true)
 	pipe, hclDiags := pipeline.Read(ctx, parser)

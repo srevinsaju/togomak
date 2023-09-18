@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
+	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/zclconf/go-cty/cty"
 	"os"
@@ -99,13 +100,17 @@ func (e *PromptProvider) Initialized() bool {
 	return e.initialized
 }
 
+func (e *PromptProvider) Logger() *logrus.Entry {
+	return global.Logger().WithField("provider", e.Name())
+}
+
 func (e *PromptProvider) Value(ctx context.Context, id string) (string, hcl.Diagnostics) {
 	var diags hcl.Diagnostics
 	if !e.initialized {
 		panic("provider not initialized")
 	}
 
-	logger := e.ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField("provider", e.Name())
+	logger := e.Logger()
 	unattended := e.ctx.Value(c.TogomakContextUnattended).(bool)
 
 	envVarName := fmt.Sprintf("%s%s__%s", meta.EnvVarPrefix, e.Name(), id)

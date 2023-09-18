@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
+	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/ui"
 	"github.com/srevinsaju/togomak/v1/pkg/x"
 	"github.com/zclconf/go-cty/cty"
@@ -37,6 +38,10 @@ type TfProvider struct {
 
 	ctx context.Context
 	cfg TfProviderConfig
+}
+
+func (e *TfProvider) Logger() *logrus.Entry {
+	return global.Logger().WithField("provider", e.Name())
 }
 
 func (e *TfProvider) Name() string {
@@ -137,8 +142,8 @@ func (e *TfProvider) Value(ctx context.Context, id string) (string, hcl.Diagnost
 }
 
 func (e *TfProvider) Attributes(ctx context.Context, id string) (map[string]cty.Value, hcl.Diagnostics) {
-	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField("provider", e.Name())
-	tmpDir := ctx.Value(c.TogomakContextTempDir).(string)
+	logger := e.Logger()
+	tmpDir := global.TempDir()
 	cwd := ctx.Value(c.TogomakContextCwd).(string)
 
 	var diags hcl.Diagnostics

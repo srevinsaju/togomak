@@ -145,6 +145,10 @@ func Resolve(ctx context.Context, pipe *Pipeline, id string) (Block, hcl.Diagnos
 		return local, diags
 	case LocalsBlock:
 		panic("locals block cannot be resolved")
+	case ModuleBlock:
+		module, d := pipe.Modules.ById(blocks[1])
+		diags = diags.Extend(d)
+		return module, diags
 
 	case ThisBlock:
 		return nil, nil

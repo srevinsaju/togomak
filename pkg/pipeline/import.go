@@ -70,7 +70,7 @@ func expandImports(ctx context.Context, pipe *ci.Pipeline, parser *hclparse.Pars
 	var pipes MetaList
 	var diags hcl.Diagnostics
 	pipes = pipes.Append(NewMeta(pipe, nil, "memory"))
-	tmpDir := ctx.Value(c.TogomakContextTempDir).(string)
+	tmpDir := global.TempDir()
 
 	dst, err := filepath.Abs(filepath.Join(tmpDir, "import"))
 	if err != nil {

@@ -7,6 +7,7 @@ import (
 	"github.com/docker/docker/api/types"
 	dockerContainer "github.com/docker/docker/api/types/container"
 	dockerClient "github.com/docker/docker/client"
+	"github.com/srevinsaju/togomak/v1/pkg/x"
 
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/google/uuid"
@@ -34,7 +35,7 @@ var TogomakParamEnvVarRegexExpression = fmt.Sprintf("%s([a-zA-Z0-9_]+)", Togomak
 var TogomakParamEnvVarRegex = regexp.MustCompile(TogomakParamEnvVarRegexExpression)
 
 func (s *Stage) Prepare(ctx context.Context, skip bool, overridden bool) hcl.Diagnostics {
-	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger)
+	logger := s.Logger()
 	// show some user-friendly output on the details of the stage about to be run
 
 	var id string
@@ -58,11 +59,11 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 		return s, nil
 	}
 	hclContext := ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
-	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField(StageBlock, s.Id).WithField(MacroBlock, true)
+	logger := s.Logger().WithField(MacroBlock, true)
 	pipe := ctx.Value(c.TogomakContextPipeline).(*Pipeline)
 	cwd := ctx.Value(c.TogomakContextCwd).(string)
 
-	tmpDir := ctx.Value(c.TogomakContextTempDir).(string)
+	tmpDir := global.TempDir()
 	ci := ctx.Value(c.TogomakContextCi).(bool)
 	unattended := ctx.Value(c.TogomakContextUnattended).(bool)
 	logger.Debugf("running %s.%s", s.Identifier(), MacroBlock)
@@ -279,10 +280,10 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 }
 
 func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.Diagnostics) {
-	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField(StageBlock, s.Id)
+	logger := s.Logger()
 	cwd := ctx.Value(c.TogomakContextCwd).(string)
-	tmpDir := ctx.Value(c.TogomakContextTempDir).(string)
-	logger.Debugf("running %s.%s", StageBlock, s.Id)
+	tmpDir := global.TempDir()
+	logger.Debugf("running %s", x.RenderBlock(StageBlock, s.Id))
 	isDryRun := ctx.Value(c.TogomakContextPipelineDryRun).(bool)
 
 	status := runnable.StatusRunning
@@ -771,9 +772,9 @@ func (s *Stage) hclEndpoint(evalCtx *hcl.EvalContext) ([]string, hcl.Diagnostics
 }
 
 func (s *Stage) CanRun(ctx context.Context, options ...runnable.Option) (ok bool, diags hcl.Diagnostics) {
-	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField("stage", s.Id)
+	logger := s.Logger()
 	logger.Debugf("checking if stage.%s can run", s.Id)
-	evalCtx := ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
+	evalCtx := global.HclEvalContext()
 
 	cfg := runnable.NewConfig(options...)
 

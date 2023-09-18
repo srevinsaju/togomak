@@ -188,6 +188,14 @@ func Merge(pipelines MetaList) (*ci.Pipeline, hcl.Diagnostics) {
 			})
 		}
 
+		if pipe.Modules.CheckIfDistinct(p.pipe.Modules).HasErrors() {
+			return nil, diags.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "duplicate module",
+				Detail:   fmt.Sprintf("duplicate module definition in %s", p.filename),
+			})
+		}
+
 		if p.pipe.Pre != nil {
 			if pre != nil {
 				return nil, diags.Append(&hcl.Diagnostic{
@@ -214,6 +222,7 @@ func Merge(pipelines MetaList) (*ci.Pipeline, hcl.Diagnostics) {
 		pipe.Data = append(pipe.Data, p.pipe.Data...)
 		pipe.DataProviders = append(pipe.DataProviders, p.pipe.DataProviders...)
 		pipe.Macros = append(pipe.Macros, p.pipe.Macros...)
+		pipe.Modules = append(pipe.Modules, p.pipe.Modules...)
 		pipe.Local = append(pipe.Local, p.pipe.Local...)
 		pipe.Locals = append(pipe.Locals, p.pipe.Locals...)
 		pipe.Imports = append(pipe.Imports, p.pipe.Imports...)

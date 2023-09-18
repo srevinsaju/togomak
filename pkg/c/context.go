@@ -9,7 +9,6 @@ const (
 	TogomakContextCpu      = "cpu"
 	TogomakContextMemory   = "memory"
 
-	TogomakContextTempDir          = "temp_dir"
 	TogomakContextOwd              = "owd"
 	TogomakContextCwd              = "cwd"
 	TogomakContextPipelineFilePath = "pipeline_file_path"
