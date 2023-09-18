@@ -5,91 +5,25 @@ import (
 	"github.com/hashicorp/go-envparse"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/kendru/darwin/go/depgraph"
-	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/ci"
+	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/graph"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/pipeline"
 	"github.com/srevinsaju/togomak/v1/pkg/x"
+	"strings"
 
 	"github.com/zclconf/go-cty/cty"
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
 )
 
-func NewLogger(cfg Config) *logrus.Logger {
-	logger := logrus.New()
-	logger.SetOutput(os.Stdout)
-	logger.SetFormatter(&logrus.TextFormatter{
-		FullTimestamp:    false,
-		DisableTimestamp: cfg.Child,
-	})
-	switch cfg.Verbosity {
-	case -1:
-	case 0:
-		logger.SetLevel(logrus.InfoLevel)
-		break
-	case 1:
-		logger.SetLevel(logrus.DebugLevel)
-		break
-	default:
-		logger.SetLevel(logrus.TraceLevel)
-		break
-	}
-	if cfg.Ci {
-		logger.SetFormatter(&logrus.TextFormatter{
-			DisableColors:             false,
-			EnvironmentOverrideColors: false,
-			ForceColors:               true,
-			ForceQuote:                false,
-		})
-	}
-	if cfg.Child {
-		logger.SetFormatter(&logrus.TextFormatter{
-			DisableTimestamp:          true,
-			DisableColors:             false,
-			EnvironmentOverrideColors: false,
-			ForceColors:               true,
-			ForceQuote:                false,
-		})
-	}
-	return logger
-}
-
-func Chdir(cfg Config, logger *logrus.Logger) string {
-	cwd := cfg.Dir
-	if cwd == "" {
-		cwd = filepath.Dir(cfg.Pipeline.FilePath)
-		if filepath.Base(cwd) == meta.BuildDirPrefix {
-			cwd = filepath.Dir(cwd)
-		}
-	}
-	err := os.Chdir(cwd)
-	if err != nil {
-		logger.Fatal(err)
-	}
-	cwd, err = os.Getwd()
-	x.Must(err)
-	return cwd
-
-}
-
-func Orchestra(cfg Config) int {
-	var diags hcl.Diagnostics
-	t, ctx := NewContextWithTogomak(cfg)
-	ctx, cancel := context.WithCancel(ctx)
-	logger := t.Logger
-
-	defer cancel()
-	defer diagnostics(&t, &diags)
-
-	// region: external parameters
+func loadGlobalParams(t *Togomak, cfg Config) {
 	paramsGo := make(map[string]cty.Value)
 	if cfg.Child {
 		m := make(map[string]string)
@@ -106,7 +40,22 @@ func Orchestra(cfg Config) int {
 			}
 		}
 	}
+	global.EvalContextMutex.Lock()
 	t.ectx.Variables[ci.ParamBlock] = cty.ObjectVal(paramsGo)
+	global.EvalContextMutex.Unlock()
+}
+
+func Orchestra(cfg Config) int {
+	var diags hcl.Diagnostics
+	t, ctx := NewContextWithTogomak(cfg)
+	ctx, cancel := context.WithCancel(ctx)
+	logger := t.Logger
+
+	defer cancel()
+	defer diagnostics(&t, &diags)
+
+	// region: external parameters
+	loadGlobalParams(&t, cfg)
 	// endregion
 
 	// --> parse the config file
@@ -180,8 +129,10 @@ func Orchestra(cfg Config) int {
 	var daemonWg sync.WaitGroup
 	var hasDaemons bool
 	var runnables ci.Blocks
+
 	var daemons ci.Blocks
 	var daemonsMutex sync.Mutex
+
 	var completedRunnablesSignal = make(chan ci.Block, 1)
 	var completedRunnables ci.Blocks
 	var completedRunnablesMutex sync.Mutex
