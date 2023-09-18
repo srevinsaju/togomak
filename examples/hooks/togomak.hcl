@@ -23,7 +23,7 @@ stage "example_2" {
   script = "echo bye world"
   
   pre_hook {
-    sta{
+    stage {
       script = "echo before the script for stage ${this.id} runs"
     }
   }
