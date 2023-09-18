@@ -140,6 +140,7 @@ func Orchestra(cfg Config) int {
 		if d.HasErrors() {
 			return fatal(ctx)
 		}
+		logger.Debugf("populating properties for imports completed with %d error(s)", len(d.Errs()))
 		pipe, d = pipeline.ExpandImports(ctx, pipe, t.parser)
 		diags = diags.Extend(d)
 		logger.Debugf("expanding imports completed with %d error(s)", len(d.Errs()))
