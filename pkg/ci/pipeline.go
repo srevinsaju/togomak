@@ -13,6 +13,8 @@ type Pipeline struct {
 	Locals  LocalsGroup `hcl:"locals,block" json:"locals"`
 	Imports Imports     `hcl:"import,block" json:"import"`
 
+	Modules Modules `hcl:"module,block" json:"modules"`
+
 	DataProviders DataProviders `hcl:"provider,block" json:"providers"`
 
 	// private stuff

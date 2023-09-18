@@ -181,6 +181,10 @@ func ResolveFromTraversal(variable hcl.Traversal) (string, hcl.Diagnostics) {
 		// the local block has the name
 		name := variable[1].(hcl.TraverseAttr).Name
 		parent = x.RenderBlock(MacroBlock, name)
+	case ModuleBlock:
+		// the module block has the name
+		name := variable[1].(hcl.TraverseAttr).Name
+		parent = x.RenderBlock(ModuleBlock, name)
 	case ParamBlock, ThisBlock, BuilderBlock:
 		return "", nil
 	default:

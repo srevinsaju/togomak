@@ -113,6 +113,23 @@ func TopoSort(ctx context.Context, pipe *ci.Pipeline) (*depgraph.Graph, hcl.Diag
 		diags = diags.Extend(d)
 	}
 
+	for _, module := range pipe.Modules {
+		self := x.RenderBlock(ci.ModuleBlock, module.Id)
+		err := g.DependOn(self, meta.PreStage)
+		if err != nil {
+			panic(err)
+		}
+
+		err = g.DependOn(meta.PostStage, self)
+		if err != nil {
+			panic(err)
+		}
+
+		v := module.Variables()
+		d := Resolve(ctx, pipe, g, v, self)
+		diags = diags.Extend(d)
+	}
+
 	for i, layer := range g.TopoSortedLayers() {
 		logger.Debugf("layer %d: %s", i, layer)
 	}

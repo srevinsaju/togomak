@@ -272,7 +272,7 @@ func Orchestra(cfg Config) int {
 
 			// region: requested stages, whitelisting and blacklisting
 			overridden := false
-			if runnable.Type() == ci.StageBlock {
+			if runnable.Type() == ci.StageBlock || runnable.Type() == ci.ModuleBlock {
 				stageStatus, stageStatusOk := stageStatuses.Get(runnableId)
 
 				// when a particular stage is explicitly requested, for example

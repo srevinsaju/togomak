@@ -2,6 +2,7 @@ package orchestra
 
 import (
 	"fmt"
+	"github.com/srevinsaju/togomak/v1/pkg/ci"
 	"strings"
 )
 
@@ -16,11 +17,13 @@ const (
 
 type ConfigPipelineStage struct {
 	Id        string
+	Type      string
 	Operation ConfigPipelineStageOperation
 }
 
 func (c ConfigPipelineStage) RunnableId() string {
-	return fmt.Sprintf("stage.%s", c.Id)
+
+	return fmt.Sprintf("%s.%s", c.Type, c.Id)
 }
 
 func (c ConfigPipelineStage) Identifier() string {
@@ -78,7 +81,7 @@ func (c ConfigPipelineStageList) AnyOperations(operation ConfigPipelineStageOper
 func (c ConfigPipelineStageList) Marshall() []string {
 	var stages []string
 	for _, stage := range c {
-		stages = append(stages, string(stage.Operation)+stage.Id)
+		stages = append(stages, string(stage.Operation)+stage.Type+"."+stage.Id)
 	}
 	return stages
 }
@@ -94,6 +97,9 @@ func (c ConfigPipelineStageList) HasOperationType(operation ConfigPipelineStageO
 
 func NewConfigPipelineStage(arg string) ConfigPipelineStage {
 	var operation ConfigPipelineStageOperation
+
+	ty := ci.StageBlock
+
 	if strings.HasPrefix(arg, string(ConfigPipelineStageRunWhitelistOperation)) {
 		operation = ConfigPipelineStageRunWhitelistOperation
 	} else if strings.HasPrefix(arg, string(ConfigPipelineStageRunBlacklistOperation)) {
@@ -103,9 +109,19 @@ func NewConfigPipelineStage(arg string) ConfigPipelineStage {
 	} else {
 		operation = ConfigPipelineStageRunOperation
 	}
+
+	// TODO: improve this
+	if strings.Contains("module.", arg) {
+		ty = ci.ModuleBlock
+	} else if strings.Contains("stage.", arg) {
+		ty = ci.StageBlock
+	}
+
 	id := strings.TrimPrefix(arg, string(operation))
+	id = strings.TrimPrefix(id, ty+".")
 	return ConfigPipelineStage{
 		Id:        id,
+		Type:      ty,
 		Operation: operation,
 	}
 }
