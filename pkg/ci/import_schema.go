@@ -7,4 +7,4 @@ type Import struct {
 	Source hcl.Expression `hcl:"source" json:"source"`
 }
 
-type Imports []Import
+type Imports []*Import

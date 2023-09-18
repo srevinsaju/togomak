@@ -22,7 +22,7 @@ func (m *Import) Identifier() string {
 func (i Imports) ById(id string) (*Import, hcl.Diagnostics) {
 	for _, macro := range i {
 		if macro.Identifier() == id {
-			return &macro, nil
+			return macro, nil
 		}
 	}
 	return nil, hcl.Diagnostics{
