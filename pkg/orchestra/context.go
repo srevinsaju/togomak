@@ -38,40 +38,19 @@ func (t Togomak) Parser() *hclparse.Parser {
 	return t.parser
 }
 
-func NewContextWithTogomak(cfg Config) (Togomak, context.Context) {
-
-	logger := NewLogger(cfg)
-
-	global.SetLogger(logger)
-	if !cfg.Child {
-		logger.Infof("%s (version=%s)", meta.AppName, meta.AppVersion)
-	}
-
-	// --> set up the working directory
-	cwd := Chdir(cfg, logger)
+func createTempDir(cwd string, pipelineId string) string {
 	// create temporary directory
-	pipelineId := uuid.New().String()
-	tmpDir := filepath.Join(meta.BuildDirPrefix, "pipelines", "tmp")
-	err := os.MkdirAll(tmpDir, 0755)
-	x.Must(err)
-	tmpDir, err = os.MkdirTemp(tmpDir, pipelineId)
-	x.Must(err)
-	global.SetTempDir(tmpDir)
 
-	ctx := context.Background()
-	ctx = context.WithValue(ctx, c.TogomakContextCi, cfg.Ci)
-	ctx = context.WithValue(ctx, c.TogomakContextUnattended, cfg.Unattended)
-	ctx = context.WithValue(ctx, c.TogomakContextLogger, logger)
-	ctx = context.WithValue(ctx, c.TogomakContextBootTime, time.Now())
-	ctx = context.WithValue(ctx, c.TogomakContextPipelineId, pipelineId)
-	ctx = context.WithValue(ctx, c.TogomakContextOwd, cfg.Owd)
-	ctx = context.WithValue(ctx, c.TogomakContextCwd, cwd)
-	ctx = context.WithValue(ctx, c.TogomakContextHostname, cfg.Hostname)
-	ctx = context.WithValue(ctx, c.TogomakContextUsername, cfg.User)
-	ctx = context.WithValue(ctx, c.TogomakContextPipelineFilePath, cfg.Pipeline.FilePath)
-	ctx = context.WithValue(ctx, c.TogomakContextPipelineDryRun, cfg.Pipeline.DryRun)
-	ctx = context.WithValue(ctx, c.TogomakContextPipelineTmpDir, tmpDir)
+	tempDir := filepath.Join(meta.BuildDirPrefix, "pipelines", "tmp")
+	err := os.MkdirAll(tempDir, 0755)
+	x.Must(err)
+	tempDir, err = os.MkdirTemp(tempDir, pipelineId)
+	x.Must(err)
+	global.SetTempDir(tempDir)
+	return tempDir
+}
 
+func createHclEvalContext(cwd string, cfg Config, pipelineId string, tempDir string) *hcl.EvalContext {
 	// --> set up HCL context
 	hclContext := &hcl.EvalContext{
 		Functions: map[string]function.Function{
@@ -243,9 +222,9 @@ func NewContextWithTogomak(cfg Config) (Togomak, context.Context) {
 			c.TogomakContextUsername: cty.StringVal(cfg.User),
 
 			"pipeline": cty.ObjectVal(map[string]cty.Value{
-				"id":     cty.StringVal(pipelineId),
-				"path":   cty.StringVal(cfg.Pipeline.FilePath),
-				"tmpDir": cty.StringVal(tmpDir),
+				"id":      cty.StringVal(pipelineId),
+				"path":    cty.StringVal(cfg.Pipeline.FilePath),
+				"tempDir": cty.StringVal(tempDir),
 			}),
 
 			"togomak": cty.ObjectVal(map[string]cty.Value{
@@ -288,14 +267,47 @@ func NewContextWithTogomak(cfg Config) (Togomak, context.Context) {
 		},
 	}
 	global.SetHclEvalContext(hclContext)
+	return hclContext
+}
+
+func NewContextWithTogomak(cfg Config) (Togomak, context.Context) {
+
+	logger := NewLogger(cfg)
+	global.SetLogger(logger)
+
+	if !cfg.Child {
+		logger.Infof("%s (version=%s)", meta.AppName, meta.AppVersion)
+	}
+
+	pipelineId := uuid.New().String()
+	// --> set up the working directory
+	cwd := Chdir(cfg, logger)
+
+	tempDir := createTempDir(cwd, pipelineId)
+
+	hclContext := createHclEvalContext(cwd, cfg, pipelineId, tempDir)
 
 	parser := hclparse.NewParser()
 	global.SetHclParser(parser)
+
 	diagnosticTextWriter := hcl.NewDiagnosticTextWriter(os.Stdout, parser.Files(), 0, true)
 	global.SetHclDiagWriter(diagnosticTextWriter)
+
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, c.TogomakContextCi, cfg.Ci)
+	ctx = context.WithValue(ctx, c.TogomakContextUnattended, cfg.Unattended)
+	ctx = context.WithValue(ctx, c.TogomakContextLogger, logger)
+	ctx = context.WithValue(ctx, c.TogomakContextBootTime, time.Now())
+	ctx = context.WithValue(ctx, c.TogomakContextPipelineId, pipelineId)
+	ctx = context.WithValue(ctx, c.TogomakContextOwd, cfg.Owd)
+	ctx = context.WithValue(ctx, c.TogomakContextCwd, cwd)
+	ctx = context.WithValue(ctx, c.TogomakContextHostname, cfg.Hostname)
+	ctx = context.WithValue(ctx, c.TogomakContextUsername, cfg.User)
+	ctx = context.WithValue(ctx, c.TogomakContextPipelineFilePath, cfg.Pipeline.FilePath)
+	ctx = context.WithValue(ctx, c.TogomakContextPipelineDryRun, cfg.Pipeline.DryRun)
+	ctx = context.WithValue(ctx, c.TogomakContextPipelineTmpDir, tempDir)
 	ctx = context.WithValue(ctx, c.TogomakContextHclDiagWriter, diagnosticTextWriter)
 
-	ctx = context.WithValue(ctx, c.TogomakContextHclEval, hclContext)
 	t := Togomak{
 		Logger:        logger,
 		pipelineId:    pipelineId,
@@ -304,7 +316,7 @@ func NewContextWithTogomak(cfg Config) (Togomak, context.Context) {
 		hclDiagWriter: diagnosticTextWriter,
 		parser:        parser,
 		ectx:          hclContext,
-		tempDir:       tmpDir,
+		tempDir:       tempDir,
 	}
 	ctx = context.WithValue(ctx, c.Togomak, &t)
 

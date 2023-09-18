@@ -46,7 +46,7 @@ func (e *PromptProvider) DecodeBody(body hcl.Body) hcl.Diagnostics {
 	}
 	var diags hcl.Diagnostics
 
-	hclContext := e.ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
+	hclContext := global.HclEvalContext()
 
 	schema := e.Schema()
 	content, d := body.Content(schema)
@@ -54,14 +54,20 @@ func (e *PromptProvider) DecodeBody(body hcl.Body) hcl.Diagnostics {
 
 	attr := content.Attributes["prompt"]
 	var key cty.Value
+
+	global.EvalContextMutex.RLock()
 	key, d = attr.Expr.Value(hclContext)
+	global.EvalContextMutex.RUnlock()
 	diags = append(diags, d...)
 
 	e.promptParsed = key.AsString()
 
 	attr = content.Attributes["default"]
+	global.EvalContextMutex.RLock()
 	key, d = attr.Expr.Value(hclContext)
+	global.EvalContextMutex.RUnlock()
 	diags = append(diags, d...)
+
 	e.def = key.AsString()
 
 	return diags

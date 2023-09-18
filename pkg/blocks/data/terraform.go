@@ -69,13 +69,16 @@ func (e *TfProvider) DecodeBody(body hcl.Body) hcl.Diagnostics {
 		panic("provider not initialized")
 	}
 	var diags hcl.Diagnostics
-	hclContext := e.ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
+	hclContext := global.HclEvalContext()
 
 	schema := e.Schema()
 	content, d := body.Content(schema)
 	diags = diags.Extend(d)
 
+	global.EvalContextMutex.RLock()
 	source, d := content.Attributes[TfBlockArgumentSource].Expr.Value(hclContext)
+	global.EvalContextMutex.RUnlock()
+
 	diags = diags.Extend(d)
 
 	var allowApply cty.Value
@@ -83,12 +86,16 @@ func (e *TfProvider) DecodeBody(body hcl.Body) hcl.Diagnostics {
 
 	attr, ok := content.Attributes[TfBlockArgumentAllowApply]
 	if ok {
+		global.EvalContextMutex.RLock()
 		allowApply, d = attr.Expr.Value(hclContext)
+		global.EvalContextMutex.RUnlock()
 		diags = diags.Extend(d)
 	}
 	attr, ok = content.Attributes[TfBlockArgumentVars]
 	if ok {
+		global.EvalContextMutex.RLock()
 		vars, d = attr.Expr.Value(hclContext)
+		global.EvalContextMutex.RUnlock()
 		diags = diags.Extend(d)
 	}
 	var varsGo map[string]cty.Value

@@ -22,7 +22,7 @@ func (m *Macro) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 	// _ := ctx.Value(TogomakContextHclDiagWriter).(hcl.DiagnosticWriter)
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField(DataBlock, m.Id)
 	logger.Tracef("running %s.%s", MacroBlock, m.Id)
-	hclContext := ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
+	hclContext := global.HclEvalContext()
 
 	// region: mutating the data map
 	// TODO: move it to a dedicated helper function

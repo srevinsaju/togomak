@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/srevinsaju/togomak/v1/pkg/c"
+	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/zclconf/go-cty/cty"
 	"os"
 )
@@ -83,7 +83,7 @@ func (e *EnvProvider) DecodeBody(body hcl.Body) hcl.Diagnostics {
 		panic("provider not initialized")
 	}
 	var diags hcl.Diagnostics
-	hclContext := e.ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
+	hclContext := global.HclEvalContext()
 
 	schema := e.Schema()
 	content, d := body.Content(schema)
@@ -91,7 +91,10 @@ func (e *EnvProvider) DecodeBody(body hcl.Body) hcl.Diagnostics {
 
 	attr := content.Attributes["key"]
 	var key cty.Value
+
+	global.EvalContextMutex.RLock()
 	key, d = attr.Expr.Value(hclContext)
+	global.EvalContextMutex.RUnlock()
 	diags = diags.Extend(d)
 
 	e.keyParsed = key.AsString()
@@ -102,7 +105,10 @@ func (e *EnvProvider) DecodeBody(body hcl.Body) hcl.Diagnostics {
 		e.def = ""
 		return diags
 	}
+
+	global.EvalContextMutex.RLock()
 	key, d = attr.Expr.Value(hclContext)
+	global.EvalContextMutex.RUnlock()
 	diags = diags.Extend(d)
 
 	e.def = key.AsString()

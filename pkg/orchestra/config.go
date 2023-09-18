@@ -10,6 +10,11 @@ type ConfigPipeline struct {
 	DryRun   bool
 }
 
+type Interface struct {
+	// Verbosity is the level of verbosity
+	Verbosity int
+}
+
 type Config struct {
 	Owd string
 	Dir string
@@ -23,7 +28,7 @@ type Config struct {
 	User     string
 	Hostname string
 
-	Verbosity int
+	Interface Interface
 
 	Pipeline ConfigPipeline
 }

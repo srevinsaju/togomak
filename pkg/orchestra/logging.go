@@ -12,7 +12,7 @@ func NewLogger(cfg Config) *logrus.Logger {
 		FullTimestamp:    false,
 		DisableTimestamp: cfg.Child,
 	})
-	switch cfg.Verbosity {
+	switch cfg.Interface.Verbosity {
 	case -1:
 	case 0:
 		logger.SetLevel(logrus.InfoLevel)

@@ -14,7 +14,7 @@ func (l *Local) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField(LocalBlock, l.Key)
 	logger.Debugf("running %s.%s", LocalBlock, l.Key)
-	hclContext := ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
+	hclContext := global.HclEvalContext()
 
 	// region: mutating the data map
 	// TODO: move it to a dedicated helper function

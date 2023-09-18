@@ -58,7 +58,7 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 		// this stage does not use a macro
 		return s, nil
 	}
-	hclContext := ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
+	hclContext := global.HclEvalContext()
 	logger := s.Logger().WithField(MacroBlock, true)
 	pipe := ctx.Value(c.TogomakContextPipeline).(*Pipeline)
 	cwd := ctx.Value(c.TogomakContextCwd).(string)
@@ -289,7 +289,7 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 	status := runnable.StatusRunning
 
 	var err error
-	evalCtx := ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
+	evalCtx := global.HclEvalContext()
 
 	// expand stages using macros
 	logger.Debugf("expanding macros")

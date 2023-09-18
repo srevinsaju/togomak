@@ -24,7 +24,6 @@ const (
 
 	TogomakContextLogger        = "logger"
 	TogomakContextHclDiagWriter = "hcl_diag_writer"
-	TogomakContextHclEval       = "togomak_eval_context"
 
 	Togomak = "togomak"
 )
