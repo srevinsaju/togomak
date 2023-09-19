@@ -181,6 +181,23 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 			logger.Warnf("macro.Source pointing to a .hcl file is deprecated since v1.6.0. use a directory instead")
 			src = filepath.Dir(macro.Source)
 
+			srcAbs, srcErr := filepath.Abs(src)
+			cwdAbs, cwdErr := filepath.Abs(cwd)
+			if srcErr != nil {
+				panic(srcErr)
+			}
+			if cwdErr != nil {
+				panic(cwdErr)
+			}
+			if srcAbs == cwdAbs {
+				return nil, diags.Append(&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "infinite recursion",
+					Detail:   fmt.Sprintf("%s uses a macro with a source pointing to the same directory as the current directory", s.Identifier()),
+					Context:  s.Use.Macro.Range().Ptr(),
+				})
+			}
+
 		}
 
 		s.Args = hcl.StaticExpr(
