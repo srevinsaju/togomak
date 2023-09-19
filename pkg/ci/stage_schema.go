@@ -95,7 +95,7 @@ type StageUse struct {
 	Macro      hcl.Expression `hcl:"macro" json:"macro"`
 	Parameters hcl.Expression `hcl:"parameters,optional" json:"parameters"`
 
-	Chdir hcl.Expression `hcl:"Chdir,optional" json:"chdir"`
+	Chdir hcl.Expression `hcl:"chdir,optional" json:"chdir"`
 }
 
 // StageDaemon configures the daemon properties and lifecycle of a daemon

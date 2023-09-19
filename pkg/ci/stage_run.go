@@ -132,7 +132,7 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 	}
 	chdir := true
 	if chdirRaw.IsNull() {
-		chdir = true
+		chdir = false
 	} else if chdirRaw.Type() == cty.Bool {
 		chdir = chdirRaw.True()
 	}
