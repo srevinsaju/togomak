@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/hashicorp/go-envparse"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/kendru/darwin/go/depgraph"
+	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/ci"
 	"github.com/srevinsaju/togomak/v1/pkg/filter"
@@ -105,23 +105,14 @@ func Orchestra(cfg Config) int {
 	// we will now generate a dependency graph from the pipeline
 	// this will be used to generate the pipeline
 	logger.Debugf("generating dependency graph")
-	var depGraph *depgraph.Graph
-	depGraph, d = graph.TopoSort(ctx, pipe)
+	depGraph, d := graph.TopoSort(ctx, pipe)
 	diags = diags.Extend(d)
 	if diags.HasErrors() {
 		return fatal(ctx)
 	}
 
-	// --> run the pipeline
-	// we will now run the pipeline
-
 	logger.Debugf("starting watchdogs and signal handlers")
-	// region: interrupt handler
-
-	handler := NewHandler(ctx)
-	go handler.Interrupt()
-	go handler.Kill()
-	go handler.Daemons()
+	handler := StartHandlers(ctx)
 
 	// endregion: interrupt handler
 
@@ -133,27 +124,10 @@ func Orchestra(cfg Config) int {
 		// we parse the TOGOMAK_ENV file at the beginning of every layer
 		// this allows us to have different environments for different layers
 
-		togomakEnvFile := filepath.Join(t.cwd, t.tempDir, meta.OutputEnvFile)
-		logger.Tracef("%s will be stored and exported here: %s", meta.OutputEnvVar, togomakEnvFile)
-		envFile, err := os.OpenFile(togomakEnvFile, os.O_RDONLY|os.O_CREATE, 0644)
-		if err == nil {
-			e, err := envparse.Parse(envFile)
-			if err != nil {
-				diags = diags.Append(&hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  "could not parse TOGOMAK_ENV file",
-					Detail:   err.Error(),
-				})
-				break
-			}
-			x.Must(envFile.Close())
-			ee := make(map[string]cty.Value)
-			for k, v := range e {
-				ee[k] = cty.StringVal(v)
-			}
-			t.ectx.Variables[ci.OutputBlock] = cty.ObjectVal(ee)
-		} else {
-			logger.Warnf("could not open %s file, ignoring... :%s", meta.OutputEnvVar, err)
+		d = ExpandOutputs(t, logger)
+		diags = diags.Extend(d)
+		if diags.HasErrors() {
+			break
 		}
 
 		for _, runnableId := range layer {
@@ -353,6 +327,43 @@ func Orchestra(cfg Config) int {
 		return fatal(ctx)
 	}
 	return ok(ctx)
+}
+
+func ExpandOutputs(t Togomak, logger *logrus.Logger) hcl.Diagnostics {
+	var diags hcl.Diagnostics
+	togomakEnvFile := filepath.Join(t.cwd, t.tempDir, meta.OutputEnvFile)
+	logger.Tracef("%s will be stored and exported here: %s", meta.OutputEnvVar, togomakEnvFile)
+	envFile, err := os.OpenFile(togomakEnvFile, os.O_RDONLY|os.O_CREATE, 0644)
+	if err == nil {
+		e, err := envparse.Parse(envFile)
+		if err != nil {
+			diags = diags.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "could not parse TOGOMAK_ENV file",
+				Detail:   err.Error(),
+			})
+			return diags
+		}
+		x.Must(envFile.Close())
+		ee := make(map[string]cty.Value)
+		for k, v := range e {
+			ee[k] = cty.StringVal(v)
+		}
+		global.EvalContextMutex.Lock()
+		t.ectx.Variables[ci.OutputBlock] = cty.ObjectVal(ee)
+		global.EvalContextMutex.Unlock()
+	} else {
+		logger.Warnf("could not open %s file, ignoring... :%s", meta.OutputEnvVar, err)
+	}
+	return diags
+}
+
+func StartHandlers(ctx context.Context) *Handler {
+	handler := NewHandler(ctx)
+	go handler.Interrupt()
+	go handler.Kill()
+	go handler.Daemons()
+	return handler
 }
 
 func ExpandImports(pipe *ci.Pipeline, ctx context.Context, t Togomak) (*ci.Pipeline, hcl.Diagnostics) {
