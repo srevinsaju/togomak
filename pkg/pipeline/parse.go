@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/ci"
+	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/ui"
 	"os"
@@ -66,6 +67,7 @@ func ReadDir(ctx context.Context, parser *hclparse.Parser) (*ci.Pipeline, hcl.Di
 }
 
 func ReadDirFromPath(dir string, parser *hclparse.Parser) (*ci.Pipeline, hcl.Diagnostics) {
+	logger := global.Logger()
 	var diags hcl.Diagnostics
 	togomakFiles, err := os.ReadDir(dir)
 	if err != nil {
@@ -77,6 +79,10 @@ func ReadDirFromPath(dir string, parser *hclparse.Parser) (*ci.Pipeline, hcl.Dia
 			continue
 		}
 		if !strings.HasSuffix(file.Name(), ".hcl") {
+			continue
+		}
+		if strings.Contains(file.Name(), ".lock.hcl") {
+			// we will not process .lock.hcl files
 			continue
 		}
 		f, d := parser.ParseHCLFile(filepath.Join(dir, file.Name()))
@@ -141,7 +147,7 @@ func Merge(pipelines MetaList) (*ci.Pipeline, hcl.Diagnostics) {
 
 	for _, p := range pipelines {
 		if p.pipe == nil {
-			logger.Debugf("pipeline %s is nil", p.filename)
+			global.Logger().Debugf("pipeline %s is nil", p.filename)
 			panic("pipeline is nil")
 		}
 		if pipe.Builder.Version == 0 && p.pipe.Builder.Version != 0 {
