@@ -36,7 +36,7 @@ func diagnostics(t *Togomak, diags *hcl.Diagnostics) {
 	x.Must(t.hclDiagWriter.WriteDiagnostics(*diags))
 }
 
-func daemonKiller(ctx context.Context, completed chan ci.Block, daemons *ci.Blocks) {
+func DaemonHandler(ctx context.Context, completed chan ci.Block, daemons *ci.Blocks) {
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField("watchdog", "")
 	var completedRunnables ci.Blocks
 	var diags hcl.Diagnostics

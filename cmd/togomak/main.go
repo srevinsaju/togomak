@@ -196,7 +196,7 @@ func newConfigFromCliContext(ctx *cli.Context) orchestra.Config {
 
 		User:      os.Getenv("USER"),
 		Hostname:  hostname,
-		Verbosity: verboseCount,
+		Interface: orchestra.Interface{Verbosity: verboseCount},
 		Pipeline: orchestra.ConfigPipeline{
 			Filtered: stages,
 			FilePath: pipelineFilePath,

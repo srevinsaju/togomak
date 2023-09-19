@@ -17,10 +17,8 @@ import (
 
 	"github.com/zclconf/go-cty/cty"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"sync"
-	"syscall"
 	"time"
 )
 
@@ -67,7 +65,7 @@ func Orchestra(cfg Config) int {
 	}
 
 	// whitelist all stages if unspecified
-	stageStatuses := cfg.Pipeline.Filtered
+	filterList := cfg.Pipeline.Filtered
 
 	// write the pipeline to the temporary directory
 	pipelineFilePath := filepath.Join(t.cwd, t.tempDir, meta.ConfigFileName)
@@ -75,6 +73,7 @@ func Orchestra(cfg Config) int {
 	for _, f := range t.parser.Files() {
 		pipelineData = append(pipelineData, f.Bytes...)
 	}
+
 	err := os.WriteFile(pipelineFilePath, pipelineData, 0644)
 	if err != nil {
 		return fatal(ctx)
@@ -125,30 +124,18 @@ func Orchestra(cfg Config) int {
 	// --> run the pipeline
 	// we will now run the pipeline
 
-	var diagsMutex sync.Mutex
-	var wg sync.WaitGroup
-	var daemonWg sync.WaitGroup
-	var hasDaemons bool
-	var runnables ci.Blocks
-
-	var daemons ci.Blocks
-	var daemonsMutex sync.Mutex
-
-	var completedRunnablesSignal = make(chan ci.Block, 1)
-	var completedRunnables ci.Blocks
-	var completedRunnablesMutex sync.Mutex
-
 	logger.Debugf("starting watchdogs and signal handlers")
 	// region: interrupt handler
-	chInterrupt := make(chan os.Signal, 1)
-	chKill := make(chan os.Signal, 1)
-	signal.Notify(chInterrupt, os.Interrupt)
-	signal.Notify(chInterrupt, syscall.SIGTERM)
-	signal.Notify(chKill, os.Kill)
-	go InterruptHandler(ctx, cancel, chInterrupt, &runnables)
-	go KillHandler(ctx, cancel, chKill, &runnables)
-	go daemonKiller(ctx, completedRunnablesSignal, &daemons)
+
+	handler := NewHandler(ctx)
+	go handler.Interrupt()
+	go handler.Kill()
+	go handler.Daemons()
+
 	// endregion: interrupt handler
+
+	var diagsMutex sync.Mutex
+	var wg sync.WaitGroup
 
 	logger.Debugf("starting runnables")
 	for _, layer := range depGraph.TopoSortedLayers() {
@@ -210,7 +197,7 @@ func Orchestra(cfg Config) int {
 			}
 
 			logger.Debugf("runnable %s is %T", runnableId, runnable)
-			runnables = append(runnables, runnable)
+			handler.Tracker.AppendRunnable(runnable)
 
 			ok, d = runnable.CanRun(ctx)
 			if d.HasErrors() {
@@ -223,7 +210,7 @@ func Orchestra(cfg Config) int {
 			// region: requested stages, whitelisting and blacklisting
 			overridden := false
 			if runnable.Type() == ci.StageBlock || runnable.Type() == ci.ModuleBlock {
-				stageStatus, stageStatusOk := stageStatuses.Get(runnableId)
+				stageStatus, stageStatusOk := filterList.Get(runnableId)
 
 				// when a particular stage is explicitly requested, for example
 				// in the pipeline containing the following stages
@@ -232,9 +219,9 @@ func Orchestra(cfg Config) int {
 				// - hello_3
 				// - hello_4 (depends on hello_1)
 				// if 'hello_1' is explicitly requested, we will run 'hello_4' as well
-				if stageStatuses.HasOperationType(filter.OperationRun) && !stageStatusOk {
+				if filterList.HasOperationType(filter.OperationRun) && !stageStatusOk {
 					isDependentOfRequestedStage := false
-					for _, ss := range stageStatuses {
+					for _, ss := range filterList {
 						if ss.Operation == filter.OperationRun {
 							if depGraph.DependsOn(runnableId, ss.RunnableId()) {
 								isDependentOfRequestedStage = true
@@ -276,29 +263,22 @@ func Orchestra(cfg Config) int {
 			}
 
 			if runnable.IsDaemon() {
-				hasDaemons = true
-				daemonWg.Add(1)
-
-				daemonsMutex.Lock()
-				daemons = append(daemons, runnable)
-				daemonsMutex.Unlock()
+				handler.Tracker.AppendDaemon(runnable)
 			} else {
 				wg.Add(1)
 			}
 
 			go func(runnableId string) {
 				stageDiags := runnable.Run(ctx)
-				logger.Tracef("locking completedRunnablesMutex for runnable %s", runnableId)
-				completedRunnablesMutex.Lock()
-				completedRunnables = append(completedRunnables, runnable)
-				completedRunnablesMutex.Unlock()
-				logger.Tracef("unlocking completedRunnablesMutex for runnable %s", runnableId)
-				completedRunnablesSignal <- runnable
+
+				// TODO: COME BACK HERE
+				handler.Tracker.AppendCompleted(runnable)
+
 				logger.Tracef("signaling runnable %s", runnableId)
 
 				if !stageDiags.HasErrors() {
 					if runnable.IsDaemon() {
-						daemonWg.Done()
+						handler.Tracker.DaemonDone()
 					} else {
 						wg.Done()
 					}
@@ -345,7 +325,7 @@ func Orchestra(cfg Config) int {
 				diags = diags.Extend(stageDiags)
 				diagsMutex.Unlock()
 				if runnable.IsDaemon() {
-					daemonWg.Done()
+					handler.Tracker.DaemonDone()
 				} else {
 					wg.Done()
 				}
@@ -357,18 +337,18 @@ func Orchestra(cfg Config) int {
 				// wait for the runnable to finish
 				// disable concurrency
 				wg.Wait()
-				daemonWg.Wait()
+				handler.Tracker.DaemonWait()
 			}
 		}
 		wg.Wait()
 
 		if diags.HasErrors() {
-			if hasDaemons && !cfg.Pipeline.DryRun && !cfg.Unattended {
+			if handler.Tracker.HasDaemons() && !cfg.Pipeline.DryRun && !cfg.Unattended {
 				logger.Info("pipeline failed, waiting for daemons to shut down")
 				logger.Info("hit Ctrl+C to force stop them")
 				// wait for daemons to stop
-				daemonWg.Wait()
-			} else if hasDaemons && !cfg.Pipeline.DryRun {
+				handler.Tracker.DaemonWait()
+			} else if handler.Tracker.HasDaemons() && !cfg.Pipeline.DryRun {
 				logger.Info("pipeline failed, waiting for daemons to shut down...")
 				// wait for daemons to stop
 				cancel()
@@ -377,7 +357,7 @@ func Orchestra(cfg Config) int {
 		}
 	}
 
-	daemonWg.Wait()
+	handler.Tracker.DaemonWait()
 	if diags.HasErrors() {
 		return fatal(ctx)
 	}
