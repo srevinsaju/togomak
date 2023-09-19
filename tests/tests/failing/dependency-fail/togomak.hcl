@@ -8,5 +8,5 @@ stage "test" {
 
 stage "example" {
   depends_on = [stage.test]
-  script = "exit 0"
+  script     = "exit 0"
 }

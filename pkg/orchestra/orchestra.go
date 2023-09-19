@@ -79,20 +79,11 @@ func Orchestra(cfg Config) int {
 		return fatal(ctx)
 	}
 	var d hcl.Diagnostics
-	if len(pipe.Imports) != 0 {
-		logger.Debugf("expanding imports")
-		d = pipe.Imports.PopulateProperties()
-		diags = diags.Extend(d)
-		if d.HasErrors() {
-			return fatal(ctx)
-		}
-		logger.Debugf("populating properties for imports completed with %d error(s)", len(d.Errs()))
-		pipe, d = pipeline.ExpandImports(ctx, pipe, t.parser)
-		diags = diags.Extend(d)
-		logger.Debugf("expanding imports completed with %d error(s)", len(d.Errs()))
-		if d.HasErrors() {
-			return fatal(ctx)
-		}
+
+	pipe, d = ExpandImports(pipe, ctx, t)
+	diags = diags.Extend(d)
+	if diags.HasErrors() {
+		return fatal(ctx)
 	}
 
 	/// we will first expand all local blocks
@@ -362,4 +353,24 @@ func Orchestra(cfg Config) int {
 		return fatal(ctx)
 	}
 	return ok(ctx)
+}
+
+func ExpandImports(pipe *ci.Pipeline, ctx context.Context, t Togomak) (*ci.Pipeline, hcl.Diagnostics) {
+	var d hcl.Diagnostics
+	var diags hcl.Diagnostics
+
+	if len(pipe.Imports) != 0 {
+		t.Logger.Debugf("expanding imports")
+		d = pipe.Imports.PopulateProperties()
+		diags = diags.Extend(d)
+		if d.HasErrors() {
+			return pipe, diags
+		}
+		t.Logger.Debugf("populating properties for imports completed with %d error(s)", len(d.Errs()))
+		pipe, d = pipeline.ExpandImports(ctx, pipe, t.parser)
+		diags = diags.Extend(d)
+		t.Logger.Debugf("expanding imports completed with %d error(s)", len(d.Errs()))
+
+	}
+	return pipe, diags
 }
