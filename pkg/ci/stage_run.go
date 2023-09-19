@@ -148,12 +148,46 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 		}
 		parent := shellescape.Quote(s.Id)
 
+		global.EvalContextMutex.RLock()
+		stageDir, d := s.Dir.Value(hclContext)
+		global.EvalContextMutex.RUnlock()
+		if d.HasErrors() {
+			return s, diags.Extend(d)
+		}
+		if stageDir.Type() != cty.String && !stageDir.IsNull() {
+			return s, diags.Append(&hcl.Diagnostic{
+				Severity:    hcl.DiagError,
+				Summary:     "invalid stage",
+				Detail:      fmt.Sprintf("%s uses a stage with an invalid dir", s.Identifier()),
+				EvalContext: hclContext,
+				Subject:     s.Dir.Range().Ptr(),
+			})
+		}
+
+		if stageDir.IsNull() || stageDir.AsString() == "" {
+			s.Dir = hcl.StaticExpr(cty.StringVal(cwd), hcl.Range{Filename: "memory"})
+		}
+
+		src := macro.Source
+
+		if strings.HasSuffix(macro.Source, ".hcl") {
+			diags = diags.Append(&hcl.Diagnostic{
+				Severity:    hcl.DiagWarning,
+				Summary:     "deprecated",
+				Detail:      fmt.Sprintf("%s uses a macro with a .hcl file. use a directory instead", s.Identifier()),
+				EvalContext: hclContext,
+				Subject:     s.Use.Macro.Range().Ptr(),
+			})
+			logger.Warnf("macro.Source pointing to a .hcl file is deprecated since v1.6.0. use a directory instead")
+			src = filepath.Dir(macro.Source)
+
+		}
+
 		s.Args = hcl.StaticExpr(
 			cty.ListVal([]cty.Value{
 				cty.StringVal(executable),
 				cty.StringVal("--child"),
-				cty.StringVal("--dir"), cty.StringVal(dir),
-				cty.StringVal("--file"), cty.StringVal(macro.Source),
+				cty.StringVal("--dir"), cty.StringVal(src),
 				cty.StringVal("--parent"), cty.StringVal(parent),
 			}), hcl.Range{Filename: "memory"})
 
@@ -173,7 +207,7 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 		if !f.IsNull() {
 			files := f.AsValueMap()
 			logger.Debugf("using %d files from %s", len(files), macro.Identifier())
-			err = os.MkdirAll(filepath.Join(tmpDir, s.Id), 0755)
+			err = os.MkdirAll(filepath.Join(cwd, tmpDir, s.Id), 0755)
 			if err != nil {
 				return s, diags.Append(&hcl.Diagnostic{
 					Severity:    hcl.DiagError,
