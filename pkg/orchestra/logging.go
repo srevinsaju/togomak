@@ -10,7 +10,7 @@ func NewLogger(cfg Config) *logrus.Logger {
 	logger.SetOutput(os.Stdout)
 	logger.SetFormatter(&logrus.TextFormatter{
 		FullTimestamp:    false,
-		DisableTimestamp: cfg.Child,
+		DisableTimestamp: cfg.Behavior.Child.Enabled,
 	})
 	switch cfg.Interface.Verbosity {
 	case -1:
@@ -24,7 +24,7 @@ func NewLogger(cfg Config) *logrus.Logger {
 		logger.SetLevel(logrus.TraceLevel)
 		break
 	}
-	if cfg.Ci {
+	if cfg.Behavior.Ci {
 		logger.SetFormatter(&logrus.TextFormatter{
 			DisableColors:             false,
 			EnvironmentOverrideColors: false,
@@ -32,7 +32,7 @@ func NewLogger(cfg Config) *logrus.Logger {
 			ForceQuote:                false,
 		})
 	}
-	if cfg.Child {
+	if cfg.Behavior.Child.Enabled {
 		logger.SetFormatter(&logrus.TextFormatter{
 			DisableTimestamp:          true,
 			DisableColors:             false,

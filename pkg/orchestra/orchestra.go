@@ -24,7 +24,7 @@ import (
 
 func loadGlobalParams(t *Togomak, cfg Config) {
 	paramsGo := make(map[string]cty.Value)
-	if cfg.Child {
+	if cfg.Behavior.Child.Enabled {
 		m := make(map[string]string)
 		for _, e := range os.Environ() {
 			if i := strings.Index(e, "="); i >= 0 {
@@ -343,7 +343,7 @@ func Orchestra(cfg Config) int {
 		wg.Wait()
 
 		if diags.HasErrors() {
-			if handler.Tracker.HasDaemons() && !cfg.Pipeline.DryRun && !cfg.Unattended {
+			if handler.Tracker.HasDaemons() && !cfg.Pipeline.DryRun && !cfg.Behavior.Unattended {
 				logger.Info("pipeline failed, waiting for daemons to shut down")
 				logger.Info("hit Ctrl+C to force stop them")
 				// wait for daemons to stop

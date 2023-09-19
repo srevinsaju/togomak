@@ -187,12 +187,16 @@ func newConfigFromCliContext(ctx *cli.Context) orchestra.Config {
 		Owd: owd,
 		Dir: dir,
 
-		Child:        ctx.Bool("child"),
-		Parent:       ctx.String("parent"),
-		ParentParams: ctx.StringSlice("parent-param"),
+		Behavior: orchestra.Behavior{
+			Unattended: ctx.Bool("unattended") || ctx.Bool("ci"),
+			Ci:         ctx.Bool("ci"),
 
-		Ci:         ctx.Bool("ci"),
-		Unattended: ctx.Bool("unattended") || ctx.Bool("ci"),
+			Child: orchestra.BehaviorChild{
+				Enabled:      ctx.Bool("child"),
+				Parent:       ctx.String("parent"),
+				ParentParams: ctx.StringSlice("parent-param"),
+			},
+		},
 
 		User:      os.Getenv("USER"),
 		Hostname:  hostname,

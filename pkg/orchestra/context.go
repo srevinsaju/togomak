@@ -232,8 +232,8 @@ func createHclEvalContext(cwd string, cfg Config, pipelineId string, tempDir str
 				"boot_time":      cty.StringVal(time.Now().Format(time.RFC3339)),
 				"boot_time_unix": cty.NumberIntVal(time.Now().Unix()),
 				"pipeline_id":    cty.StringVal(pipelineId),
-				"ci":             cty.BoolVal(cfg.Ci),
-				"unattended":     cty.BoolVal(cfg.Unattended),
+				"ci":             cty.BoolVal(cfg.Behavior.Ci),
+				"unattended":     cty.BoolVal(cfg.Behavior.Unattended),
 			}),
 
 			// introduced in v1.5.0
@@ -275,7 +275,7 @@ func NewContextWithTogomak(cfg Config) (Togomak, context.Context) {
 	logger := NewLogger(cfg)
 	global.SetLogger(logger)
 
-	if !cfg.Child {
+	if !cfg.Behavior.Child.Enabled {
 		logger.Infof("%s (version=%s)", meta.AppName, meta.AppVersion)
 	}
 
@@ -294,8 +294,8 @@ func NewContextWithTogomak(cfg Config) (Togomak, context.Context) {
 	global.SetHclDiagWriter(diagnosticTextWriter)
 
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, c.TogomakContextCi, cfg.Ci)
-	ctx = context.WithValue(ctx, c.TogomakContextUnattended, cfg.Unattended)
+	ctx = context.WithValue(ctx, c.TogomakContextCi, cfg.Behavior.Ci)
+	ctx = context.WithValue(ctx, c.TogomakContextUnattended, cfg.Behavior.Unattended)
 	ctx = context.WithValue(ctx, c.TogomakContextLogger, logger)
 	ctx = context.WithValue(ctx, c.TogomakContextBootTime, time.Now())
 	ctx = context.WithValue(ctx, c.TogomakContextPipelineId, pipelineId)
