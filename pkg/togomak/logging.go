@@ -1,12 +1,11 @@
-package orchestra
+package togomak
 
 import (
 	"github.com/sirupsen/logrus"
-	"github.com/srevinsaju/togomak/v1/pkg/togomak"
 	"os"
 )
 
-func NewLogger(cfg togomak.Config) *logrus.Logger {
+func NewLogger(cfg Config) *logrus.Logger {
 	logger := logrus.New()
 	logger.SetOutput(os.Stdout)
 	logger.SetFormatter(&logrus.TextFormatter{

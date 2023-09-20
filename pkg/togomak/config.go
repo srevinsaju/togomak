@@ -1,4 +1,4 @@
-package orchestra
+package togomak
 
 import (
 	"github.com/srevinsaju/togomak/v1/pkg/filter"
