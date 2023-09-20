@@ -1,7 +1,5 @@
 package runnable
 
-import "github.com/hashicorp/hcl/v2"
-
 type Config struct {
 	Status *Status
 	Parent *ParentConfig
@@ -15,7 +13,7 @@ type ParentConfig struct {
 
 type Option func(*Config)
 
-func WithStatus(status StatusType, diags ...hcl.Diagnostic) Option {
+func WithStatus(status StatusType) Option {
 	return func(c *Config) {
 		c.Status = &Status{
 			Status: status,
