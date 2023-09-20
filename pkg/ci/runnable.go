@@ -106,7 +106,7 @@ func (r Blocks) Run(ctx context.Context) hcl.Diagnostics {
 	return nil
 }
 
-func Resolve(ctx context.Context, pipe *Pipeline, id string) (Block, hcl.Diagnostics) {
+func Resolve(pipe *Pipeline, id string) (Block, hcl.Diagnostics) {
 	var diags hcl.Diagnostics
 	blocks := strings.Split(id, ".")
 	if len(blocks) != 2 && len(blocks) != 3 {

@@ -13,7 +13,7 @@ import (
 func Resolve(ctx context.Context, pipe *ci.Pipeline, g *depgraph.Graph, v []hcl.Traversal, child string) hcl.Diagnostics {
 	var diags hcl.Diagnostics
 
-	_, d := ci.Resolve(ctx, pipe, child)
+	_, d := ci.Resolve(pipe, child)
 	diags = diags.Extend(d)
 	if diags.HasErrors() {
 		return diags
@@ -26,7 +26,7 @@ func Resolve(ctx context.Context, pipe *ci.Pipeline, g *depgraph.Graph, v []hcl.
 			continue
 		}
 
-		_, d = ci.Resolve(ctx, pipe, parent)
+		_, d = ci.Resolve(pipe, parent)
 		diags = diags.Extend(d)
 		err := g.DependOn(child, parent)
 

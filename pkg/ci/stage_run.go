@@ -78,7 +78,7 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 		variable := v[0]
 		macroName := variable[1].(hcl.TraverseAttr).Name
 		logger.Debugf("stage.%s uses macro.%s", s.Id, macroName)
-		macroRunnable, d := Resolve(ctx, pipe, fmt.Sprintf("macro.%s", macroName))
+		macroRunnable, d := Resolve(pipe, fmt.Sprintf("macro.%s", macroName))
 		if d.HasErrors() {
 			return nil, diags.Extend(d)
 		}

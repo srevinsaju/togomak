@@ -132,7 +132,7 @@ func Orchestra(cfg Config) int {
 
 		for _, runnableId := range layer {
 
-			runnable, skip, d := Resolve(runnableId, pipe, ctx, logger)
+			runnable, skip, d := pipe.Resolve(runnableId)
 			if skip {
 				continue
 			}
@@ -377,34 +377,4 @@ func ExpandImports(pipe *ci.Pipeline, ctx context.Context, t Togomak) (*ci.Pipel
 
 	}
 	return pipe, diags
-}
-
-func Resolve(runnableId string, pipe *ci.Pipeline, ctx context.Context, logger *logrus.Logger) (ci.Block, bool, hcl.Diagnostics) {
-	var runnable ci.Block
-	var diags hcl.Diagnostics
-	var d hcl.Diagnostics
-
-	skip := false
-	switch runnableId {
-	case meta.RootStage:
-		skip = true
-	case meta.PreStage:
-		if pipe.Pre == nil {
-			logger.Debugf("skipping runnable pre block %s, not defined", runnableId)
-			skip = true
-			break
-		}
-		runnable = pipe.Pre.ToStage()
-	case meta.PostStage:
-		if pipe.Post == nil {
-			logger.Debugf("skipping runnable post block %s, not defined", runnableId)
-			skip = true
-			break
-		}
-		runnable = pipe.Post.ToStage()
-	default:
-		runnable, d = ci.Resolve(ctx, pipe, runnableId)
-		diags = diags.Extend(d)
-	}
-	return runnable, skip, diags
 }

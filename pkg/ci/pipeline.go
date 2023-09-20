@@ -1,6 +1,10 @@
 package ci
 
-import "github.com/hashicorp/hcl/v2"
+import (
+	"github.com/hashicorp/hcl/v2"
+	"github.com/sirupsen/logrus"
+	"github.com/srevinsaju/togomak/v1/pkg/meta"
+)
 
 const PipelineBlock = "pipeline"
 
@@ -24,10 +28,44 @@ type Pipeline struct {
 	Post *PostStage `hcl:"post,block" json:"post"`
 }
 
-func (p Pipeline) Variables() []hcl.Traversal {
+func (pipe *Pipeline) Variables() []hcl.Traversal {
 	var traversal []hcl.Traversal
-	traversal = append(traversal, p.Stages.Variables()...)
-	traversal = append(traversal, p.Data.Variables()...)
-	traversal = append(traversal, p.DataProviders.Variables()...)
+	traversal = append(traversal, pipe.Stages.Variables()...)
+	traversal = append(traversal, pipe.Data.Variables()...)
+	traversal = append(traversal, pipe.DataProviders.Variables()...)
 	return traversal
+}
+
+func (pipe *Pipeline) Logger() *logrus.Entry {
+	return logrus.WithField("pipeline", "")
+}
+
+func (pipe *Pipeline) Resolve(runnableId string) (Block, bool, hcl.Diagnostics) {
+	var runnable Block
+	var diags hcl.Diagnostics
+	var d hcl.Diagnostics
+
+	skip := false
+	switch runnableId {
+	case meta.RootStage:
+		skip = true
+	case meta.PreStage:
+		if pipe.Pre == nil {
+			pipe.Logger().Debugf("skipping runnable pre block %s, not defined", runnableId)
+			skip = true
+			break
+		}
+		runnable = pipe.Pre.ToStage()
+	case meta.PostStage:
+		if pipe.Post == nil {
+			pipe.Logger().Debugf("skipping runnable post block %s, not defined", runnableId)
+			skip = true
+			break
+		}
+		runnable = pipe.Post.ToStage()
+	default:
+		runnable, d = Resolve(pipe, runnableId)
+		diags = diags.Extend(d)
+	}
+	return runnable, skip, diags
 }
