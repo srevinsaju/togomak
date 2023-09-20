@@ -18,7 +18,7 @@ import (
 	"sync"
 )
 
-func loadGlobalParams(t *Togomak, cfg conductor.Config) {
+func ExpandGlobalParams(t *Togomak, cfg conductor.Config) {
 	paramsGo := make(map[string]cty.Value)
 	if cfg.Behavior.Child.Enabled {
 		m := make(map[string]string)
@@ -53,7 +53,7 @@ func Perform(cfg conductor.Config) int {
 	defer handler.WriteDiagnostics(&t)
 
 	// region: external parameters
-	loadGlobalParams(&t, cfg)
+	ExpandGlobalParams(&t, cfg)
 	// endregion
 
 	// --> parse the config file
