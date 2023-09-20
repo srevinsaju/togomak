@@ -132,32 +132,15 @@ func Orchestra(cfg Config) int {
 
 		for _, runnableId := range layer {
 
-			var runnable ci.Block
-
-			if runnableId == meta.RootStage {
+			runnable, skip, d := Resolve(runnableId, pipe, ctx, logger)
+			if skip {
 				continue
 			}
-
-			if runnableId == meta.PreStage {
-				if pipe.Pre == nil {
-					logger.Debugf("skipping runnable pre block %s, not defined", runnableId)
-					continue
-				}
-				runnable = &ci.Stage{Id: runnableId, CoreStage: pipe.Pre.CoreStage}
-			} else if runnableId == meta.PostStage {
-				if pipe.Post == nil {
-					logger.Debugf("skipping runnable post block %s, not defined", runnableId)
-					continue
-				}
-				runnable = &ci.Stage{Id: runnableId, CoreStage: pipe.Post.CoreStage}
-			} else {
-				runnable, d = ci.Resolve(ctx, pipe, runnableId)
-				if d.HasErrors() {
-					diagsMutex.Lock()
-					diags = diags.Extend(d)
-					diagsMutex.Unlock()
-					break
-				}
+			if d.HasErrors() {
+				diagsMutex.Lock()
+				diags = diags.Extend(d)
+				diagsMutex.Unlock()
+				break
 			}
 
 			ok, d, overridden := CanRun(runnable, ctx, filterList, runnableId, depGraph)
@@ -191,67 +174,7 @@ func Orchestra(cfg Config) int {
 				handler.Tracker.AppendRunnable(runnable)
 			}
 
-			go func(runnableId string) {
-				stageDiags := runnable.Run(ctx)
-
-				handler.Tracker.AppendCompleted(runnable)
-				logger.Tracef("signaling runnable %s", runnableId)
-
-				if !stageDiags.HasErrors() {
-					if runnable.IsDaemon() {
-						handler.Tracker.DaemonDone()
-					} else {
-						handler.Tracker.RunnableDone()
-					}
-					return
-				}
-				if !runnable.CanRetry() {
-					logger.Debug("runnable cannot be retried")
-				} else {
-					logger.Infof("retrying runnable %s", runnableId)
-					retryCount := 0
-					retryMinBackOff := time.Duration(runnable.MinRetryBackoff()) * time.Second
-					retryMaxBackOff := time.Duration(runnable.MaxRetryBackoff()) * time.Second
-					retrySuccess := false
-					for retryCount < runnable.MaxRetries() {
-						retryCount++
-						sleepDuration := time.Duration(1) * time.Second
-						if runnable.RetryExponentialBackoff() {
-
-							if retryMinBackOff*time.Duration(retryCount) > retryMaxBackOff && retryMaxBackOff > 0 {
-								sleepDuration = retryMaxBackOff
-							} else {
-								sleepDuration = retryMinBackOff * time.Duration(retryCount)
-							}
-						} else {
-							sleepDuration = retryMinBackOff
-						}
-						logger.Warnf("runnable %s failed, retrying in %s", runnableId, sleepDuration)
-						time.Sleep(sleepDuration)
-						sDiags := runnable.Run(ctx)
-						stageDiags = append(stageDiags, sDiags...)
-
-						if !sDiags.HasErrors() {
-							retrySuccess = true
-							break
-						}
-					}
-
-					if !retrySuccess {
-						logger.Warnf("runnable %s failed after %d retries", runnableId, retryCount)
-					}
-
-				}
-				diagsMutex.Lock()
-				diags = diags.Extend(stageDiags)
-				diagsMutex.Unlock()
-				if runnable.IsDaemon() {
-					handler.Tracker.DaemonDone()
-				} else {
-					handler.Tracker.RunnableDone()
-				}
-
-			}(runnableId)
+			go RunWithRetries(runnableId, runnable, ctx, handler, logger)
 
 			if cfg.Pipeline.DryRun {
 				// TODO: implement --concurrency option
@@ -283,6 +206,65 @@ func Orchestra(cfg Config) int {
 		return fatal(ctx)
 	}
 	return ok(ctx)
+}
+
+func RunWithRetries(runnableId string, runnable ci.Block, ctx context.Context, handler *Handler, logger *logrus.Logger) {
+	stageDiags := runnable.Run(ctx)
+
+	handler.Tracker.AppendCompleted(runnable)
+	logger.Tracef("signaling runnable %s", runnableId)
+
+	if !stageDiags.HasErrors() {
+		if runnable.IsDaemon() {
+			handler.Tracker.DaemonDone()
+		} else {
+			handler.Tracker.RunnableDone()
+		}
+		return
+	}
+	if !runnable.CanRetry() {
+		logger.Debug("runnable cannot be retried")
+	} else {
+		logger.Infof("retrying runnable %s", runnableId)
+		retryCount := 0
+		retryMinBackOff := time.Duration(runnable.MinRetryBackoff()) * time.Second
+		retryMaxBackOff := time.Duration(runnable.MaxRetryBackoff()) * time.Second
+		retrySuccess := false
+		for retryCount < runnable.MaxRetries() {
+			retryCount++
+			sleepDuration := time.Duration(1) * time.Second
+			if runnable.RetryExponentialBackoff() {
+
+				if retryMinBackOff*time.Duration(retryCount) > retryMaxBackOff && retryMaxBackOff > 0 {
+					sleepDuration = retryMaxBackOff
+				} else {
+					sleepDuration = retryMinBackOff * time.Duration(retryCount)
+				}
+			} else {
+				sleepDuration = retryMinBackOff
+			}
+			logger.Warnf("runnable %s failed, retrying in %s", runnableId, sleepDuration)
+			time.Sleep(sleepDuration)
+			sDiags := runnable.Run(ctx)
+			stageDiags = append(stageDiags, sDiags...)
+
+			if !sDiags.HasErrors() {
+				retrySuccess = true
+				break
+			}
+		}
+
+		if !retrySuccess {
+			logger.Warnf("runnable %s failed after %d retries", runnableId, retryCount)
+		}
+
+	}
+	handler.Diagnostics.Extend(stageDiags)
+	if runnable.IsDaemon() {
+		handler.Tracker.DaemonDone()
+	} else {
+		handler.Tracker.RunnableDone()
+	}
 }
 
 func CanRun(runnable ci.Block, ctx context.Context, filterList filter.FilterList, runnableId string, depGraph *depgraph.Graph) (bool, hcl.Diagnostics, bool) {
@@ -395,4 +377,34 @@ func ExpandImports(pipe *ci.Pipeline, ctx context.Context, t Togomak) (*ci.Pipel
 
 	}
 	return pipe, diags
+}
+
+func Resolve(runnableId string, pipe *ci.Pipeline, ctx context.Context, logger *logrus.Logger) (ci.Block, bool, hcl.Diagnostics) {
+	var runnable ci.Block
+	var diags hcl.Diagnostics
+	var d hcl.Diagnostics
+
+	skip := false
+	switch runnableId {
+	case meta.RootStage:
+		skip = true
+	case meta.PreStage:
+		if pipe.Pre == nil {
+			logger.Debugf("skipping runnable pre block %s, not defined", runnableId)
+			skip = true
+			break
+		}
+		runnable = pipe.Pre.ToStage()
+	case meta.PostStage:
+		if pipe.Post == nil {
+			logger.Debugf("skipping runnable post block %s, not defined", runnableId)
+			skip = true
+			break
+		}
+		runnable = pipe.Post.ToStage()
+	default:
+		runnable, d = ci.Resolve(ctx, pipe, runnableId)
+		diags = diags.Extend(d)
+	}
+	return runnable, skip, diags
 }

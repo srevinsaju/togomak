@@ -80,8 +80,42 @@ func (t *Tracker) AppendCompleted(completed ci.Block) {
 	t.completedSignal <- completed
 }
 
+type Diagnostics struct {
+	diagsMu sync.Mutex
+	diags   hcl.Diagnostics
+}
+
+func (d *Diagnostics) Append(diag *hcl.Diagnostic) {
+	d.diagsMu.Lock()
+	defer d.diagsMu.Unlock()
+	d.diags = d.diags.Append(diag)
+}
+
+func (d *Diagnostics) Extend(diags hcl.Diagnostics) {
+	d.diagsMu.Lock()
+	defer d.diagsMu.Unlock()
+	d.diags = d.diags.Extend(diags)
+}
+
+func (d *Diagnostics) HasErrors() bool {
+	return d.diags.HasErrors()
+}
+
+func (d *Diagnostics) Diagnostics() hcl.Diagnostics {
+	return d.diags
+}
+
+func (d *Diagnostics) Error() string {
+	return d.diags.Error()
+}
+
+func (d *Diagnostics) Errs() []error {
+	return d.diags.Errs()
+}
+
 type Handler struct {
-	Tracker *Tracker
+	Tracker     *Tracker
+	Diagnostics *Diagnostics
 
 	ctx    context.Context
 	cancel context.CancelFunc
