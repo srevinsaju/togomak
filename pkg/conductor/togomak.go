@@ -16,5 +16,4 @@ func NewTogomak(cfg Config) *Togomak {
 		Parser: hclparse.NewParser(),
 		Logger: NewLogger(cfg),
 	}
-
 }
