@@ -41,14 +41,15 @@ func ExpandGlobalParams(t *Togomak, cfg conductor.Config) {
 	global.EvalContextMutex.Unlock()
 }
 
-func Perform(cfg conductor.Config) int {
+func Perform(togomak *conductor.Togomak) int {
+	cfg := togomak.Config
 
 	t, ctx := NewContextWithTogomak(cfg)
 	ctx, cancel := context.WithCancel(ctx)
 
-	logger := t.Logger
+	logger := togomak.Logger
 	logger.Debugf("starting watchdogs and signal handlers")
-	h := StartHandlers(ctx, t.hclDiagWriter)
+	h := StartHandlers(ctx, togomak.DiagWriter)
 
 	defer cancel()
 	defer h.WriteDiagnostics()
@@ -80,7 +81,7 @@ func Perform(cfg conductor.Config) int {
 	}
 	var d hcl.Diagnostics
 
-	pipe, d = ExpandImports(pipe, ctx, t)
+	pipe, d = ExpandImports(ctx, pipe, togomak.Parser)
 	h.Diags.Extend(d)
 	if h.Diags.HasErrors() {
 		return h.Fatal()

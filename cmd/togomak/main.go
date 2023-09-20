@@ -214,7 +214,9 @@ func newConfigFromCliContext(ctx *cli.Context) conductor.Config {
 func run(ctx *cli.Context) error {
 	cfg := newConfigFromCliContext(ctx)
 
-	os.Exit(orchestra.Perform(cfg))
+	t := conductor.NewTogomak(cfg)
+
+	os.Exit(orchestra.Perform(t))
 	return nil
 }
 

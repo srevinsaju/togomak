@@ -14,7 +14,7 @@ import (
 	"path/filepath"
 )
 
-func expandImport(m *ci.Import, ctx context.Context, parser *hclparse.Parser, pwd string, dst string) (*ci.Pipeline, hcl.Diagnostics) {
+func expandImport(ctx context.Context, m *ci.Import, parser *hclparse.Parser, pwd string, dst string) (*ci.Pipeline, hcl.Diagnostics) {
 	logger := global.Logger().WithField("import", "")
 	var diags hcl.Diagnostics
 	shaIdentifier := sha256.Sum256([]byte(m.Identifier()))
@@ -77,7 +77,7 @@ func expandImports(ctx context.Context, pipe *ci.Pipeline, parser *hclparse.Pars
 	}
 	m := pipe.Imports
 	for _, im := range m {
-		p, d := expandImport(im, ctx, parser, pwd, dst)
+		p, d := expandImport(ctx, im, parser, pwd, dst)
 		diags = diags.Extend(d)
 		if d.HasErrors() {
 			continue
