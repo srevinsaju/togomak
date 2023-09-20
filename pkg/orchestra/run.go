@@ -7,10 +7,11 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/ci"
 	"github.com/srevinsaju/togomak/v1/pkg/filter"
+	"github.com/srevinsaju/togomak/v1/pkg/handler"
 	"time"
 )
 
-func RunWithRetries(runnableId string, runnable ci.Block, ctx context.Context, handler *Handler, logger *logrus.Logger) {
+func RunWithRetries(runnableId string, runnable ci.Block, ctx context.Context, handler *handler.Handler, logger *logrus.Logger) {
 	stageDiags := runnable.Run(ctx)
 
 	handler.Tracker.AppendCompleted(runnable)

@@ -8,6 +8,7 @@ import (
 	"github.com/srevinsaju/togomak/v1/pkg/conductor"
 	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/graph"
+	"github.com/srevinsaju/togomak/v1/pkg/handler"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/pipeline"
 	"strings"
@@ -47,10 +48,10 @@ func Perform(cfg conductor.Config) int {
 
 	logger := t.Logger
 	logger.Debugf("starting watchdogs and signal handlers")
-	handler := StartHandlers(ctx)
+	h := StartHandlers(ctx, t.hclDiagWriter)
 
 	defer cancel()
-	defer handler.WriteDiagnostics(&t)
+	defer h.WriteDiagnostics()
 
 	// region: external parameters
 	ExpandGlobalParams(&t, cfg)
@@ -75,22 +76,22 @@ func Perform(cfg conductor.Config) int {
 
 	err := os.WriteFile(pipelineFilePath, pipelineData, 0644)
 	if err != nil {
-		return handler.Fatal()
+		return h.Fatal()
 	}
 	var d hcl.Diagnostics
 
 	pipe, d = ExpandImports(pipe, ctx, t)
-	handler.Diags.Extend(d)
-	if handler.Diags.HasErrors() {
-		return handler.Fatal()
+	h.Diags.Extend(d)
+	if h.Diags.HasErrors() {
+		return h.Fatal()
 	}
 
 	/// we will first expand all local blocks
 	logger.Debugf("expanding local blocks")
 	locals, d := pipe.Locals.Expand()
-	handler.Diags.Extend(d)
+	h.Diags.Extend(d)
 	if d.HasErrors() {
-		return handler.Fatal()
+		return h.Fatal()
 	}
 	pipe.Local = locals
 
@@ -105,12 +106,12 @@ func Perform(cfg conductor.Config) int {
 	// this will be used to generate the pipeline
 	logger.Debugf("generating dependency graph")
 	depGraph, d := graph.TopoSort(ctx, pipe)
-	handler.Diags.Extend(d)
-	if handler.Diags.HasErrors() {
-		return handler.Fatal()
+	h.Diags.Extend(d)
+	if h.Diags.HasErrors() {
+		return h.Fatal()
 	}
 
-	// endregion: interrupt handler
+	// endregion: interrupt h
 
 	var diagsMutex sync.Mutex
 
@@ -120,8 +121,8 @@ func Perform(cfg conductor.Config) int {
 		// this allows us to have different environments for different layers
 
 		d = ExpandOutputs(t, logger)
-		handler.Diags.Extend(d)
-		if handler.Diags.HasErrors() {
+		h.Diags.Extend(d)
+		if h.Diags.HasErrors() {
 			break
 		}
 
@@ -133,14 +134,14 @@ func Perform(cfg conductor.Config) int {
 			}
 			if d.HasErrors() {
 				diagsMutex.Lock()
-				handler.Diags.Extend(d)
+				h.Diags.Extend(d)
 				diagsMutex.Unlock()
 				break
 			}
 
 			ok, d, overridden := CanRun(runnable, ctx, filterList, runnableId, depGraph)
 			diagsMutex.Lock()
-			handler.Diags.Extend(d)
+			h.Diags.Extend(d)
 			diagsMutex.Unlock()
 			if d.HasErrors() {
 				break
@@ -150,7 +151,7 @@ func Perform(cfg conductor.Config) int {
 			// we will also need to prompt the user with the information saying that it has been skipped
 			d = runnable.Prepare(ctx, !ok, overridden)
 			diagsMutex.Lock()
-			handler.Diags.Extend(d)
+			h.Diags.Extend(d)
 			diagsMutex.Unlock()
 			if d.HasErrors() {
 				break
@@ -164,30 +165,30 @@ func Perform(cfg conductor.Config) int {
 			logger.Debugf("runnable %s is %T", runnableId, runnable)
 
 			if runnable.IsDaemon() {
-				handler.Tracker.AppendDaemon(runnable)
+				h.Tracker.AppendDaemon(runnable)
 			} else {
-				handler.Tracker.AppendRunnable(runnable)
+				h.Tracker.AppendRunnable(runnable)
 			}
 
-			go RunWithRetries(runnableId, runnable, ctx, handler, logger)
+			go RunWithRetries(runnableId, runnable, ctx, h, logger)
 
 			if cfg.Pipeline.DryRun {
 				// TODO: implement --concurrency option
 				// wait for the runnable to finish
 				// disable concurrency
-				handler.Tracker.RunnableWait()
-				handler.Tracker.DaemonWait()
+				h.Tracker.RunnableWait()
+				h.Tracker.DaemonWait()
 			}
 		}
-		handler.Tracker.RunnableWait()
+		h.Tracker.RunnableWait()
 
-		if handler.Diags.HasErrors() {
-			if handler.Tracker.HasDaemons() && !cfg.Pipeline.DryRun && !cfg.Behavior.Unattended {
+		if h.Diags.HasErrors() {
+			if h.Tracker.HasDaemons() && !cfg.Pipeline.DryRun && !cfg.Behavior.Unattended {
 				logger.Info("pipeline failed, waiting for daemons to shut down")
 				logger.Info("hit Ctrl+C to force stop them")
 				// wait for daemons to stop
-				handler.Tracker.DaemonWait()
-			} else if handler.Tracker.HasDaemons() && !cfg.Pipeline.DryRun {
+				h.Tracker.DaemonWait()
+			} else if h.Tracker.HasDaemons() && !cfg.Pipeline.DryRun {
 				logger.Info("pipeline failed, waiting for daemons to shut down...")
 				// wait for daemons to stop
 				cancel()
@@ -196,17 +197,17 @@ func Perform(cfg conductor.Config) int {
 		}
 	}
 
-	handler.Tracker.DaemonWait()
-	if handler.Diags.HasErrors() {
-		return handler.Fatal()
+	h.Tracker.DaemonWait()
+	if h.Diags.HasErrors() {
+		return h.Fatal()
 	}
-	return handler.Ok()
+	return h.Ok()
 }
 
-func StartHandlers(ctx context.Context) *Handler {
-	handler := NewHandler(ctx)
-	go handler.Interrupt()
-	go handler.Kill()
-	go handler.Daemons()
-	return handler
+func StartHandlers(ctx context.Context, diagWriter hcl.DiagnosticWriter) *handler.Handler {
+	h := handler.NewHandler(ctx, diagWriter)
+	go h.Interrupt()
+	go h.Kill()
+	go h.Daemons()
+	return h
 }

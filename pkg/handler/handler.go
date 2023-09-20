@@ -1,4 +1,4 @@
-package orchestra
+package handler
 
 import (
 	"context"
@@ -89,18 +89,20 @@ type Handler struct {
 	Tracker *Tracker
 	Diags   *dg.SafeDiagnostics
 
-	ctx    context.Context
-	cancel context.CancelFunc
+	diagWriter hcl.DiagnosticWriter
+	ctx        context.Context
+	cancel     context.CancelFunc
 }
 
-func NewHandler(ctx context.Context) *Handler {
+func NewHandler(ctx context.Context, diagWriter hcl.DiagnosticWriter) *Handler {
 	ctx, cancel := context.WithCancel(ctx)
 	return &Handler{
 		Tracker: NewTracker(),
 		Diags:   &dg.SafeDiagnostics{},
 
-		ctx:    ctx,
-		cancel: cancel,
+		diagWriter: diagWriter,
+		ctx:        ctx,
+		cancel:     cancel,
 	}
 }
 
@@ -142,7 +144,7 @@ func (h *Handler) Daemons() {
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField("watchdog", "")
 	var completedRunnables ci.Blocks
 
-	defer h.WriteDiagnostics(ctx.Value(c.Togomak).(*Togomak))
+	defer h.WriteDiagnostics()
 	logger.Tracef("starting watchdog")
 
 	// execute the following function when we receive any message on the completed channel
@@ -238,11 +240,11 @@ func (h *Handler) Interrupt() {
 	}
 }
 
-func (h *Handler) WriteDiagnostics(t *Togomak) {
+func (h *Handler) WriteDiagnostics() {
 	if h.Diags.Diagnostics() == nil {
 		return
 	}
-	x.Must(t.hclDiagWriter.WriteDiagnostics(h.Diags.Diagnostics()))
+	x.Must(h.diagWriter.WriteDiagnostics(h.Diags.Diagnostics()))
 }
 
 func (h *Handler) finale(logLevel logrus.Level) {
