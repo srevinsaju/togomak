@@ -6,18 +6,18 @@ import (
 	"github.com/srevinsaju/togomak/v1/pkg/c"
 )
 
-type DaemonLifecycle struct {
+type DaemonLifecycleConfig struct {
 	StopWhenComplete Blocks
 }
 
-type Lifecycle struct {
+type DaemonLifecycle struct {
 	StopWhenComplete hcl.Expression `hcl:"stop_when_complete,optional" json:"stop_when_complete"`
 }
 
-func (l *Lifecycle) Parse(ctx context.Context) (*DaemonLifecycle, hcl.Diagnostics) {
+func (l *DaemonLifecycle) Parse(ctx context.Context) (*DaemonLifecycleConfig, hcl.Diagnostics) {
 
 	pipe := ctx.Value(c.TogomakContextPipeline).(*Pipeline)
-	daemonLifecycle := &DaemonLifecycle{}
+	daemonLifecycle := &DaemonLifecycleConfig{}
 	var diags hcl.Diagnostics
 
 	if l == nil || l.StopWhenComplete == nil {
@@ -47,6 +47,6 @@ func (l *Lifecycle) Parse(ctx context.Context) (*DaemonLifecycle, hcl.Diagnostic
 	return daemonLifecycle, diags
 }
 
-func (l *Lifecycle) Variables() []hcl.Traversal {
+func (l *DaemonLifecycle) Variables() []hcl.Traversal {
 	return nil
 }

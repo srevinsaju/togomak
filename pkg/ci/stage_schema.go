@@ -107,7 +107,7 @@ type StageDaemon struct {
 	Timeout int `hcl:"timeout,optional" json:"timeout"`
 
 	// Lifecycle rules tell the termination policy of a daemon stage
-	Lifecycle *Lifecycle `hcl:"lifecycle,block" json:"lifecycle"`
+	Lifecycle *DaemonLifecycle `hcl:"lifecycle,block" json:"lifecycle"`
 }
 
 // StagePostHook is a stage which runs immediately after the stage is run
@@ -209,6 +209,16 @@ type CoreStage struct {
 	macroWhitelistedStages  []string
 	dependsOnVariablesMacro []hcl.Traversal
 	ContainerId             string
+
+	Lifecycle Lifecycle `hcl:"lifecycle,block" json:"lifecycle"`
+}
+
+type Lifecycle struct {
+	// Phase type of the phase needs to be specified
+	Phase string `hcl:"phase,optional" json:"stage"`
+
+	// Timeout how long the service needs to wait before killing itself
+	Timeout int `hcl:"timeout,optional" json:"timeout"`
 }
 
 // PreStage is a special stage identified by `togomak.pre` which is always run before
