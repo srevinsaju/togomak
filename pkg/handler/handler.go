@@ -218,7 +218,7 @@ func (h *Handler) Daemons() {
 				continue
 			}
 			logger.Tracef("checking daemon %s", daemon.Identifier())
-			lifecycle, d := daemon.Lifecycle(ctx)
+			lifecycle, d := daemon.ExecutionOptions(ctx)
 			if d.HasErrors() {
 				h.Diags.Extend(d)
 				d := daemon.Terminate(false)

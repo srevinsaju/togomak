@@ -5,7 +5,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 )
 
-func (m *Module) Lifecycle(ctx context.Context) (*DaemonLifecycleConfig, hcl.Diagnostics) {
+func (m *Module) ExecutionOptions(ctx context.Context) (*DaemonLifecycleConfig, hcl.Diagnostics) {
 	if m.Daemon != nil {
 		return m.Daemon.Lifecycle.Parse(ctx)
 	}

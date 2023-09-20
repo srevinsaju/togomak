@@ -69,6 +69,15 @@ func (s *CoreStage) Variables() []hcl.Traversal {
 	return traversal
 }
 
+func (s *Stage) Variables() []hcl.Traversal {
+	var traversal []hcl.Traversal
+	traversal = append(traversal, s.CoreStage.Variables()...)
+	if s.Lifecycle != nil {
+		traversal = append(traversal, s.Lifecycle.Timeout.Variables()...)
+	}
+	return traversal
+}
+
 func (s Stages) Variables() []hcl.Traversal {
 	var traversal []hcl.Traversal
 	for _, stage := range s {
