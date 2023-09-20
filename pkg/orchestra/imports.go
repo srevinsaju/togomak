@@ -4,8 +4,8 @@ import (
 	"context"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
+	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/ci"
-	"github.com/srevinsaju/togomak/v1/pkg/pipeline"
 )
 
 func ExpandImports(ctx context.Context, pipe *ci.Pipeline, parser *hclparse.Parser) (*ci.Pipeline, hcl.Diagnostics) {
@@ -19,8 +19,11 @@ func ExpandImports(ctx context.Context, pipe *ci.Pipeline, parser *hclparse.Pars
 		if d.HasErrors() {
 			return pipe, diags
 		}
+
 		pipe.Logger().Debugf("populating properties for imports completed with %d error(s)", len(d.Errs()))
-		pipe, d = pipeline.ExpandImports(ctx, pipe, parser)
+		pwd := ctx.Value(c.TogomakContextCwd).(string)
+
+		pipe, d = pipe.ExpandImports(ctx, parser, pwd)
 		diags = diags.Extend(d)
 		pipe.Logger().Debugf("expanding imports completed with %d error(s)", len(d.Errs()))
 
