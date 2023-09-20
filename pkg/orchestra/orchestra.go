@@ -46,13 +46,16 @@ func loadGlobalParams(t *Togomak, cfg Config) {
 }
 
 func Orchestra(cfg Config) int {
-	var diags hcl.Diagnostics
+
 	t, ctx := NewContextWithTogomak(cfg)
 	ctx, cancel := context.WithCancel(ctx)
+
 	logger := t.Logger
+	logger.Debugf("starting watchdogs and signal handlers")
+	handler := StartHandlers(ctx)
 
 	defer cancel()
-	defer diagnostics(&t, &diags)
+	defer handler.WriteDiagnostics(&t)
 
 	// region: external parameters
 	loadGlobalParams(&t, cfg)
@@ -82,15 +85,15 @@ func Orchestra(cfg Config) int {
 	var d hcl.Diagnostics
 
 	pipe, d = ExpandImports(pipe, ctx, t)
-	diags = diags.Extend(d)
-	if diags.HasErrors() {
+	handler.Diags.Extend(d)
+	if handler.Diags.HasErrors() {
 		return fatal(ctx)
 	}
 
 	/// we will first expand all local blocks
 	logger.Debugf("expanding local blocks")
 	locals, d := pipe.Locals.Expand()
-	diags = diags.Extend(d)
+	handler.Diags.Extend(d)
 	if d.HasErrors() {
 		return fatal(ctx)
 	}
@@ -107,13 +110,10 @@ func Orchestra(cfg Config) int {
 	// this will be used to generate the pipeline
 	logger.Debugf("generating dependency graph")
 	depGraph, d := graph.TopoSort(ctx, pipe)
-	diags = diags.Extend(d)
-	if diags.HasErrors() {
+	handler.Diags.Extend(d)
+	if handler.Diags.HasErrors() {
 		return fatal(ctx)
 	}
-
-	logger.Debugf("starting watchdogs and signal handlers")
-	handler := StartHandlers(ctx)
 
 	// endregion: interrupt handler
 
@@ -125,8 +125,8 @@ func Orchestra(cfg Config) int {
 		// this allows us to have different environments for different layers
 
 		d = ExpandOutputs(t, logger)
-		diags = diags.Extend(d)
-		if diags.HasErrors() {
+		handler.Diags.Extend(d)
+		if handler.Diags.HasErrors() {
 			break
 		}
 
@@ -138,14 +138,14 @@ func Orchestra(cfg Config) int {
 			}
 			if d.HasErrors() {
 				diagsMutex.Lock()
-				diags = diags.Extend(d)
+				handler.Diags.Extend(d)
 				diagsMutex.Unlock()
 				break
 			}
 
 			ok, d, overridden := CanRun(runnable, ctx, filterList, runnableId, depGraph)
 			diagsMutex.Lock()
-			diags = diags.Extend(d)
+			handler.Diags.Extend(d)
 			diagsMutex.Unlock()
 			if d.HasErrors() {
 				break
@@ -155,7 +155,7 @@ func Orchestra(cfg Config) int {
 			// we will also need to prompt the user with the information saying that it has been skipped
 			d = runnable.Prepare(ctx, !ok, overridden)
 			diagsMutex.Lock()
-			diags = diags.Extend(d)
+			handler.Diags.Extend(d)
 			diagsMutex.Unlock()
 			if d.HasErrors() {
 				break
@@ -186,7 +186,7 @@ func Orchestra(cfg Config) int {
 		}
 		handler.Tracker.RunnableWait()
 
-		if diags.HasErrors() {
+		if handler.Diags.HasErrors() {
 			if handler.Tracker.HasDaemons() && !cfg.Pipeline.DryRun && !cfg.Behavior.Unattended {
 				logger.Info("pipeline failed, waiting for daemons to shut down")
 				logger.Info("hit Ctrl+C to force stop them")
@@ -202,7 +202,7 @@ func Orchestra(cfg Config) int {
 	}
 
 	handler.Tracker.DaemonWait()
-	if diags.HasErrors() {
+	if handler.Diags.HasErrors() {
 		return fatal(ctx)
 	}
 	return ok(ctx)
@@ -259,7 +259,7 @@ func RunWithRetries(runnableId string, runnable ci.Block, ctx context.Context, h
 		}
 
 	}
-	handler.Diagnostics.Extend(stageDiags)
+	handler.Diags.Extend(stageDiags)
 	if runnable.IsDaemon() {
 		handler.Tracker.DaemonDone()
 	} else {

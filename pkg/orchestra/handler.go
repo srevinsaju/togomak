@@ -6,6 +6,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/ci"
+	"github.com/srevinsaju/togomak/v1/pkg/dg"
+	"github.com/srevinsaju/togomak/v1/pkg/x"
 	"os"
 	"os/signal"
 	"sync"
@@ -80,42 +82,9 @@ func (t *Tracker) AppendCompleted(completed ci.Block) {
 	t.completedSignal <- completed
 }
 
-type Diagnostics struct {
-	diagsMu sync.Mutex
-	diags   hcl.Diagnostics
-}
-
-func (d *Diagnostics) Append(diag *hcl.Diagnostic) {
-	d.diagsMu.Lock()
-	defer d.diagsMu.Unlock()
-	d.diags = d.diags.Append(diag)
-}
-
-func (d *Diagnostics) Extend(diags hcl.Diagnostics) {
-	d.diagsMu.Lock()
-	defer d.diagsMu.Unlock()
-	d.diags = d.diags.Extend(diags)
-}
-
-func (d *Diagnostics) HasErrors() bool {
-	return d.diags.HasErrors()
-}
-
-func (d *Diagnostics) Diagnostics() hcl.Diagnostics {
-	return d.diags
-}
-
-func (d *Diagnostics) Error() string {
-	return d.diags.Error()
-}
-
-func (d *Diagnostics) Errs() []error {
-	return d.diags.Errs()
-}
-
 type Handler struct {
-	Tracker     *Tracker
-	Diagnostics *Diagnostics
+	Tracker *Tracker
+	Diags   *dg.SafeDiagnostics
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -125,8 +94,10 @@ func NewHandler(ctx context.Context) *Handler {
 	ctx, cancel := context.WithCancel(ctx)
 	return &Handler{
 		Tracker: NewTracker(),
-		ctx:     ctx,
-		cancel:  cancel,
+		Diags:   &dg.SafeDiagnostics{},
+
+		ctx:    ctx,
+		cancel: cancel,
 	}
 }
 
@@ -167,8 +138,8 @@ func (h *Handler) Daemons() {
 	ctx := h.ctx
 	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField("watchdog", "")
 	var completedRunnables ci.Blocks
-	var diags hcl.Diagnostics
-	defer diagnostics(ctx.Value(c.Togomak).(*Togomak), &diags)
+
+	defer h.WriteDiagnostics(ctx.Value(c.Togomak).(*Togomak))
 	logger.Tracef("starting watchdog")
 
 	// execute the following function when we receive any message on the completed channel
@@ -185,9 +156,9 @@ func (h *Handler) Daemons() {
 			logger.Tracef("checking daemon %s", daemon.Identifier())
 			lifecycle, d := daemon.Lifecycle(ctx)
 			if d.HasErrors() {
-				diags = diags.Extend(d)
+				h.Diags.Extend(d)
 				d := daemon.Terminate(false)
-				diags = diags.Extend(d)
+				h.Diags.Extend(d)
 				return
 			}
 			if lifecycle == nil {
@@ -213,7 +184,7 @@ func (h *Handler) Daemons() {
 				logger.Infof("stopping daemon %s", daemon.Identifier())
 				d := daemon.Terminate(true)
 				if d.HasErrors() {
-					diags = diags.Extend(d)
+					h.Diags.Extend(d)
 				}
 			}
 		}
@@ -262,4 +233,11 @@ func (h *Handler) Interrupt() {
 		logger.Infof("took %s to complete the pipeline", time.Since(ctx.Value(c.TogomakContextBootTime).(time.Time)))
 		return
 	}
+}
+
+func (h *Handler) WriteDiagnostics(t *Togomak) {
+	if h.Diags.Diagnostics() == nil {
+		return
+	}
+	x.Must(t.hclDiagWriter.WriteDiagnostics(h.Diags.Diagnostics()))
 }
