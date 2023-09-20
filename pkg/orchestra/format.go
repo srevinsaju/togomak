@@ -6,7 +6,7 @@ import (
 	"github.com/bmatcuk/doublestar"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/srevinsaju/togomak/v1/pkg/conductor"
-	"github.com/srevinsaju/togomak/v1/pkg/pipeline"
+	"github.com/srevinsaju/togomak/v1/pkg/parse"
 	"os"
 	"path/filepath"
 )
@@ -34,7 +34,7 @@ func Format(cfg conductor.Config, check bool, recursive bool) error {
 			t.Logger.Fatalf("Error while globbing for **/*.hcl: %s", err)
 		}
 	} else {
-		fDir := pipeline.ConfigFileDir(ctx)
+		fDir := parse.ConfigFileDir(ctx)
 		fNames, err := os.ReadDir(fDir)
 		if err != nil {
 			panic(err)

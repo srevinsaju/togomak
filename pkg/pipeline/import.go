@@ -10,6 +10,7 @@ import (
 	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/ci"
 	"github.com/srevinsaju/togomak/v1/pkg/global"
+	"github.com/srevinsaju/togomak/v1/pkg/parse"
 	"github.com/srevinsaju/togomak/v1/pkg/ui"
 	"path/filepath"
 )
@@ -43,7 +44,7 @@ func expandImport(ctx context.Context, m *ci.Import, parser *hclparse.Parser, pw
 	}
 	ppb.Done()
 
-	p, d := ReadDirFromPath(clientImportPath, parser)
+	p, d := parse.ReadDirFromPath(clientImportPath, parser)
 	diags = diags.Extend(d)
 	if diags.HasErrors() {
 		return nil, diags
@@ -66,9 +67,9 @@ func ExpandImports(ctx context.Context, pipe *ci.Pipeline, parser *hclparse.Pars
 }
 
 func expandImports(ctx context.Context, pipe *ci.Pipeline, parser *hclparse.Parser, pwd string) (*ci.Pipeline, hcl.Diagnostics) {
-	var pipes MetaList
+	var pipes parse.MetaList
 	var diags hcl.Diagnostics
-	pipes = pipes.Append(NewMeta(pipe, nil, "memory"))
+	pipes = pipes.Append(parse.NewMeta(pipe, nil, "memory"))
 	tmpDir := global.TempDir()
 
 	dst, err := filepath.Abs(filepath.Join(tmpDir, "import"))
@@ -82,9 +83,9 @@ func expandImports(ctx context.Context, pipe *ci.Pipeline, parser *hclparse.Pars
 		if d.HasErrors() {
 			continue
 		}
-		pipes = pipes.Append(NewMeta(p, nil, im.Identifier()))
+		pipes = pipes.Append(parse.NewMeta(p, nil, im.Identifier()))
 	}
-	p, d := Merge(pipes)
+	p, d := parse.Merge(pipes)
 	diags = diags.Extend(d)
 	return p, diags
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/srevinsaju/togomak/v1/pkg/conductor"
 	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
+	"github.com/srevinsaju/togomak/v1/pkg/parse"
 	"github.com/srevinsaju/togomak/v1/pkg/pipeline"
 	"github.com/srevinsaju/togomak/v1/pkg/ui"
 	"github.com/srevinsaju/togomak/v1/pkg/x"
@@ -39,7 +40,7 @@ func List(cfg conductor.Config) error {
 	ctx = context.WithValue(ctx, c.TogomakContextPipelineFilePath, cfg.Pipeline.FilePath)
 
 	dgwriter := hcl.NewDiagnosticTextWriter(os.Stdout, parser.Files(), 0, true)
-	pipe, hclDiags := pipeline.Read(ctx, parser)
+	pipe, hclDiags := parse.Read(ctx, parser)
 	if hclDiags.HasErrors() {
 		logger.Fatal(dgwriter.WriteDiagnostics(hclDiags))
 	}

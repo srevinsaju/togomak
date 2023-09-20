@@ -10,7 +10,7 @@ import (
 	"github.com/srevinsaju/togomak/v1/pkg/graph"
 	"github.com/srevinsaju/togomak/v1/pkg/handler"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
-	"github.com/srevinsaju/togomak/v1/pkg/pipeline"
+	"github.com/srevinsaju/togomak/v1/pkg/parse"
 	"strings"
 
 	"github.com/zclconf/go-cty/cty"
@@ -60,7 +60,7 @@ func Perform(togomak *conductor.Togomak) int {
 
 	// --> parse the config file
 	// we will now read the pipeline from togomak.hcl
-	pipe, hclDiags := pipeline.Read(ctx, t.parser)
+	pipe, hclDiags := parse.Read(ctx, t.parser)
 	if hclDiags.HasErrors() {
 		logger.Fatal(t.hclDiagWriter.WriteDiagnostics(hclDiags))
 	}
