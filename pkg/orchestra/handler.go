@@ -16,6 +16,7 @@ import (
 type Tracker struct {
 	runnables   ci.Blocks
 	runnablesMu sync.Mutex
+	runnablesWg sync.WaitGroup
 
 	daemons   ci.Blocks
 	daemonsMu sync.Mutex
@@ -39,9 +40,18 @@ func NewTracker() *Tracker {
 }
 
 func (t *Tracker) AppendRunnable(runnable ci.Block) {
+	t.runnablesWg.Add(1)
 	t.runnablesMu.Lock()
 	defer t.runnablesMu.Unlock()
 	t.runnables = append(t.runnables, runnable)
+}
+
+func (t *Tracker) RunnableWait() {
+	t.runnablesWg.Wait()
+}
+
+func (t *Tracker) RunnableDone() {
+	t.runnablesWg.Done()
 }
 
 func (t *Tracker) AppendDaemon(daemon ci.Block) {

@@ -118,7 +118,6 @@ func Orchestra(cfg Config) int {
 	// endregion: interrupt handler
 
 	var diagsMutex sync.Mutex
-	var wg sync.WaitGroup
 
 	logger.Debugf("starting runnables")
 	for _, layer := range depGraph.TopoSortedLayers() {
@@ -161,9 +160,6 @@ func Orchestra(cfg Config) int {
 				}
 			}
 
-			logger.Debugf("runnable %s is %T", runnableId, runnable)
-			handler.Tracker.AppendRunnable(runnable)
-
 			ok, d, overridden := CanRun(runnable, ctx, filterList, runnableId, depGraph)
 			diagsMutex.Lock()
 			diags = diags.Extend(d)
@@ -187,25 +183,25 @@ func Orchestra(cfg Config) int {
 				continue
 			}
 
+			logger.Debugf("runnable %s is %T", runnableId, runnable)
+
 			if runnable.IsDaemon() {
 				handler.Tracker.AppendDaemon(runnable)
 			} else {
-				wg.Add(1)
+				handler.Tracker.AppendRunnable(runnable)
 			}
 
 			go func(runnableId string) {
 				stageDiags := runnable.Run(ctx)
 
-				// TODO: COME BACK HERE
 				handler.Tracker.AppendCompleted(runnable)
-
 				logger.Tracef("signaling runnable %s", runnableId)
 
 				if !stageDiags.HasErrors() {
 					if runnable.IsDaemon() {
 						handler.Tracker.DaemonDone()
 					} else {
-						wg.Done()
+						handler.Tracker.RunnableDone()
 					}
 					return
 				}
@@ -252,7 +248,7 @@ func Orchestra(cfg Config) int {
 				if runnable.IsDaemon() {
 					handler.Tracker.DaemonDone()
 				} else {
-					wg.Done()
+					handler.Tracker.RunnableDone()
 				}
 
 			}(runnableId)
@@ -261,11 +257,11 @@ func Orchestra(cfg Config) int {
 				// TODO: implement --concurrency option
 				// wait for the runnable to finish
 				// disable concurrency
-				wg.Wait()
+				handler.Tracker.RunnableWait()
 				handler.Tracker.DaemonWait()
 			}
 		}
-		wg.Wait()
+		handler.Tracker.RunnableWait()
 
 		if diags.HasErrors() {
 			if handler.Tracker.HasDaemons() && !cfg.Pipeline.DryRun && !cfg.Behavior.Unattended {
