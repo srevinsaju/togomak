@@ -2,14 +2,14 @@ package orchestra
 
 import (
 	"github.com/sirupsen/logrus"
+	"github.com/srevinsaju/togomak/v1/pkg/conductor"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
-	"github.com/srevinsaju/togomak/v1/pkg/togomak"
 	"github.com/srevinsaju/togomak/v1/pkg/x"
 	"os"
 	"path/filepath"
 )
 
-func Chdir(cfg togomak.Config, logger *logrus.Logger) string {
+func Chdir(cfg conductor.Config, logger *logrus.Logger) string {
 	cwd := cfg.Dir
 	if cwd == "" {
 		cwd = filepath.Dir(cfg.Pipeline.FilePath)

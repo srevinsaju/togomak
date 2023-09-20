@@ -1,4 +1,4 @@
-package togomak
+package conductor
 
 import (
 	"github.com/sirupsen/logrus"

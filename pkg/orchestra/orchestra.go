@@ -8,12 +8,12 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/ci"
+	"github.com/srevinsaju/togomak/v1/pkg/conductor"
 	"github.com/srevinsaju/togomak/v1/pkg/filter"
 	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/graph"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/pipeline"
-	"github.com/srevinsaju/togomak/v1/pkg/togomak"
 	"github.com/srevinsaju/togomak/v1/pkg/x"
 	"strings"
 
@@ -24,7 +24,7 @@ import (
 	"time"
 )
 
-func loadGlobalParams(t *Togomak, cfg togomak.Config) {
+func loadGlobalParams(t *Togomak, cfg conductor.Config) {
 	paramsGo := make(map[string]cty.Value)
 	if cfg.Behavior.Child.Enabled {
 		m := make(map[string]string)
@@ -46,7 +46,7 @@ func loadGlobalParams(t *Togomak, cfg togomak.Config) {
 	global.EvalContextMutex.Unlock()
 }
 
-func Orchestra(cfg togomak.Config) int {
+func Orchestra(cfg conductor.Config) int {
 
 	t, ctx := NewContextWithTogomak(cfg)
 	ctx, cancel := context.WithCancel(ctx)

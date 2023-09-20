@@ -7,17 +7,17 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
+	"github.com/srevinsaju/togomak/v1/pkg/conductor"
 	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/pipeline"
-	"github.com/srevinsaju/togomak/v1/pkg/togomak"
 	"github.com/srevinsaju/togomak/v1/pkg/ui"
 	"github.com/srevinsaju/togomak/v1/pkg/x"
 	"os"
 	"path/filepath"
 )
 
-func List(cfg togomak.Config) error {
+func List(cfg conductor.Config) error {
 	logger := NewLogger(cfg)
 	parser := hclparse.NewParser()
 

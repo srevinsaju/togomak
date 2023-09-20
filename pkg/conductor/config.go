@@ -1,4 +1,4 @@
-package togomak
+package conductor
 
 import (
 	"github.com/srevinsaju/togomak/v1/pkg/filter"

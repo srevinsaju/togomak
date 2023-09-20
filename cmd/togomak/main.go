@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"github.com/mattn/go-isatty"
 	"github.com/srevinsaju/togomak/v1/pkg/cache"
+	"github.com/srevinsaju/togomak/v1/pkg/conductor"
 	"github.com/srevinsaju/togomak/v1/pkg/filter"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/orchestra"
-	"github.com/srevinsaju/togomak/v1/pkg/togomak"
 	"github.com/urfave/cli/v2"
 	"os"
 )
@@ -160,7 +160,7 @@ func initPipeline(ctx *cli.Context) error {
 	return nil
 }
 
-func newConfigFromCliContext(ctx *cli.Context) togomak.Config {
+func newConfigFromCliContext(ctx *cli.Context) conductor.Config {
 	owd, err := os.Getwd()
 	if err != nil {
 		panic(err)
@@ -184,15 +184,15 @@ func newConfigFromCliContext(ctx *cli.Context) togomak.Config {
 	for _, stage := range ctx.Args().Slice() {
 		stages = append(stages, filter.NewFilterItem(stage))
 	}
-	cfg := togomak.Config{
+	cfg := conductor.Config{
 		Owd: owd,
 		Dir: dir,
 
-		Behavior: togomak.Behavior{
+		Behavior: conductor.Behavior{
 			Unattended: ctx.Bool("unattended") || ctx.Bool("ci"),
 			Ci:         ctx.Bool("ci"),
 
-			Child: togomak.BehaviorChild{
+			Child: conductor.BehaviorChild{
 				Enabled:      ctx.Bool("child"),
 				Parent:       ctx.String("parent"),
 				ParentParams: ctx.StringSlice("parent-param"),
@@ -201,8 +201,8 @@ func newConfigFromCliContext(ctx *cli.Context) togomak.Config {
 
 		User:      os.Getenv("USER"),
 		Hostname:  hostname,
-		Interface: togomak.Interface{Verbosity: verboseCount},
-		Pipeline: togomak.ConfigPipeline{
+		Interface: conductor.Interface{Verbosity: verboseCount},
+		Pipeline: conductor.ConfigPipeline{
 			Filtered: stages,
 			FilePath: pipelineFilePath,
 			DryRun:   ctx.Bool("dry-run"),

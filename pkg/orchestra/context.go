@@ -8,10 +8,10 @@ import (
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
+	"github.com/srevinsaju/togomak/v1/pkg/conductor"
 	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/third-party/hashicorp/terraform/lang/funcs"
-	"github.com/srevinsaju/togomak/v1/pkg/togomak"
 	"github.com/srevinsaju/togomak/v1/pkg/ui"
 	"github.com/srevinsaju/togomak/v1/pkg/x"
 	ctyyaml "github.com/zclconf/go-cty-yaml"
@@ -27,7 +27,7 @@ import (
 type Togomak struct {
 	Logger        *logrus.Logger
 	pipelineId    string
-	cfg           togomak.Config
+	cfg           conductor.Config
 	cwd           string
 	ectx          *hcl.EvalContext
 	tempDir       string
@@ -51,7 +51,7 @@ func createTempDir(cwd string, pipelineId string) string {
 	return tempDir
 }
 
-func createHclEvalContext(cwd string, cfg togomak.Config, pipelineId string, tempDir string) *hcl.EvalContext {
+func createHclEvalContext(cwd string, cfg conductor.Config, pipelineId string, tempDir string) *hcl.EvalContext {
 	// --> set up HCL context
 	hclContext := &hcl.EvalContext{
 		Functions: map[string]function.Function{
@@ -271,7 +271,7 @@ func createHclEvalContext(cwd string, cfg togomak.Config, pipelineId string, tem
 	return hclContext
 }
 
-func NewContextWithTogomak(cfg togomak.Config) (Togomak, context.Context) {
+func NewContextWithTogomak(cfg conductor.Config) (Togomak, context.Context) {
 
 	logger := NewLogger(cfg)
 	global.SetLogger(logger)

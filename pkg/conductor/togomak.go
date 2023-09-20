@@ -1,4 +1,4 @@
-package togomak
+package conductor
 
 import (
 	"github.com/hashicorp/hcl/v2/hclparse"
