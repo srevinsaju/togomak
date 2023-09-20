@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/hashicorp/go-envparse"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/kendru/darwin/go/depgraph"
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/ci"
@@ -133,7 +134,6 @@ func Orchestra(cfg Config) int {
 		for _, runnableId := range layer {
 
 			var runnable ci.Block
-			var ok bool
 
 			if runnableId == meta.RootStage {
 				continue
@@ -164,61 +164,21 @@ func Orchestra(cfg Config) int {
 			logger.Debugf("runnable %s is %T", runnableId, runnable)
 			handler.Tracker.AppendRunnable(runnable)
 
-			ok, d = runnable.CanRun(ctx)
+			ok, d, overridden := CanRun(runnable, ctx, filterList, runnableId, depGraph)
+			diagsMutex.Lock()
+			diags = diags.Extend(d)
+			diagsMutex.Unlock()
 			if d.HasErrors() {
-				diagsMutex.Lock()
-				diags = diags.Extend(d)
-				diagsMutex.Unlock()
 				break
 			}
 
-			// region: requested stages, whitelisting and blacklisting
-			overridden := false
-			if runnable.Type() == ci.StageBlock || runnable.Type() == ci.ModuleBlock {
-				stageStatus, stageStatusOk := filterList.Get(runnableId)
-
-				// when a particular stage is explicitly requested, for example
-				// in the pipeline containing the following stages
-				// - hello_1
-				// - hello_2
-				// - hello_3
-				// - hello_4 (depends on hello_1)
-				// if 'hello_1' is explicitly requested, we will run 'hello_4' as well
-				if filterList.HasOperationType(filter.OperationRun) && !stageStatusOk {
-					isDependentOfRequestedStage := false
-					for _, ss := range filterList {
-						if ss.Operation == filter.OperationRun {
-							if depGraph.DependsOn(runnableId, ss.RunnableId()) {
-								isDependentOfRequestedStage = true
-								break
-							}
-						}
-					}
-
-					// if this stage is not dependent on the requested stage, we will skip it
-					if !isDependentOfRequestedStage {
-						ok = false
-					}
-				}
-
-				if stageStatusOk {
-					// overridden status is shown on the build pipeline if the
-					// stage is explicitly whitelisted or blacklisted
-					// using the ^ or + prefix
-					overridden = true
-					ok = ok || stageStatus.AnyOperations(filter.OperationWhitelist)
-					if stageStatus.AllOperations(filter.OperationBlacklist) {
-						ok = false
-					}
-				}
-				runnable.Set(ci.StageContextChildStatuses, stageStatus.Children(runnableId).Marshall())
-
-			}
-			// endregion: requested stages, whitelisting and blacklisting
-
-			d := runnable.Prepare(ctx, !ok, overridden)
+			// prepare step needs to run before the runnable is run
+			// we will also need to prompt the user with the information saying that it has been skipped
+			d = runnable.Prepare(ctx, !ok, overridden)
+			diagsMutex.Lock()
+			diags = diags.Extend(d)
+			diagsMutex.Unlock()
 			if d.HasErrors() {
-				diags = diags.Extend(d)
 				break
 			}
 
@@ -327,6 +287,61 @@ func Orchestra(cfg Config) int {
 		return fatal(ctx)
 	}
 	return ok(ctx)
+}
+
+func CanRun(runnable ci.Block, ctx context.Context, filterList filter.FilterList, runnableId string, depGraph *depgraph.Graph) (bool, hcl.Diagnostics, bool) {
+	var diags hcl.Diagnostics
+
+	ok, d := runnable.CanRun(ctx)
+	if d.HasErrors() {
+		diags = diags.Extend(d)
+		return false, diags, false
+	}
+
+	// region: requested stages, whitelisting and blacklisting
+	overridden := false
+	if runnable.Type() == ci.StageBlock || runnable.Type() == ci.ModuleBlock {
+		stageStatus, stageStatusOk := filterList.Get(runnableId)
+
+		// when a particular stage is explicitly requested, for example
+		// in the pipeline containing the following stages
+		// - hello_1
+		// - hello_2
+		// - hello_3
+		// - hello_4 (depends on hello_1)
+		// if 'hello_1' is explicitly requested, we will run 'hello_4' as well
+		if filterList.HasOperationType(filter.OperationRun) && !stageStatusOk {
+			isDependentOfRequestedStage := false
+			for _, ss := range filterList {
+				if ss.Operation == filter.OperationRun {
+					if depGraph.DependsOn(runnableId, ss.RunnableId()) {
+						isDependentOfRequestedStage = true
+						break
+					}
+				}
+			}
+
+			// if this stage is not dependent on the requested stage, we will skip it
+			if !isDependentOfRequestedStage {
+				ok = false
+			}
+		}
+
+		if stageStatusOk {
+			// overridden status is shown on the build pipeline if the
+			// stage is explicitly whitelisted or blacklisted
+			// using the ^ or + prefix
+			overridden = true
+			ok = ok || stageStatus.AnyOperations(filter.OperationWhitelist)
+			if stageStatus.AllOperations(filter.OperationBlacklist) {
+				ok = false
+			}
+		}
+		runnable.Set(ci.StageContextChildStatuses, stageStatus.Children(runnableId).Marshall())
+
+	}
+	// endregion: requested stages, whitelisting and blacklisting
+	return ok, diags, overridden
 }
 
 func ExpandOutputs(t Togomak, logger *logrus.Logger) hcl.Diagnostics {
