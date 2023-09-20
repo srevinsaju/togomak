@@ -214,7 +214,7 @@ func newConfigFromCliContext(ctx *cli.Context) conductor.Config {
 func run(ctx *cli.Context) error {
 	cfg := newConfigFromCliContext(ctx)
 
-	os.Exit(orchestra.Orchestra(cfg))
+	os.Exit(orchestra.Perform(cfg))
 	return nil
 }
 

@@ -46,7 +46,7 @@ func loadGlobalParams(t *Togomak, cfg conductor.Config) {
 	global.EvalContextMutex.Unlock()
 }
 
-func Orchestra(cfg conductor.Config) int {
+func Perform(cfg conductor.Config) int {
 
 	t, ctx := NewContextWithTogomak(cfg)
 	ctx, cancel := context.WithCancel(ctx)
