@@ -2,11 +2,14 @@ package orchestra
 
 import (
 	"context"
+	"fmt"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/ci"
 	"github.com/srevinsaju/togomak/v1/pkg/dg"
+	"github.com/srevinsaju/togomak/v1/pkg/global"
+	"github.com/srevinsaju/togomak/v1/pkg/ui"
 	"github.com/srevinsaju/togomak/v1/pkg/x"
 	"os"
 	"os/signal"
@@ -127,7 +130,7 @@ func (h *Handler) Kill() {
 			writer := hcl.NewDiagnosticTextWriter(os.Stderr, nil, 78, true)
 			_ = writer.WriteDiagnostics(diags)
 		}
-		os.Exit(fatal(ctx))
+		os.Exit(h.Fatal())
 	case <-ctx.Done():
 		logger.Infof("took %s to complete the pipeline", time.Since(ctx.Value(c.TogomakContextBootTime).(time.Time)))
 		return
@@ -214,7 +217,7 @@ func (h *Handler) Interrupt() {
 				Summary:  "Force quit",
 				Detail:   "data loss may have occurred",
 			})
-			os.Exit(fatal(ctx))
+			os.Exit(h.Fatal())
 			return
 		}()
 		for _, runnable := range h.Tracker.runnables {
@@ -226,7 +229,7 @@ func (h *Handler) Interrupt() {
 		if diags.HasErrors() {
 			writer := hcl.NewDiagnosticTextWriter(os.Stderr, nil, 78, true)
 			_ = writer.WriteDiagnostics(diags)
-			os.Exit(fatal(ctx))
+			os.Exit(h.Fatal())
 		}
 		h.cancel()
 	case <-ctx.Done():
@@ -240,4 +243,20 @@ func (h *Handler) WriteDiagnostics(t *Togomak) {
 		return
 	}
 	x.Must(t.hclDiagWriter.WriteDiagnostics(h.Diags.Diagnostics()))
+}
+
+func (h *Handler) finale(logLevel logrus.Level) {
+	logger := global.Logger()
+	bootTime := h.ctx.Value(c.TogomakContextBootTime).(time.Time)
+	logger.Log(logLevel, ui.Grey(fmt.Sprintf("took %s", time.Since(bootTime).Round(time.Millisecond))))
+}
+
+func (h *Handler) Fatal() int {
+	h.finale(logrus.ErrorLevel)
+	return 1
+}
+
+func (h *Handler) Ok() int {
+	h.finale(logrus.InfoLevel)
+	return 0
 }

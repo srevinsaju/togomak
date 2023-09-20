@@ -75,14 +75,14 @@ func Perform(cfg conductor.Config) int {
 
 	err := os.WriteFile(pipelineFilePath, pipelineData, 0644)
 	if err != nil {
-		return fatal(ctx)
+		return handler.Fatal()
 	}
 	var d hcl.Diagnostics
 
 	pipe, d = ExpandImports(pipe, ctx, t)
 	handler.Diags.Extend(d)
 	if handler.Diags.HasErrors() {
-		return fatal(ctx)
+		return handler.Fatal()
 	}
 
 	/// we will first expand all local blocks
@@ -90,7 +90,7 @@ func Perform(cfg conductor.Config) int {
 	locals, d := pipe.Locals.Expand()
 	handler.Diags.Extend(d)
 	if d.HasErrors() {
-		return fatal(ctx)
+		return handler.Fatal()
 	}
 	pipe.Local = locals
 
@@ -107,7 +107,7 @@ func Perform(cfg conductor.Config) int {
 	depGraph, d := graph.TopoSort(ctx, pipe)
 	handler.Diags.Extend(d)
 	if handler.Diags.HasErrors() {
-		return fatal(ctx)
+		return handler.Fatal()
 	}
 
 	// endregion: interrupt handler
@@ -198,9 +198,9 @@ func Perform(cfg conductor.Config) int {
 
 	handler.Tracker.DaemonWait()
 	if handler.Diags.HasErrors() {
-		return fatal(ctx)
+		return handler.Fatal()
 	}
-	return ok(ctx)
+	return handler.Ok()
 }
 
 func StartHandlers(ctx context.Context) *Handler {
