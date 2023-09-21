@@ -88,9 +88,6 @@ func Chdir(cfg Config, logger *logrus.Logger) string {
 func NewTogomak(cfg Config) *Togomak {
 	parser := hclparse.NewParser()
 
-	// TODO: remove this
-	global.SetHclParser(parser)
-
 	diagWriter := hcl.NewDiagnosticTextWriter(os.Stdout, parser.Files(), 0, true)
 
 	logger := NewLogger(cfg)
@@ -132,5 +129,4 @@ func (t *Togomak) Destroy() {
 	t.Context = nil
 	t.Parser = nil
 	t.DiagWriter = nil
-
 }

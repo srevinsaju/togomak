@@ -221,8 +221,9 @@ func run(ctx *cli.Context) error {
 	cfg := newConfigFromCliContext(ctx)
 
 	t := conductor.NewTogomak(cfg)
-
-	os.Exit(orchestra.Perform(t))
+	v := orchestra.Perform(t)
+	t.Destroy()
+	os.Exit(v)
 	return nil
 }
 
