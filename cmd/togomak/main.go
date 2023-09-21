@@ -8,6 +8,7 @@ import (
 	"github.com/srevinsaju/togomak/v1/pkg/filter"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/orchestra"
+	"github.com/srevinsaju/togomak/v1/pkg/path"
 	"github.com/urfave/cli/v2"
 	"os"
 )
@@ -185,8 +186,6 @@ func newConfigFromCliContext(ctx *cli.Context) conductor.Config {
 		stages = append(stages, filter.NewFilterItem(stage))
 	}
 	cfg := conductor.Config{
-		Owd: owd,
-		Dir: dir,
 
 		Behavior: conductor.Behavior{
 			Unattended: ctx.Bool("unattended") || ctx.Bool("ci"),
@@ -199,13 +198,18 @@ func newConfigFromCliContext(ctx *cli.Context) conductor.Config {
 			},
 		},
 
+		Paths: path.Path{
+			Pipeline: pipelineFilePath,
+			Cwd:      dir,
+			Owd:      owd,
+		},
 		User:      os.Getenv("USER"),
 		Hostname:  hostname,
 		Interface: conductor.Interface{Verbosity: verboseCount},
 		Pipeline: conductor.ConfigPipeline{
 			Filtered: stages,
-			FilePath: pipelineFilePath,
-			DryRun:   ctx.Bool("dry-run"),
+
+			DryRun: ctx.Bool("dry-run"),
 		},
 	}
 	return cfg

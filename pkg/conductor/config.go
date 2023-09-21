@@ -2,10 +2,10 @@ package conductor
 
 import (
 	"github.com/srevinsaju/togomak/v1/pkg/filter"
+	"github.com/srevinsaju/togomak/v1/pkg/path"
 )
 
 type ConfigPipeline struct {
-	FilePath string
 	Filtered filter.FilterList
 	DryRun   bool
 }
@@ -38,11 +38,10 @@ type Behavior struct {
 }
 
 type Config struct {
-	Owd string
-	Dir string
-
 	User     string
 	Hostname string
+
+	Paths path.Path
 
 	Interface Interface
 

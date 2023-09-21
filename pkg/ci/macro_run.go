@@ -3,8 +3,6 @@ package ci
 import (
 	"context"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/sirupsen/logrus"
-	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/runnable"
 	"github.com/zclconf/go-cty/cty"
@@ -20,7 +18,7 @@ func (m *Macro) Prepare(ctx context.Context, skip bool, overridden bool) hcl.Dia
 
 func (m *Macro) Run(ctx context.Context, options ...runnable.Option) (diags hcl.Diagnostics) {
 	// _ := ctx.Value(TogomakContextHclDiagWriter).(hcl.DiagnosticWriter)
-	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField(DataBlock, m.Id)
+	logger := m.Logger()
 	logger.Tracef("running %s.%s", MacroBlock, m.Id)
 	hclContext := global.HclEvalContext()
 

@@ -12,7 +12,8 @@ import (
 )
 
 func Format(cfg conductor.Config, check bool, recursive bool) error {
-	t, ctx := NewContextWithTogomak(cfg)
+	t, _ := NewContextWithTogomak(cfg)
+	togomak := conductor.NewTogomak(cfg)
 
 	var toFormat []string
 
@@ -34,7 +35,7 @@ func Format(cfg conductor.Config, check bool, recursive bool) error {
 			t.Logger.Fatalf("Error while globbing for **/*.hcl: %s", err)
 		}
 	} else {
-		fDir := parse.ConfigFileDir(ctx)
+		fDir := parse.ConfigFileDir(togomak.Config.Paths)
 		fNames, err := os.ReadDir(fDir)
 		if err != nil {
 			panic(err)

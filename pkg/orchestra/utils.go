@@ -10,9 +10,9 @@ import (
 )
 
 func Chdir(cfg conductor.Config, logger *logrus.Logger) string {
-	cwd := cfg.Dir
+	cwd := cfg.Paths.Cwd
 	if cwd == "" {
-		cwd = filepath.Dir(cfg.Pipeline.FilePath)
+		cwd = filepath.Dir(cfg.Paths.Pipeline)
 		if filepath.Base(cwd) == meta.BuildDirPrefix {
 			cwd = filepath.Dir(cwd)
 		}

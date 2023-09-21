@@ -34,12 +34,12 @@ func List(cfg conductor.Config) error {
 	// TODO: move this to a function
 	ctx := context.Background()
 	cwd := Chdir(cfg, logger)
-	ctx = context.WithValue(ctx, c.TogomakContextOwd, cfg.Owd)
+	ctx = context.WithValue(ctx, c.TogomakContextOwd, cfg.Paths.Pipeline)
 	ctx = context.WithValue(ctx, c.TogomakContextCwd, cwd)
-	ctx = context.WithValue(ctx, c.TogomakContextPipelineFilePath, cfg.Pipeline.FilePath)
+	ctx = context.WithValue(ctx, c.TogomakContextPipelineFilePath, cfg.Paths.Pipeline)
 
 	dgwriter := hcl.NewDiagnosticTextWriter(os.Stdout, parser.Files(), 0, true)
-	pipe, hclDiags := ci.Read(ctx, parser)
+	pipe, hclDiags := ci.Read(cfg.Paths, parser)
 	if hclDiags.HasErrors() {
 		logger.Fatal(dgwriter.WriteDiagnostics(hclDiags))
 	}

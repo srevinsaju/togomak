@@ -4,8 +4,8 @@ import (
 	"context"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/kendru/darwin/go/depgraph"
-	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/ci"
+	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/x"
 )
@@ -44,7 +44,7 @@ func Resolve(ctx context.Context, pipe *ci.Pipeline, g *depgraph.Graph, v []hcl.
 func TopoSort(ctx context.Context, pipe *ci.Pipeline) (*depgraph.Graph, hcl.Diagnostics) {
 	g := depgraph.New()
 	var diags hcl.Diagnostics
-	logger := ctx.Value("logger").(*logrus.Logger).WithField("component", "graph")
+	logger := global.Logger().WithField("component", "graph")
 
 	x.Must(g.DependOn(meta.PreStage, meta.RootStage))
 	x.Must(g.DependOn(meta.PostStage, meta.PreStage))

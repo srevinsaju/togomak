@@ -1,28 +1,26 @@
 package parse
 
 import (
-	"context"
-	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
+	"github.com/srevinsaju/togomak/v1/pkg/path"
 	"path/filepath"
 )
 
 // ConfigFilePath returns the path to the configuration file. If the path is not absolute, it is assumed to be
 // relative to the working directory
 // DEPRECATED: use configFileDir instead
-func ConfigFilePath(ctx context.Context) string {
-	filePath := ctx.Value(c.TogomakContextPipelineFilePath).(string)
-	if filePath == "" {
-		filePath = meta.ConfigFileName
+func ConfigFilePath(paths path.Path) string {
+	pipelineFilePath := paths.Pipeline
+	if pipelineFilePath == "" {
+		pipelineFilePath = meta.ConfigFileName
 	}
-	owd := ctx.Value(c.TogomakContextOwd).(string)
 
-	if filepath.IsAbs(filePath) == false {
-		filePath = filepath.Join(owd, filePath)
+	if filepath.IsAbs(pipelineFilePath) == false {
+		pipelineFilePath = filepath.Join(paths.Owd, pipelineFilePath)
 	}
-	return filePath
+	return pipelineFilePath
 }
 
-func ConfigFileDir(ctx context.Context) string {
-	return filepath.Dir(ConfigFilePath(ctx))
+func ConfigFileDir(paths path.Path) string {
+	return filepath.Dir(ConfigFilePath(paths))
 }

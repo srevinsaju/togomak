@@ -48,7 +48,7 @@ func Perform(togomak *conductor.Togomak) int {
 
 	logger := togomak.Logger
 	logger.Debugf("starting watchdogs and signal handlers")
-	h := StartHandlers(ctx, togomak.DiagWriter)
+	h := StartHandlers(togomak)
 
 	defer cancel()
 	defer h.WriteDiagnostics()
@@ -59,7 +59,7 @@ func Perform(togomak *conductor.Togomak) int {
 
 	// --> parse the config file
 	// we will now read the pipeline from togomak.hcl
-	pipe, hclDiags := ci.Read(ctx, t.parser)
+	pipe, hclDiags := ci.Read(togomak.Config.Paths, t.parser)
 	if hclDiags.HasErrors() {
 		logger.Fatal(t.hclDiagWriter.WriteDiagnostics(hclDiags))
 	}
@@ -204,8 +204,13 @@ func Perform(togomak *conductor.Togomak) int {
 	return h.Ok()
 }
 
-func StartHandlers(ctx context.Context, diagWriter hcl.DiagnosticWriter) *handler.Handler {
-	h := handler.NewHandler(ctx, diagWriter)
+func StartHandlers(togomak *conductor.Togomak) *handler.Handler {
+	h := handler.NewHandler(
+		handler.WithContext(togomak.Context),
+		handler.WithLogger(togomak.Logger),
+		handler.WithDiagnosticWriter(togomak.DiagWriter),
+		handler.WithProcessBootTime(togomak.Process.BootTime),
+	)
 	go h.Interrupt()
 	go h.Kill()
 	go h.Daemons()

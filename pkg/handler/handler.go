@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
-	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/ci"
 	"github.com/srevinsaju/togomak/v1/pkg/dg"
 	"github.com/srevinsaju/togomak/v1/pkg/global"
@@ -88,28 +87,88 @@ func (t *Tracker) AppendCompleted(completed ci.Block) {
 type Handler struct {
 	Tracker *Tracker
 	Diags   *dg.SafeDiagnostics
+	Logger  *logrus.Logger
+	Process *Process
 
 	diagWriter hcl.DiagnosticWriter
 	ctx        context.Context
 	cancel     context.CancelFunc
 }
 
-func NewHandler(ctx context.Context, diagWriter hcl.DiagnosticWriter) *Handler {
+type HandlerOption func(*Handler)
+
+func WithContext(ctx context.Context) HandlerOption {
+	return func(h *Handler) {
+		ctx, cancel := context.WithCancel(ctx)
+		h.ctx = ctx
+		h.cancel = cancel
+	}
+}
+
+func WithLogger(logger *logrus.Logger) HandlerOption {
+	return func(h *Handler) {
+		h.Logger = logger
+	}
+}
+
+func WithDiagnostics(diagnostics *dg.SafeDiagnostics) HandlerOption {
+	return func(h *Handler) {
+		h.Diags = diagnostics
+	}
+}
+
+func WithDiagnosticWriter(diagnosticWriter hcl.DiagnosticWriter) HandlerOption {
+	return func(h *Handler) {
+		h.diagWriter = diagnosticWriter
+	}
+}
+
+func WithTracker(tracker *Tracker) HandlerOption {
+	return func(h *Handler) {
+		h.Tracker = tracker
+	}
+}
+
+func WithProcessBootTime(bootTime time.Time) HandlerOption {
+	return func(h *Handler) {
+		h.Process.BootTime = bootTime
+	}
+}
+
+type Process struct {
+	BootTime time.Time
+}
+
+func NewProcess() *Process {
+	return &Process{
+		BootTime: time.Now(),
+	}
+}
+
+func NewHandler(opts ...HandlerOption) *Handler {
+	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
-	return &Handler{
+	h := &Handler{
 		Tracker: NewTracker(),
 		Diags:   &dg.SafeDiagnostics{},
+		Logger:  logrus.New(),
+		Process: NewProcess(),
 
-		diagWriter: diagWriter,
+		diagWriter: hcl.NewDiagnosticTextWriter(os.Stdout, nil, 0, true),
 		ctx:        ctx,
 		cancel:     cancel,
 	}
+
+	for _, opt := range opts {
+		opt(h)
+	}
+	return h
 }
 
 func (h *Handler) Kill() {
 	signal.Notify(h.Tracker.killSignal, os.Kill)
 	ctx := h.ctx
-	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger)
+	logger := h.Logger.WithField("watchdog", "")
 	select {
 	case <-h.Tracker.killSignal:
 		var diags hcl.Diagnostics
@@ -134,14 +193,14 @@ func (h *Handler) Kill() {
 		}
 		os.Exit(h.Fatal())
 	case <-ctx.Done():
-		logger.Infof("took %s to complete the pipeline", time.Since(ctx.Value(c.TogomakContextBootTime).(time.Time)))
+		logger.Infof("took %s to complete the pipeline", time.Since(h.Process.BootTime))
 		return
 	}
 }
 
 func (h *Handler) Daemons() {
 	ctx := h.ctx
-	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField("watchdog", "")
+	logger := h.Logger.WithField("watchdog", "")
 	var completedRunnables ci.Blocks
 
 	defer h.WriteDiagnostics()
@@ -201,7 +260,7 @@ func (h *Handler) Interrupt() {
 	signal.Notify(h.Tracker.interruptSignal, syscall.SIGTERM)
 
 	ctx := h.ctx
-	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger)
+	logger := h.Logger.WithField("watchdog", "")
 	select {
 	case <-h.Tracker.interruptSignal:
 		var diags hcl.Diagnostics
@@ -235,7 +294,7 @@ func (h *Handler) Interrupt() {
 		}
 		h.cancel()
 	case <-ctx.Done():
-		logger.Infof("took %s to complete the pipeline", time.Since(ctx.Value(c.TogomakContextBootTime).(time.Time)))
+		logger.Infof("took %s to complete the pipeline", time.Since(h.Process.BootTime))
 		return
 	}
 }
@@ -249,8 +308,7 @@ func (h *Handler) WriteDiagnostics() {
 
 func (h *Handler) finale(logLevel logrus.Level) {
 	logger := global.Logger()
-	bootTime := h.ctx.Value(c.TogomakContextBootTime).(time.Time)
-	logger.Log(logLevel, ui.Grey(fmt.Sprintf("took %s", time.Since(bootTime).Round(time.Millisecond))))
+	logger.Log(logLevel, ui.Grey(fmt.Sprintf("took %s", time.Since(h.Process.BootTime).Round(time.Millisecond))))
 }
 
 func (h *Handler) Fatal() int {

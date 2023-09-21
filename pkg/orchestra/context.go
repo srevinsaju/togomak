@@ -217,14 +217,14 @@ func createHclEvalContext(cwd string, cfg conductor.Config, pipelineId string, t
 			"false": cty.False,
 			"null":  cty.NullVal(cty.DynamicPseudoType),
 
-			c.TogomakContextOwd:      cty.StringVal(cfg.Owd),
-			c.TogomakContextCwd:      cty.StringVal(cwd),
-			c.TogomakContextHostname: cty.StringVal(cfg.Hostname),
-			c.TogomakContextUsername: cty.StringVal(cfg.User),
+			"owd":      cty.StringVal(cfg.Paths.Owd),
+			"cwd":      cty.StringVal(cwd),
+			"hostname": cty.StringVal(cfg.Hostname),
+			"hostuser": cty.StringVal(cfg.User),
 
 			"pipeline": cty.ObjectVal(map[string]cty.Value{
 				"id":      cty.StringVal(pipelineId),
-				"path":    cty.StringVal(cfg.Pipeline.FilePath),
+				"path":    cty.StringVal(cfg.Paths.Pipeline),
 				"tempDir": cty.StringVal(tempDir),
 			}),
 
@@ -297,17 +297,12 @@ func NewContextWithTogomak(cfg conductor.Config) (Togomak, context.Context) {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, c.TogomakContextCi, cfg.Behavior.Ci)
 	ctx = context.WithValue(ctx, c.TogomakContextUnattended, cfg.Behavior.Unattended)
-	ctx = context.WithValue(ctx, c.TogomakContextLogger, logger)
-	ctx = context.WithValue(ctx, c.TogomakContextBootTime, time.Now())
 	ctx = context.WithValue(ctx, c.TogomakContextPipelineId, pipelineId)
-	ctx = context.WithValue(ctx, c.TogomakContextOwd, cfg.Owd)
+	ctx = context.WithValue(ctx, c.TogomakContextOwd, cfg.Paths.Owd)
 	ctx = context.WithValue(ctx, c.TogomakContextCwd, cwd)
-	ctx = context.WithValue(ctx, c.TogomakContextHostname, cfg.Hostname)
-	ctx = context.WithValue(ctx, c.TogomakContextUsername, cfg.User)
-	ctx = context.WithValue(ctx, c.TogomakContextPipelineFilePath, cfg.Pipeline.FilePath)
+	ctx = context.WithValue(ctx, c.TogomakContextPipelineFilePath, cfg.Paths.Pipeline)
 	ctx = context.WithValue(ctx, c.TogomakContextPipelineDryRun, cfg.Pipeline.DryRun)
 	ctx = context.WithValue(ctx, c.TogomakContextPipelineTmpDir, tempDir)
-	ctx = context.WithValue(ctx, c.TogomakContextHclDiagWriter, diagnosticTextWriter)
 
 	t := Togomak{
 		Logger:        logger,

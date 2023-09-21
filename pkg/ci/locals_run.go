@@ -3,8 +3,6 @@ package ci
 import (
 	"context"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/sirupsen/logrus"
-	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/runnable"
 	"github.com/zclconf/go-cty/cty"
@@ -12,7 +10,7 @@ import (
 
 func (l *Local) Run(ctx context.Context, options ...runnable.Option) (diags hcl.Diagnostics) {
 
-	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField(LocalBlock, l.Key)
+	logger := l.Logger()
 	logger.Debugf("running %s.%s", LocalBlock, l.Key)
 	hclContext := global.HclEvalContext()
 

@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"github.com/hashicorp/go-getter"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/sirupsen/logrus"
-	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/runnable"
 	"github.com/srevinsaju/togomak/v1/pkg/ui"
@@ -15,7 +13,7 @@ import (
 )
 
 func (m *Module) Prepare(ctx context.Context, skip bool, overridden bool) hcl.Diagnostics {
-	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger)
+	logger := m.Logger()
 	// show some user-friendly output on the details of the stage about to be run
 
 	var id string

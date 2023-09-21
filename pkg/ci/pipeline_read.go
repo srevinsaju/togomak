@@ -1,7 +1,6 @@
 package ci
 
 import (
-	"context"
 	"fmt"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
@@ -9,6 +8,7 @@ import (
 	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/parse"
+	"github.com/srevinsaju/togomak/v1/pkg/path"
 	"github.com/srevinsaju/togomak/v1/pkg/ui"
 	"os"
 	"path/filepath"
@@ -18,8 +18,8 @@ import (
 // Read reads togomak.hcl from the configuration file directory. A configuration file directory is the one that
 // contains togomak.hcl, it searches recursively outwards.
 // DEPRECATED: use ReadDir instead
-func Read(ctx context.Context, parser *hclparse.Parser) (*Pipeline, hcl.Diagnostics) {
-	ciFile := parse.ConfigFilePath(ctx)
+func Read(paths path.Path, parser *hclparse.Parser) (*Pipeline, hcl.Diagnostics) {
+	ciFile := parse.ConfigFilePath(paths)
 
 	f, diags := parser.ParseHCLFile(ciFile)
 	if diags.HasErrors() {
@@ -30,7 +30,7 @@ func Read(ctx context.Context, parser *hclparse.Parser) (*Pipeline, hcl.Diagnost
 	diags = gohcl.DecodeBody(f.Body, nil, pipeline)
 
 	if pipeline.Builder.Version != 1 {
-		return ReadDir(ctx, parser)
+		return ReadDir(paths, parser)
 	} else if pipeline.Builder.Version == 1 {
 		ui.DeprecationWarning(fmt.Sprintf("%s configuration version 1 is deprecated, and support for the same will be removed in a later version. ", meta.AppName))
 	}
@@ -39,8 +39,8 @@ func Read(ctx context.Context, parser *hclparse.Parser) (*Pipeline, hcl.Diagnost
 
 // ReadDir parses an entire directory of *.hcl files and merges them together. This is useful when you want to
 // split your pipeline into multiple files, without having to import them individually
-func ReadDir(ctx context.Context, parser *hclparse.Parser) (*Pipeline, hcl.Diagnostics) {
-	dir := parse.ConfigFileDir(ctx)
+func ReadDir(paths path.Path, parser *hclparse.Parser) (*Pipeline, hcl.Diagnostics) {
+	dir := parse.ConfigFileDir(paths)
 	return ReadDirFromPath(dir, parser)
 
 }
