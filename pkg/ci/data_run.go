@@ -28,6 +28,7 @@ func (s *Data) Run(ctx context.Context, options ...runnable.Option) (diags hcl.D
 	cfg := runnable.NewConfig(options...)
 	opts := []dataBlock.ProviderOption{
 		dataBlock.WithPaths(cfg.Paths),
+		dataBlock.WithBehavior(cfg.Behavior),
 	}
 
 	// region: mutating the data map

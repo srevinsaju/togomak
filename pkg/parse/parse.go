@@ -9,7 +9,7 @@ import (
 // ConfigFilePath returns the path to the configuration file. If the path is not absolute, it is assumed to be
 // relative to the working directory
 // DEPRECATED: use configFileDir instead
-func ConfigFilePath(paths path.Path) string {
+func ConfigFilePath(paths *path.Path) string {
 	pipelineFilePath := paths.Pipeline
 	if pipelineFilePath == "" {
 		pipelineFilePath = meta.ConfigFileName
@@ -21,6 +21,6 @@ func ConfigFilePath(paths path.Path) string {
 	return pipelineFilePath
 }
 
-func ConfigFileDir(paths path.Path) string {
+func ConfigFileDir(paths *path.Path) string {
 	return filepath.Dir(ConfigFilePath(paths))
 }

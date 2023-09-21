@@ -19,9 +19,9 @@ import (
 	"sync"
 )
 
-func ExpandGlobalParams(t *Togomak, cfg conductor.Config) {
+func ExpandGlobalParams(togomak *conductor.Togomak) {
 	paramsGo := make(map[string]cty.Value)
-	if cfg.Behavior.Child.Enabled {
+	if togomak.Config.Behavior.Child.Enabled {
 		m := make(map[string]string)
 		for _, e := range os.Environ() {
 			if i := strings.Index(e, "="); i >= 0 {
@@ -37,15 +37,13 @@ func ExpandGlobalParams(t *Togomak, cfg conductor.Config) {
 		}
 	}
 	global.EvalContextMutex.Lock()
-	t.ectx.Variables[ci.ParamBlock] = cty.ObjectVal(paramsGo)
+	togomak.EvalContext.Variables[ci.ParamBlock] = cty.ObjectVal(paramsGo)
 	global.EvalContextMutex.Unlock()
 }
 
 func Perform(togomak *conductor.Togomak) int {
 	cfg := togomak.Config
-
-	t, ctx := NewContextWithTogomak(cfg)
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(togomak.Context)
 
 	logger := togomak.Logger
 	logger.Debugf("starting watchdogs and signal handlers")
@@ -55,23 +53,23 @@ func Perform(togomak *conductor.Togomak) int {
 	defer h.WriteDiagnostics()
 
 	// region: external parameters
-	ExpandGlobalParams(&t, cfg)
+	ExpandGlobalParams(togomak)
 	// endregion
 
 	// --> parse the config file
 	// we will now read the pipeline from togomak.hcl
-	pipe, hclDiags := ci.Read(togomak.Config.Paths, t.parser)
+	pipe, hclDiags := ci.Read(togomak.Config.Paths, togomak.Parser)
 	if hclDiags.HasErrors() {
-		logger.Fatal(t.hclDiagWriter.WriteDiagnostics(hclDiags))
+		logger.Fatal(togomak.DiagWriter.WriteDiagnostics(hclDiags))
 	}
 
 	// whitelist all stages if unspecified
 	filterList := cfg.Pipeline.Filtered
 
 	// write the pipeline to the temporary directory
-	pipelineFilePath := filepath.Join(t.cwd, t.tempDir, meta.ConfigFileName)
+	pipelineFilePath := filepath.Join(togomak.Process.TempDir, meta.ConfigFileName)
 	var pipelineData []byte
-	for _, f := range t.parser.Files() {
+	for _, f := range togomak.Parser.Files() {
 		pipelineData = append(pipelineData, f.Bytes...)
 	}
 
@@ -114,8 +112,8 @@ func Perform(togomak *conductor.Togomak) int {
 
 	// endregion: interrupt h
 	opts := []runnable.Option{
-		runnable.WithPaths(togomak.Config.Paths),
 		runnable.WithBehavior(togomak.Config.Behavior),
+		runnable.WithPaths(togomak.Config.Paths),
 	}
 
 	var diagsMutex sync.Mutex
@@ -125,7 +123,7 @@ func Perform(togomak *conductor.Togomak) int {
 		// we parse the TOGOMAK_ENV file at the beginning of every layer
 		// this allows us to have different environments for different layers
 
-		d = ExpandOutputs(t, logger)
+		d = ExpandOutputs(togomak)
 		h.Diags.Extend(d)
 		if h.Diags.HasErrors() {
 			break

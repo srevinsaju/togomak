@@ -12,6 +12,8 @@ type Child struct {
 }
 
 type Behavior struct {
+	initialized bool
+
 	// Unattended is the flag to indicate whether the program is running in unattended mode
 	Unattended bool
 

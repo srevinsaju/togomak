@@ -1,7 +1,5 @@
 package path
 
-import "github.com/srevinsaju/togomak/v1/pkg/meta"
-
 type Path struct {
 	// Pipeline is the path to the pipeline file
 	Pipeline string
@@ -11,13 +9,4 @@ type Path struct {
 
 	// Cwd is the current working directory
 	Cwd string
-}
-
-func NewDefaultPath() Path {
-
-	return Path{
-		Pipeline: meta.ConfigFileName,
-		Owd:      ".",
-		Cwd:      ".",
-	}
 }

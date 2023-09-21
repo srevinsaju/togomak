@@ -6,26 +6,26 @@ import (
 )
 
 type ProviderConfig struct {
-	Paths path.Path
+	Paths *path.Path
 
-	Behavior behavior.Behavior
+	Behavior *behavior.Behavior
 }
 
 func NewDefaultProviderConfig() *ProviderConfig {
 	return &ProviderConfig{
-		Paths: path.NewDefaultPath(),
+		Paths: nil,
 	}
 }
 
 type ProviderOption func(*ProviderConfig)
 
-func WithPaths(paths path.Path) ProviderOption {
+func WithPaths(paths *path.Path) ProviderOption {
 	return func(c *ProviderConfig) {
 		c.Paths = paths
 	}
 }
 
-func WithBehavior(behavior behavior.Behavior) ProviderOption {
+func WithBehavior(behavior *behavior.Behavior) ProviderOption {
 	return func(c *ProviderConfig) {
 		c.Behavior = behavior
 	}

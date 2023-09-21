@@ -13,7 +13,7 @@ import (
 )
 
 func RunWithRetries(runnableId string, runnable ci.Block, ctx context.Context, handler *handler.Handler, logger *logrus.Logger, opts ...runnable.Option) {
-	stageDiags := runnable.Run(ctx)
+	stageDiags := runnable.Run(ctx, opts...)
 
 	handler.Tracker.AppendCompleted(runnable)
 	logger.Tracef("signaling runnable %s", runnableId)

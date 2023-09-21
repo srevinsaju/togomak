@@ -8,7 +8,7 @@ import (
 	"github.com/srevinsaju/togomak/v1/pkg/path"
 )
 
-func ExpandImports(ctx context.Context, pipe *ci.Pipeline, parser *hclparse.Parser, paths path.Path) (*ci.Pipeline, hcl.Diagnostics) {
+func ExpandImports(ctx context.Context, pipe *ci.Pipeline, parser *hclparse.Parser, paths *path.Path) (*ci.Pipeline, hcl.Diagnostics) {
 	var d hcl.Diagnostics
 	var diags hcl.Diagnostics
 

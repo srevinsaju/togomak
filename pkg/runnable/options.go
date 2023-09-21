@@ -10,9 +10,9 @@ type Config struct {
 	Parent *ParentConfig
 	Hook   bool
 
-	Paths path.Path
+	Paths *path.Path
 
-	Behavior behavior.Behavior
+	Behavior *behavior.Behavior
 }
 
 type ParentConfig struct {
@@ -30,7 +30,7 @@ func WithStatus(status StatusType) Option {
 	}
 }
 
-func WithPaths(paths path.Path) Option {
+func WithPaths(paths *path.Path) Option {
 	return func(c *Config) {
 		c.Paths = paths
 	}
@@ -42,7 +42,7 @@ func WithParent(parent ParentConfig) Option {
 	}
 }
 
-func WithBehavior(behavior behavior.Behavior) Option {
+func WithBehavior(behavior *behavior.Behavior) Option {
 	return func(c *Config) {
 		c.Behavior = behavior
 	}
@@ -53,8 +53,8 @@ func NewDefaultConfig() *Config {
 		Status:   &Status{Status: StatusRunning},
 		Parent:   nil,
 		Hook:     false,
-		Paths:    path.NewDefaultPath(),
-		Behavior: behavior.NewDefaultBehavior(),
+		Paths:    nil,
+		Behavior: nil,
 	}
 }
 

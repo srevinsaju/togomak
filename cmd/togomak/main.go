@@ -188,7 +188,7 @@ func newConfigFromCliContext(ctx *cli.Context) conductor.Config {
 	}
 	cfg := conductor.Config{
 
-		Behavior: behavior.Behavior{
+		Behavior: &behavior.Behavior{
 			Unattended: ctx.Bool("unattended") || ctx.Bool("ci"),
 			Ci:         ctx.Bool("ci"),
 			DryRun:     ctx.Bool("dry-run"),
@@ -200,7 +200,7 @@ func newConfigFromCliContext(ctx *cli.Context) conductor.Config {
 			},
 		},
 
-		Paths: path.Path{
+		Paths: &path.Path{
 			Pipeline: pipelineFilePath,
 			Cwd:      dir,
 			Owd:      owd,

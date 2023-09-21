@@ -12,7 +12,6 @@ import (
 )
 
 func Format(cfg conductor.Config, check bool, recursive bool) error {
-	t, _ := NewContextWithTogomak(cfg)
 	togomak := conductor.NewTogomak(cfg)
 
 	var toFormat []string
@@ -20,19 +19,19 @@ func Format(cfg conductor.Config, check bool, recursive bool) error {
 	if recursive {
 		matches, err := doublestar.Glob("**/*.hcl")
 		for _, path := range matches {
-			t.Logger.Tracef("Found %s", path)
+			togomak.Logger.Tracef("Found %s", path)
 			data, err := os.ReadFile(path)
 			if err != nil {
 				return err
 			}
 			outSrc := hclwrite.Format(data)
 			if !bytes.Equal(outSrc, data) {
-				t.Logger.Tracef("%s needs formatting", path)
+				togomak.Logger.Tracef("%s needs formatting", path)
 				toFormat = append(toFormat, path)
 			}
 		}
 		if err != nil {
-			t.Logger.Fatalf("Error while globbing for **/*.hcl: %s", err)
+			togomak.Logger.Fatalf("Error while globbing for **/*.hcl: %s", err)
 		}
 	} else {
 		fDir := parse.ConfigFileDir(togomak.Config.Paths)
@@ -55,7 +54,7 @@ func Format(cfg conductor.Config, check bool, recursive bool) error {
 			}
 			outSrc := hclwrite.Format(data)
 			if !bytes.Equal(outSrc, data) {
-				t.Logger.Tracef("%s needs formatting", fn)
+				togomak.Logger.Tracef("%s needs formatting", fn)
 				toFormat = append(toFormat, fn)
 			}
 		}

@@ -223,7 +223,7 @@ func (s *Stage) expandMacros(ctx context.Context, opts ...runnable.Option) (*Sta
 		if !f.IsNull() {
 			files := f.AsValueMap()
 			logger.Debugf("using %d files from %s", len(files), macro.Identifier())
-			err = os.MkdirAll(filepath.Join(cfg.Paths.Cwd, tmpDir, s.Id), 0755)
+			err = os.MkdirAll(filepath.Join(tmpDir, s.Id), 0755)
 			if err != nil {
 				return s, diags.Append(&hcl.Diagnostic{
 					Severity:    hcl.DiagError,
@@ -497,7 +497,7 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 
 		envStrings = append(envStrings, envParsed)
 	}
-	togomakEnvExport := fmt.Sprintf("%s=%s", meta.OutputEnvVar, filepath.Join(cfg.Paths.Cwd, tmpDir, meta.OutputEnvFile))
+	togomakEnvExport := fmt.Sprintf("%s=%s", meta.OutputEnvVar, filepath.Join(tmpDir, meta.OutputEnvFile))
 	logger.Tracef("exporting %s", togomakEnvExport)
 	envStrings = append(envStrings, togomakEnvExport)
 

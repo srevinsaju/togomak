@@ -3,8 +3,8 @@ package orchestra
 import (
 	"github.com/hashicorp/go-envparse"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/ci"
+	"github.com/srevinsaju/togomak/v1/pkg/conductor"
 	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/x"
@@ -13,9 +13,10 @@ import (
 	"path/filepath"
 )
 
-func ExpandOutputs(t Togomak, logger *logrus.Logger) hcl.Diagnostics {
+func ExpandOutputs(togomak *conductor.Togomak) hcl.Diagnostics {
 	var diags hcl.Diagnostics
-	togomakEnvFile := filepath.Join(t.cwd, t.tempDir, meta.OutputEnvFile)
+	logger := togomak.Logger
+	togomakEnvFile := filepath.Join(togomak.Process.TempDir, meta.OutputEnvFile)
 	logger.Tracef("%s will be stored and exported here: %s", meta.OutputEnvVar, togomakEnvFile)
 	envFile, err := os.OpenFile(togomakEnvFile, os.O_RDONLY|os.O_CREATE, 0644)
 	if err == nil {
@@ -34,7 +35,7 @@ func ExpandOutputs(t Togomak, logger *logrus.Logger) hcl.Diagnostics {
 			ee[k] = cty.StringVal(v)
 		}
 		global.EvalContextMutex.Lock()
-		t.ectx.Variables[ci.OutputBlock] = cty.ObjectVal(ee)
+		togomak.EvalContext.Variables[ci.OutputBlock] = cty.ObjectVal(ee)
 		global.EvalContextMutex.Unlock()
 	} else {
 		logger.Warnf("could not open %s file, ignoring... :%s", meta.OutputEnvVar, err)

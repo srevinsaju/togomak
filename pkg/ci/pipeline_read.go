@@ -18,7 +18,7 @@ import (
 // Read reads togomak.hcl from the configuration file directory. A configuration file directory is the one that
 // contains togomak.hcl, it searches recursively outwards.
 // DEPRECATED: use ReadDir instead
-func Read(paths path.Path, parser *hclparse.Parser) (*Pipeline, hcl.Diagnostics) {
+func Read(paths *path.Path, parser *hclparse.Parser) (*Pipeline, hcl.Diagnostics) {
 	ciFile := parse.ConfigFilePath(paths)
 
 	f, diags := parser.ParseHCLFile(ciFile)
@@ -39,7 +39,7 @@ func Read(paths path.Path, parser *hclparse.Parser) (*Pipeline, hcl.Diagnostics)
 
 // ReadDir parses an entire directory of *.hcl files and merges them together. This is useful when you want to
 // split your pipeline into multiple files, without having to import them individually
-func ReadDir(paths path.Path, parser *hclparse.Parser) (*Pipeline, hcl.Diagnostics) {
+func ReadDir(paths *path.Path, parser *hclparse.Parser) (*Pipeline, hcl.Diagnostics) {
 	dir := parse.ConfigFileDir(paths)
 	return ReadDirFromPath(dir, parser)
 

@@ -20,7 +20,7 @@ type Config struct {
 	User     string
 	Hostname string
 
-	Paths path.Path
+	Paths *path.Path
 
 	Interface Interface
 
@@ -28,5 +28,5 @@ type Config struct {
 	Pipeline ConfigPipeline
 
 	// Behavior is the behavior of the program
-	Behavior behavior.Behavior
+	Behavior *behavior.Behavior
 }

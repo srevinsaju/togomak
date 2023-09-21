@@ -88,7 +88,7 @@ func (r Blocks) Variables() []hcl.Traversal {
 	return traversal
 }
 
-func (r Blocks) Run(ctx context.Context) hcl.Diagnostics {
+func (r Blocks) Run(ctx context.Context, opts ...runnable.Option) hcl.Diagnostics {
 	// run all runnables in parallel, collect errors and return
 	// create a channel to receive errors
 	var wg sync.WaitGroup
@@ -97,7 +97,7 @@ func (r Blocks) Run(ctx context.Context) hcl.Diagnostics {
 		wg.Add(1)
 		go func(runnable Block) {
 			defer wg.Done()
-			errChan <- runnable.Run(ctx)
+			errChan <- runnable.Run(ctx, opts...)
 		}(runnable)
 	}
 	wg.Wait()
