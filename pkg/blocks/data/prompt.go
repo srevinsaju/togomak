@@ -6,7 +6,6 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
-	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/zclconf/go-cty/cty"
@@ -40,7 +39,7 @@ func (e *PromptProvider) Url() string {
 	return "embedded::togomak.srev.in/providers/data/prompt"
 }
 
-func (e *PromptProvider) DecodeBody(body hcl.Body) hcl.Diagnostics {
+func (e *PromptProvider) DecodeBody(body hcl.Body, opts ...ProviderOption) hcl.Diagnostics {
 	if !e.initialized {
 		panic("provider not initialized")
 	}
@@ -95,7 +94,7 @@ func (e *PromptProvider) Schema() *hcl.BodySchema {
 	}
 }
 
-func (e *PromptProvider) Attributes(ctx context.Context, id string) (map[string]cty.Value, hcl.Diagnostics) {
+func (e *PromptProvider) Attributes(ctx context.Context, id string, opts ...ProviderOption) (map[string]cty.Value, hcl.Diagnostics) {
 	return map[string]cty.Value{
 		"prompt":  cty.StringVal(e.promptParsed),
 		"default": cty.StringVal(e.def),
@@ -110,14 +109,15 @@ func (e *PromptProvider) Logger() *logrus.Entry {
 	return global.Logger().WithField("provider", e.Name())
 }
 
-func (e *PromptProvider) Value(ctx context.Context, id string) (string, hcl.Diagnostics) {
+func (e *PromptProvider) Value(ctx context.Context, id string, opts ...ProviderOption) (string, hcl.Diagnostics) {
 	var diags hcl.Diagnostics
 	if !e.initialized {
 		panic("provider not initialized")
 	}
 
+	cfg := NewProviderConfig(opts...)
+
 	logger := e.Logger()
-	unattended := e.ctx.Value(c.TogomakContextUnattended).(bool)
 
 	envVarName := fmt.Sprintf("%s%s__%s", meta.EnvVarPrefix, e.Name(), id)
 	logger.Tracef("checking for environment variable %s", envVarName)
@@ -126,7 +126,7 @@ func (e *PromptProvider) Value(ctx context.Context, id string) (string, hcl.Diag
 		logger.Debug("environment variable found, using that")
 		return envExists, nil
 	}
-	if unattended {
+	if cfg.Behavior.Unattended {
 		logger.Warn("--unattended/--ci mode enabled, falling back to default")
 		return e.def, nil
 	}

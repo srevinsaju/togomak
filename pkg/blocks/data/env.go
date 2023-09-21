@@ -50,7 +50,7 @@ func (e *EnvProvider) New() Provider {
 	}
 }
 
-func (e *EnvProvider) Attributes(ctx context.Context, id string) (map[string]cty.Value, hcl.Diagnostics) {
+func (e *EnvProvider) Attributes(ctx context.Context, id string, opts ...ProviderOption) (map[string]cty.Value, hcl.Diagnostics) {
 	return map[string]cty.Value{
 		EnvProviderAttrKey:     cty.StringVal(e.keyParsed),
 		EnvProviderAttrDefault: cty.StringVal(e.def),
@@ -78,7 +78,7 @@ func (e *EnvProvider) Schema() *hcl.BodySchema {
 
 }
 
-func (e *EnvProvider) DecodeBody(body hcl.Body) hcl.Diagnostics {
+func (e *EnvProvider) DecodeBody(body hcl.Body, opts ...ProviderOption) hcl.Diagnostics {
 	if !e.initialized {
 		panic("provider not initialized")
 	}
@@ -118,7 +118,7 @@ func (e *EnvProvider) DecodeBody(body hcl.Body) hcl.Diagnostics {
 
 }
 
-func (e *EnvProvider) Value(ctx context.Context, id string) (string, hcl.Diagnostics) {
+func (e *EnvProvider) Value(ctx context.Context, id string, opts ...ProviderOption) (string, hcl.Diagnostics) {
 	if !e.initialized {
 		panic("provider not initialized")
 	}

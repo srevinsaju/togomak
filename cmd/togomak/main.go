@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/mattn/go-isatty"
+	"github.com/srevinsaju/togomak/v1/pkg/behavior"
 	"github.com/srevinsaju/togomak/v1/pkg/cache"
 	"github.com/srevinsaju/togomak/v1/pkg/conductor"
 	"github.com/srevinsaju/togomak/v1/pkg/filter"
@@ -187,11 +188,11 @@ func newConfigFromCliContext(ctx *cli.Context) conductor.Config {
 	}
 	cfg := conductor.Config{
 
-		Behavior: conductor.Behavior{
+		Behavior: behavior.Behavior{
 			Unattended: ctx.Bool("unattended") || ctx.Bool("ci"),
 			Ci:         ctx.Bool("ci"),
 
-			Child: conductor.BehaviorChild{
+			Child: behavior.Child{
 				Enabled:      ctx.Bool("child"),
 				Parent:       ctx.String("parent"),
 				ParentParams: ctx.StringSlice("parent-param"),

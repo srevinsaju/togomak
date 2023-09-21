@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/sirupsen/logrus"
-	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/ui"
 	"github.com/srevinsaju/togomak/v1/pkg/x"
@@ -64,7 +63,7 @@ func (e *TfProvider) Url() string {
 	return "embedded::togomak.srev.in/providers/data/tf"
 }
 
-func (e *TfProvider) DecodeBody(body hcl.Body) hcl.Diagnostics {
+func (e *TfProvider) DecodeBody(body hcl.Body, opts ...ProviderOption) hcl.Diagnostics {
 	if !e.initialized {
 		panic("provider not initialized")
 	}
@@ -141,17 +140,17 @@ func (e *TfProvider) Initialized() bool {
 	return e.initialized
 }
 
-func (e *TfProvider) Value(ctx context.Context, id string) (string, hcl.Diagnostics) {
+func (e *TfProvider) Value(ctx context.Context, id string, opts ...ProviderOption) (string, hcl.Diagnostics) {
 	if !e.initialized {
 		panic("provider not initialized")
 	}
 	return "", nil
 }
 
-func (e *TfProvider) Attributes(ctx context.Context, id string) (map[string]cty.Value, hcl.Diagnostics) {
+func (e *TfProvider) Attributes(ctx context.Context, id string, opts ...ProviderOption) (map[string]cty.Value, hcl.Diagnostics) {
 	logger := e.Logger()
 	tmpDir := global.TempDir()
-	cwd := ctx.Value(c.TogomakContextCwd).(string)
+	cfg := NewProviderConfig(opts...)
 
 	var diags hcl.Diagnostics
 	if !e.initialized {
@@ -167,7 +166,7 @@ func (e *TfProvider) Attributes(ctx context.Context, id string) (map[string]cty.
 		Src: e.cfg.source,
 		Dst: dst,
 		Dir: true,
-		Pwd: cwd,
+		Pwd: cfg.Paths.Cwd,
 	}
 
 	logger.Tracef("downloading source")

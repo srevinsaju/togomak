@@ -25,6 +25,11 @@ func (s *Data) Run(ctx context.Context, options ...runnable.Option) (diags hcl.D
 
 	var d hcl.Diagnostics
 
+	cfg := runnable.NewConfig(options...)
+	opts := []dataBlock.ProviderOption{
+		dataBlock.WithPaths(cfg.Paths),
+	}
+
 	// region: mutating the data map
 	// TODO: move it to a dedicated helper function
 
@@ -37,10 +42,10 @@ func (s *Data) Run(ctx context.Context, options ...runnable.Option) (diags hcl.D
 			validProvider = true
 			provide := pr.New()
 			provide.SetContext(ctx)
-			diags = diags.Extend(provide.DecodeBody(s.Body))
-			value, d = provide.Value(ctx, s.Id)
+			diags = diags.Extend(provide.DecodeBody(s.Body, opts...))
+			value, d = provide.Value(ctx, s.Id, opts...)
 			diags = diags.Extend(d)
-			attr, d = provide.Attributes(ctx, s.Id)
+			attr, d = provide.Attributes(ctx, s.Id, opts...)
 			diags = diags.Extend(d)
 			break
 		}

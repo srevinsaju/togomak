@@ -13,9 +13,9 @@ type Path struct {
 	Cwd string
 }
 
-func NewDefaultPath() *Path {
+func NewDefaultPath() Path {
 
-	return &Path{
+	return Path{
 		Pipeline: meta.ConfigFileName,
 		Owd:      ".",
 		Cwd:      ".",

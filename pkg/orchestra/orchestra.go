@@ -10,6 +10,7 @@ import (
 	"github.com/srevinsaju/togomak/v1/pkg/graph"
 	"github.com/srevinsaju/togomak/v1/pkg/handler"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
+	"github.com/srevinsaju/togomak/v1/pkg/runnable"
 	"strings"
 
 	"github.com/zclconf/go-cty/cty"
@@ -112,6 +113,10 @@ func Perform(togomak *conductor.Togomak) int {
 	}
 
 	// endregion: interrupt h
+	opts := []runnable.Option{
+		runnable.WithPaths(togomak.Config.Paths),
+		runnable.WithBehavior(togomak.Config.Behavior),
+	}
 
 	var diagsMutex sync.Mutex
 
@@ -139,7 +144,7 @@ func Perform(togomak *conductor.Togomak) int {
 				break
 			}
 
-			ok, d, overridden := CanRun(runnable, ctx, filterList, runnableId, depGraph)
+			ok, d, overridden := CanRun(runnable, ctx, filterList, runnableId, depGraph, opts...)
 			diagsMutex.Lock()
 			h.Diags.Extend(d)
 			diagsMutex.Unlock()
@@ -170,7 +175,7 @@ func Perform(togomak *conductor.Togomak) int {
 				h.Tracker.AppendRunnable(runnable)
 			}
 
-			go RunWithRetries(runnableId, runnable, ctx, h, logger)
+			go RunWithRetries(runnableId, runnable, ctx, h, logger, opts...)
 
 			if cfg.Pipeline.DryRun {
 				// TODO: implement --concurrency option

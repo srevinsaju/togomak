@@ -52,7 +52,8 @@ func (s *Stage) Prepare(ctx context.Context, skip bool, overridden bool) hcl.Dia
 }
 
 // expandMacros expands the macro in the stage, if any.
-func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
+func (s *Stage) expandMacros(ctx context.Context, opts ...runnable.Option) (*Stage, hcl.Diagnostics) {
+	cfg := runnable.NewConfig(opts...)
 
 	if s.Use == nil {
 		// this stage does not use a macro
@@ -61,7 +62,6 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 	hclContext := global.HclEvalContext()
 	logger := s.Logger().WithField(MacroBlock, true)
 	pipe := ctx.Value(c.TogomakContextPipeline).(*Pipeline)
-	cwd := ctx.Value(c.TogomakContextCwd).(string)
 
 	tmpDir := global.TempDir()
 	ci := ctx.Value(c.TogomakContextCi).(bool)
@@ -136,7 +136,7 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 	} else if chdirRaw.Type() == cty.Bool {
 		chdir = chdirRaw.True()
 	}
-	dir := cwd
+	dir := cfg.Paths.Cwd
 	if chdir {
 		dir = filepath.Join(tmpDir, s.Id)
 	}
@@ -165,7 +165,7 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 		}
 
 		if stageDir.IsNull() || stageDir.AsString() == "" {
-			s.Dir = hcl.StaticExpr(cty.StringVal(cwd), hcl.Range{Filename: "memory"})
+			s.Dir = hcl.StaticExpr(cty.StringVal(cfg.Paths.Cwd), hcl.Range{Filename: "memory"})
 		}
 
 		src := macro.Source
@@ -182,7 +182,7 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 			src = filepath.Dir(macro.Source)
 
 			srcAbs, srcErr := filepath.Abs(src)
-			cwdAbs, cwdErr := filepath.Abs(cwd)
+			cwdAbs, cwdErr := filepath.Abs(cfg.Paths.Cwd)
 			if srcErr != nil {
 				panic(srcErr)
 			}
@@ -224,7 +224,7 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 		if !f.IsNull() {
 			files := f.AsValueMap()
 			logger.Debugf("using %d files from %s", len(files), macro.Identifier())
-			err = os.MkdirAll(filepath.Join(cwd, tmpDir, s.Id), 0755)
+			err = os.MkdirAll(filepath.Join(cfg.Paths.Cwd, tmpDir, s.Id), 0755)
 			if err != nil {
 				return s, diags.Append(&hcl.Diagnostic{
 					Severity:    hcl.DiagError,
@@ -332,7 +332,8 @@ func (s *Stage) expandMacros(ctx context.Context) (*Stage, hcl.Diagnostics) {
 
 func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.Diagnostics) {
 	logger := s.Logger()
-	cwd := ctx.Value(c.TogomakContextCwd).(string)
+	cfg := runnable.NewConfig(options...)
+
 	tmpDir := global.TempDir()
 	logger.Debugf("running %s", x.RenderBlock(StageBlock, s.Id))
 	isDryRun := ctx.Value(c.TogomakContextPipelineDryRun).(bool)
@@ -344,7 +345,7 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 
 	// expand stages using macros
 	logger.Debugf("expanding macros")
-	s, d := s.expandMacros(ctx)
+	s, d := s.expandMacros(ctx, options...)
 	diags = diags.Extend(d)
 	logger.Debugf("finished expanding macros with %d errors", len(diags.Errs()))
 
@@ -356,18 +357,25 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 		} else {
 			status = runnable.StatusSuccess
 		}
-		diags = diags.Extend(s.AfterRun(ctx,
+		hookOpts := []runnable.Option{
 			runnable.WithStatus(status),
 			runnable.WithHook(),
-			runnable.WithParent(runnable.ParentConfig{Name: s.Name, Id: s.Id})))
+			runnable.WithParent(runnable.ParentConfig{Name: s.Name, Id: s.Id}),
+		}
+		hookOpts = append(hookOpts, options...)
+		diags = diags.Extend(s.AfterRun(ctx, hookOpts...))
 		logger.Debug("finished running post hooks")
 	}()
 
 	logger.Debugf("running pre hooks")
-	diags = diags.Extend(s.BeforeRun(ctx, runnable.WithStatus(status), runnable.WithHook(), runnable.WithParent(runnable.ParentConfig{Name: s.Name, Id: s.Id})))
+	hookOpts := []runnable.Option{
+		runnable.WithStatus(status),
+		runnable.WithHook(),
+		runnable.WithParent(runnable.ParentConfig{Name: s.Name, Id: s.Id}),
+	}
+	hookOpts = append(hookOpts, options...)
+	diags = diags.Extend(s.BeforeRun(ctx, hookOpts...))
 	logger.Debugf("finished running pre hooks")
-
-	cfg := runnable.NewConfig(options...)
 
 	paramsGo := map[string]cty.Value{}
 
@@ -491,7 +499,7 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 
 		envStrings = append(envStrings, envParsed)
 	}
-	togomakEnvExport := fmt.Sprintf("%s=%s", meta.OutputEnvVar, filepath.Join(cwd, tmpDir, meta.OutputEnvFile))
+	togomakEnvExport := fmt.Sprintf("%s=%s", meta.OutputEnvVar, filepath.Join(cfg.Paths.Cwd, tmpDir, meta.OutputEnvFile))
 	logger.Tracef("exporting %s", togomakEnvExport)
 	envStrings = append(envStrings, togomakEnvExport)
 
@@ -540,7 +548,7 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 	} else {
 		emptyCommands = true
 	}
-	dir := cwd
+	dir := cfg.Paths.Cwd
 
 	global.EvalContextMutex.RLock()
 	dirParsed, d := s.Dir.Value(evalCtx)
@@ -553,7 +561,7 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 			dir = dirParsed.AsString()
 		}
 		if !filepath.IsAbs(dir) {
-			dir = filepath.Join(cwd, dir)
+			dir = filepath.Join(cfg.Paths.Cwd, dir)
 		}
 		if isDryRun {
 			fmt.Println(ui.Blue("cd"), dir)

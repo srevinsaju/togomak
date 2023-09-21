@@ -8,10 +8,11 @@ import (
 	"github.com/srevinsaju/togomak/v1/pkg/ci"
 	"github.com/srevinsaju/togomak/v1/pkg/filter"
 	"github.com/srevinsaju/togomak/v1/pkg/handler"
+	"github.com/srevinsaju/togomak/v1/pkg/runnable"
 	"time"
 )
 
-func RunWithRetries(runnableId string, runnable ci.Block, ctx context.Context, handler *handler.Handler, logger *logrus.Logger) {
+func RunWithRetries(runnableId string, runnable ci.Block, ctx context.Context, handler *handler.Handler, logger *logrus.Logger, opts ...runnable.Option) {
 	stageDiags := runnable.Run(ctx)
 
 	handler.Tracker.AppendCompleted(runnable)
@@ -48,7 +49,7 @@ func RunWithRetries(runnableId string, runnable ci.Block, ctx context.Context, h
 			}
 			logger.Warnf("runnable %s failed, retrying in %s", runnableId, sleepDuration)
 			time.Sleep(sleepDuration)
-			sDiags := runnable.Run(ctx)
+			sDiags := runnable.Run(ctx, opts...)
 			stageDiags = append(stageDiags, sDiags...)
 
 			if !sDiags.HasErrors() {
@@ -70,10 +71,10 @@ func RunWithRetries(runnableId string, runnable ci.Block, ctx context.Context, h
 	}
 }
 
-func CanRun(runnable ci.Block, ctx context.Context, filterList filter.FilterList, runnableId string, depGraph *depgraph.Graph) (bool, hcl.Diagnostics, bool) {
+func CanRun(runnable ci.Block, ctx context.Context, filterList filter.FilterList, runnableId string, depGraph *depgraph.Graph, opts ...runnable.Option) (bool, hcl.Diagnostics, bool) {
 	var diags hcl.Diagnostics
 
-	ok, d := runnable.CanRun(ctx)
+	ok, d := runnable.CanRun(ctx, opts...)
 	if d.HasErrors() {
 		diags = diags.Extend(d)
 		return false, diags, false

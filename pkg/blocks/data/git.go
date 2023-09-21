@@ -92,7 +92,7 @@ func (e *GitProvider) Url() string {
 	return "embedded::togomak.srev.in/providers/data/git"
 }
 
-func (e *GitProvider) DecodeBody(body hcl.Body) hcl.Diagnostics {
+func (e *GitProvider) DecodeBody(body hcl.Body, opts ...ProviderOption) hcl.Diagnostics {
 	if !e.initialized {
 		panic("provider not initialized")
 	}
@@ -309,14 +309,14 @@ func (e *GitProvider) Initialized() bool {
 	return e.initialized
 }
 
-func (e *GitProvider) Value(ctx context.Context, id string) (string, hcl.Diagnostics) {
+func (e *GitProvider) Value(ctx context.Context, id string, opts ...ProviderOption) (string, hcl.Diagnostics) {
 	if !e.initialized {
 		panic("provider not initialized")
 	}
 	return "", nil
 }
 
-func (e *GitProvider) Attributes(ctx context.Context, id string) (map[string]cty.Value, hcl.Diagnostics) {
+func (e *GitProvider) Attributes(ctx context.Context, id string, opts ...ProviderOption) (map[string]cty.Value, hcl.Diagnostics) {
 	logger := e.Logger()
 	var diags hcl.Diagnostics
 	if !e.initialized {
@@ -337,7 +337,7 @@ func (e *GitProvider) Attributes(ctx context.Context, id string) (map[string]cty
 	} else {
 		ref = e.cfg.branch
 	}
-	opts := git.CloneRepoOptions{
+	gitOpts := git.CloneRepoOptions{
 		Depth:  e.cfg.depth,
 		Branch: ref,
 		Bare:   false,
@@ -363,7 +363,7 @@ func (e *GitProvider) Attributes(ctx context.Context, id string) (map[string]cty
 	}
 
 	logger.Debugf("cloning git repo to %s", destination)
-	err = git.CloneWithArgs(ctx, nil, repoUrl.String(), destination, opts)
+	err = git.CloneWithArgs(ctx, nil, repoUrl.String(), destination, gitOpts)
 	ppb.Done()
 
 	if err != nil {
