@@ -20,12 +20,15 @@ type Behavior struct {
 
 	// Child is the flag to indicate whether the program is running in child mode
 	Child Child
+
+	DryRun bool
 }
 
 func NewDefaultBehavior() Behavior {
 	return Behavior{
 		Unattended: false,
 		Ci:         false,
+		DryRun:     true,
 		Child: Child{
 			Enabled:      false,
 			Parent:       "",

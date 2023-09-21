@@ -81,7 +81,7 @@ func Perform(togomak *conductor.Togomak) int {
 	}
 	var d hcl.Diagnostics
 
-	pipe, d = ExpandImports(ctx, pipe, togomak.Parser)
+	pipe, d = ExpandImports(ctx, pipe, togomak.Parser, togomak.Config.Paths)
 	h.Diags.Extend(d)
 	if h.Diags.HasErrors() {
 		return h.Fatal()

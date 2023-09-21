@@ -191,6 +191,7 @@ func newConfigFromCliContext(ctx *cli.Context) conductor.Config {
 		Behavior: behavior.Behavior{
 			Unattended: ctx.Bool("unattended") || ctx.Bool("ci"),
 			Ci:         ctx.Bool("ci"),
+			DryRun:     ctx.Bool("dry-run"),
 
 			Child: behavior.Child{
 				Enabled:      ctx.Bool("child"),

@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
-	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/ci"
 	"github.com/srevinsaju/togomak/v1/pkg/conductor"
 	"github.com/srevinsaju/togomak/v1/pkg/global"
@@ -34,9 +33,6 @@ func List(cfg conductor.Config) error {
 	// TODO: move this to a function
 	ctx := context.Background()
 	cwd := Chdir(cfg, logger)
-	ctx = context.WithValue(ctx, c.TogomakContextOwd, cfg.Paths.Pipeline)
-	ctx = context.WithValue(ctx, c.TogomakContextCwd, cwd)
-	ctx = context.WithValue(ctx, c.TogomakContextPipelineFilePath, cfg.Paths.Pipeline)
 
 	dgwriter := hcl.NewDiagnosticTextWriter(os.Stdout, parser.Files(), 0, true)
 	pipe, hclDiags := ci.Read(cfg.Paths, parser)

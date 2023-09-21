@@ -64,8 +64,7 @@ func (s *Stage) expandMacros(ctx context.Context, opts ...runnable.Option) (*Sta
 	pipe := ctx.Value(c.TogomakContextPipeline).(*Pipeline)
 
 	tmpDir := global.TempDir()
-	ci := ctx.Value(c.TogomakContextCi).(bool)
-	unattended := ctx.Value(c.TogomakContextUnattended).(bool)
+
 	logger.Debugf("running %s.%s", s.Identifier(), MacroBlock)
 
 	var diags hcl.Diagnostics
@@ -296,10 +295,10 @@ func (s *Stage) expandMacros(ctx context.Context, opts ...runnable.Option) (*Sta
 				cty.StringVal("--file"), cty.StringVal(defaultExecutionPath),
 				cty.StringVal("--parent"), cty.StringVal(parent),
 			}
-			if ci {
+			if cfg.Behavior.Ci {
 				args = append(args, cty.StringVal("--ci"))
 			}
-			if unattended {
+			if cfg.Behavior.Unattended {
 				args = append(args, cty.StringVal("--unattended"))
 			}
 			childStatuses := s.Get(StageContextChildStatuses).([]string)
@@ -336,7 +335,6 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 
 	tmpDir := global.TempDir()
 	logger.Debugf("running %s", x.RenderBlock(StageBlock, s.Id))
-	isDryRun := ctx.Value(c.TogomakContextPipelineDryRun).(bool)
 
 	status := runnable.StatusRunning
 
@@ -429,7 +427,7 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 	script, d := s.Script.Value(evalCtx)
 	global.EvalContextMutex.RUnlock()
 
-	if d.HasErrors() && isDryRun {
+	if d.HasErrors() && cfg.Behavior.DryRun {
 		script = cty.StringVal(ui.Italic(ui.Yellow("(will be evaluated later)")))
 	} else {
 		diags = diags.Extend(d)
@@ -493,7 +491,7 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 	envStrings := make([]string, len(environment))
 	for k, v := range environment {
 		envParsed := fmt.Sprintf("%s=%s", k, v.AsString())
-		if isDryRun {
+		if cfg.Behavior.DryRun {
 			fmt.Println(ui.Blue("export"), envParsed)
 		}
 
@@ -506,7 +504,7 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 	if s.Use != nil && s.Use.Parameters != nil {
 		for k, v := range paramsGo {
 			envParsed := fmt.Sprintf("%s%s=%s", TogomakParamEnvVarPrefix, k, v.AsString())
-			if isDryRun {
+			if cfg.Behavior.DryRun {
 				fmt.Println(ui.Blue("export"), envParsed)
 			}
 
@@ -563,7 +561,7 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 		if !filepath.IsAbs(dir) {
 			dir = filepath.Join(cfg.Paths.Cwd, dir)
 		}
-		if isDryRun {
+		if cfg.Behavior.DryRun {
 			fmt.Println(ui.Blue("cd"), dir)
 		}
 	}
@@ -577,7 +575,7 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 	if s.Container == nil {
 		s.process = cmd
 		logger.Trace("running command:", cmd.String())
-		if !isDryRun {
+		if !cfg.Behavior.DryRun {
 			err = cmd.Run()
 
 			if err != nil && err.Error() == "signal: terminated" && s.Terminated() {
@@ -662,7 +660,7 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 			return diags
 		}
 
-		if !isDryRun {
+		if !cfg.Behavior.DryRun {
 			exposedPorts, bindings, d := s.Container.Ports.Nat(evalCtx)
 			diags = diags.Extend(d)
 			if diags.HasErrors() {

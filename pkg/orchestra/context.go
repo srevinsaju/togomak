@@ -7,7 +7,6 @@ import (
 	"github.com/hashicorp/hcl/v2/ext/tryfunc"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/sirupsen/logrus"
-	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/conductor"
 	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
@@ -295,14 +294,6 @@ func NewContextWithTogomak(cfg conductor.Config) (Togomak, context.Context) {
 	global.SetHclDiagWriter(diagnosticTextWriter)
 
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, c.TogomakContextCi, cfg.Behavior.Ci)
-	ctx = context.WithValue(ctx, c.TogomakContextUnattended, cfg.Behavior.Unattended)
-	ctx = context.WithValue(ctx, c.TogomakContextPipelineId, pipelineId)
-	ctx = context.WithValue(ctx, c.TogomakContextOwd, cfg.Paths.Owd)
-	ctx = context.WithValue(ctx, c.TogomakContextCwd, cwd)
-	ctx = context.WithValue(ctx, c.TogomakContextPipelineFilePath, cfg.Paths.Pipeline)
-	ctx = context.WithValue(ctx, c.TogomakContextPipelineDryRun, cfg.Pipeline.DryRun)
-	ctx = context.WithValue(ctx, c.TogomakContextPipelineTmpDir, tempDir)
 
 	t := Togomak{
 		Logger:        logger,
@@ -314,7 +305,6 @@ func NewContextWithTogomak(cfg conductor.Config) (Togomak, context.Context) {
 		ectx:          hclContext,
 		tempDir:       tempDir,
 	}
-	ctx = context.WithValue(ctx, c.Togomak, &t)
 
 	return t, ctx
 }
