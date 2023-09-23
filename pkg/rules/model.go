@@ -3,6 +3,7 @@ package rules
 import (
 	"fmt"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/srevinsaju/togomak/v1/pkg/ci"
 	"regexp"
 	"strings"
 )
@@ -68,17 +69,32 @@ func NewOperation(op OperationType, runnable string) *Operation {
 	}
 }
 
+func (ops Operations) Children(runnableId string) Operations {
+	childOps := make(Operations, 0)
+	for _, op := range ops {
+		genericParam := true
+		for _, block := range []string{ci.StageBlock, ci.ModuleBlock, ci.MacroBlock} {
+			if strings.HasPrefix(op.runnable, fmt.Sprintf("%s.", block)) {
+				genericParam = false
+			}
+		}
+		if genericParam {
+			childOps = append(childOps, op)
+		}
+	}
+	return childOps
+}
+
 func (op *Operation) String() string {
 	return fmt.Sprintf("%s%s", op.op.String(), op.runnable)
 }
 
-func (ops Operations) Marshall() string {
-	s := strings.Builder{}
+func (ops Operations) Marshall() []string {
+	var s []string
 	for _, op := range ops {
-		s.WriteString(op.String())
-		s.WriteString(" ")
+		s = append(s, op.String())
 	}
-	return s.String()
+	return s
 }
 
 func (op *Operation) RunnableId() string {

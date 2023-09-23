@@ -80,6 +80,8 @@ func CanRun(runnable ci.Block, ctx context.Context, filterList rules.Operations,
 		return false, false, diags
 	}
 
+	runnable.Set(ci.StageContextChildStatuses, filterList.Children(runnableId).Marshall())
+
 	if runnable.Type() == ci.StageBlock && len(filterQuery) != 0 {
 		ok, overridden, d = filterQuery.Eval(ok, *runnable.(*ci.Stage))
 		if d.HasErrors() {
@@ -90,6 +92,7 @@ func CanRun(runnable ci.Block, ctx context.Context, filterList rules.Operations,
 	if len(filterList) == 0 {
 		filterList = append(filterList, rules.NewOperation(rules.OperationTypeAnd, "default"))
 	}
+	runnable.Set(ci.StageContextChildStatuses, filterList.Children(runnableId).Marshall())
 
 	for _, rule := range filterList {
 		if rule.RunnableId() == "all" {
