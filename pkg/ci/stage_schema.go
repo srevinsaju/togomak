@@ -7,6 +7,7 @@ import (
 )
 
 const StageBlock = "stage"
+const LifecycleBlock = "lifecycle"
 
 // StageContainerVolume allows configuring which volumes can be mounted
 type StageContainerVolume struct {
@@ -130,11 +131,11 @@ type StagePreHook struct {
 // scripts, docker containers, etc. A Stage receives all properties as that of CoreStage
 // along with an Id which is used by Stages to uniquely identify a stage.
 type Stage struct {
-	Id        string `hcl:"id,label" json:"id"`
+	Id        string `hcl:"id,label" json:"id" expr:"id"`
 	CoreStage `hcl:",remain"`
 
 	// Lifecycle rules tell the termination policy of a daemon stage
-	Lifecycle *Lifecycle `hcl:"lifecycle,block" json:"lifecycle"`
+	Lifecycle *Lifecycle `hcl:"lifecycle,block" json:"lifecycle" expr:"lifecycle"`
 }
 
 // CoreStage is an abstract struct which is implemented by Stage, StagePreHook, StagePostHook,
@@ -216,7 +217,7 @@ type CoreStage struct {
 
 type Lifecycle struct {
 	// Phase type of the phase needs to be specified
-	Phase []string `hcl:"phase,optional" json:"stage"`
+	Phase hcl.Expression `hcl:"phase,optional" json:"stage" expr:"phase"`
 
 	// Timeout how long the service needs to wait before killing itself
 	Timeout hcl.Expression `hcl:"timeout,optional" json:"timeout"`

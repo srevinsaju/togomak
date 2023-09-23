@@ -2,13 +2,14 @@ package conductor
 
 import (
 	"github.com/srevinsaju/togomak/v1/pkg/behavior"
-	"github.com/srevinsaju/togomak/v1/pkg/filter"
 	"github.com/srevinsaju/togomak/v1/pkg/path"
+	"github.com/srevinsaju/togomak/v1/pkg/rules"
 )
 
 type ConfigPipeline struct {
-	Filtered filter.FilterList
-	DryRun   bool
+	Filtered    rules.Operations
+	FilterQuery rules.QueryEngines
+	DryRun      bool
 }
 
 type Interface struct {
