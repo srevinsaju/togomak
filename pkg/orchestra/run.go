@@ -6,8 +6,9 @@ import (
 	"github.com/kendru/darwin/go/depgraph"
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/pkg/ci"
-	"github.com/srevinsaju/togomak/v1/pkg/filter"
+	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/handler"
+	"github.com/srevinsaju/togomak/v1/pkg/rules"
 	"github.com/srevinsaju/togomak/v1/pkg/runnable"
 	"time"
 )
@@ -71,57 +72,79 @@ func RunWithRetries(runnableId string, runnable ci.Block, ctx context.Context, h
 	}
 }
 
-func CanRun(runnable ci.Block, ctx context.Context, filterList filter.FilterList, runnableId string, depGraph *depgraph.Graph, opts ...runnable.Option) (bool, hcl.Diagnostics, bool) {
-	var diags hcl.Diagnostics
+func CanRun(runnable ci.Block, ctx context.Context, filterList rules.Operations, filterQuery rules.QueryEngines, runnableId string, depGraph *depgraph.Graph, opts ...runnable.Option) (ok bool, overridden bool, diags hcl.Diagnostics) {
 
 	ok, d := runnable.CanRun(ctx, opts...)
 	if d.HasErrors() {
 		diags = diags.Extend(d)
-		return false, diags, false
+		return false, false, diags
 	}
 
-	// region: requested stages, whitelisting and blacklisting
-	overridden := false
-	if runnable.Type() == ci.StageBlock || runnable.Type() == ci.ModuleBlock {
-		stageStatus, stageStatusOk := filterList.Get(runnableId)
+	runnable.Set(ci.StageContextChildStatuses, filterList.Children(runnableId).Marshall())
 
-		// when a particular stage is explicitly requested, for example
-		// in the pipeline containing the following stages
-		// - hello_1
-		// - hello_2
-		// - hello_3
-		// - hello_4 (depends on hello_1)
-		// if 'hello_1' is explicitly requested, we will run 'hello_4' as well
-		if filterList.HasOperationType(filter.OperationRun) && !stageStatusOk {
-			isDependentOfRequestedStage := false
-			for _, ss := range filterList {
-				if ss.Operation == filter.OperationRun {
-					if depGraph.DependsOn(runnableId, ss.RunnableId()) {
-						isDependentOfRequestedStage = true
-						break
+	if runnable.Type() == ci.StageBlock && len(filterQuery) != 0 {
+		ok, overridden, d = filterQuery.Eval(ok, *runnable.(*ci.Stage))
+		if d.HasErrors() {
+			diags = diags.Extend(d)
+			return false, false, diags
+		}
+	}
+	if len(filterList) == 0 {
+		filterList = append(filterList, rules.NewOperation(rules.OperationTypeAnd, "default"))
+	}
+	runnable.Set(ci.StageContextChildStatuses, filterList.Children(runnableId).Marshall())
+
+	for _, rule := range filterList {
+		if rule.RunnableId() == "all" {
+			return ok, false, diags
+		}
+	}
+
+	for _, rule := range filterList {
+		if rule.RunnableId() == runnableId && rule.Operation() == rules.OperationTypeAdd {
+			return true, true, diags
+		}
+		if rule.RunnableId() == runnableId && rule.Operation() == rules.OperationTypeSub {
+			return false, true, diags
+		}
+		if rule.RunnableId() == runnableId && rule.Operation() == rules.OperationTypeAnd {
+			return ok, false, diags
+		}
+		if depGraph.DependsOn(rule.RunnableId(), runnableId) {
+			return true, false, diags
+		}
+		if runnable.Type() == ci.StageBlock {
+			stage := runnable.(*ci.Stage)
+			if stage.Lifecycle != nil {
+				ectx := global.HclEvalContext()
+				global.EvalContextMutex.RLock()
+				phaseHcl, d := stage.Lifecycle.Phase.Value(ectx)
+				global.EvalContextMutex.RUnlock()
+
+				if d.HasErrors() {
+					diags = diags.Extend(d)
+					return false, false, diags
+				}
+				phases := phaseHcl.AsValueSlice()
+
+				for _, phase := range phases {
+					if rule.RunnableId() == phase.AsString() {
+						return ok, false, diags
 					}
 				}
-			}
-
-			// if this stage is not dependent on the requested stage, we will skip it
-			if !isDependentOfRequestedStage {
-				ok = false
-			}
-		}
-
-		if stageStatusOk {
-			// overridden status is shown on the build pipeline if the
-			// stage is explicitly whitelisted or blacklisted
-			// using the ^ or + prefix
-			overridden = true
-			ok = ok || stageStatus.AnyOperations(filter.OperationWhitelist)
-			if stageStatus.AllOperations(filter.OperationBlacklist) {
-				ok = false
+				if len(phases) == 0 && rule.RunnableId() == "default" {
+					return ok, false, diags
+				}
+			} else {
+				if rule.RunnableId() == "default" {
+					return ok, false, diags
+				}
 			}
 		}
-		runnable.Set(ci.StageContextChildStatuses, stageStatus.Children(runnableId).Marshall())
+	}
+	if runnable.Type() == ci.StageBlock {
+		return false, overridden, diags
 
 	}
-	// endregion: requested stages, whitelisting and blacklisting
-	return ok, diags, overridden
+	return true, overridden, diags
 }

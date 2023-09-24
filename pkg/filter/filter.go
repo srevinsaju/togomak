@@ -6,14 +6,14 @@ import (
 	"strings"
 )
 
-type Operation string
+type OperationTemp string
 
-const OperationRun Operation = ""
+const OperationTempRun OperationTemp = ""
 
 type Item struct {
 	Id        string
 	Type      string
-	Operation Operation
+	Operation OperationTemp
 }
 
 func (c Item) RunnableId() string {
@@ -41,6 +41,7 @@ func (c Item) Child() Item {
 	return Item{
 		Id:        c.Id[strings.IndexRune(c.Id, '.')+1:],
 		Operation: c.Operation,
+		Type:      c.Type,
 	}
 
 }
@@ -55,7 +56,7 @@ func (c FilterList) Children(runnableId string) FilterList {
 	return stages
 }
 
-func (c FilterList) AllOperations(operation Operation) bool {
+func (c FilterList) AllOperations(operation OperationTemp) bool {
 	for _, stage := range c {
 		if stage.Operation != operation {
 			return false
@@ -64,7 +65,7 @@ func (c FilterList) AllOperations(operation Operation) bool {
 	return true
 }
 
-func (c FilterList) AnyOperations(operation Operation) bool {
+func (c FilterList) AnyOperations(operation OperationTemp) bool {
 	for _, stage := range c {
 		if stage.Operation == operation {
 			return true
@@ -81,7 +82,7 @@ func (c FilterList) Marshall() []string {
 	return stages
 }
 
-func (c FilterList) HasOperationType(operation Operation) bool {
+func (c FilterList) HasOperationType(operation OperationTemp) bool {
 	for _, stage := range c {
 		if stage.Operation == operation {
 			return true
@@ -91,7 +92,7 @@ func (c FilterList) HasOperationType(operation Operation) bool {
 }
 
 func NewFilterItem(arg string) Item {
-	var operation Operation
+	var operation OperationTemp
 
 	ty := ci.StageBlock
 
@@ -101,8 +102,11 @@ func NewFilterItem(arg string) Item {
 		operation = OperationBlacklist
 	} else if strings.HasPrefix(arg, string(OperationDaemonize)) {
 		operation = OperationDaemonize
+	} else if strings.HasPrefix(arg, string(OperationRunLifecycle)) {
+		operation = OperationRunLifecycle
+		ty = ci.LifecycleBlock
 	} else {
-		operation = OperationRun
+		operation = OperationTempRun
 	}
 
 	// TODO: improve this
@@ -110,6 +114,8 @@ func NewFilterItem(arg string) Item {
 		ty = ci.ModuleBlock
 	} else if strings.Contains("stage.", arg) {
 		ty = ci.StageBlock
+	} else if strings.Contains("lifecycle.", arg) {
+		ty = ci.LifecycleBlock
 	}
 
 	id := strings.TrimPrefix(arg, string(operation))

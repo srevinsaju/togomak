@@ -6,7 +6,7 @@ package funcs
 import (
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"unicode/utf8"
@@ -419,14 +419,14 @@ func readFileBytes(baseDir, path string, marks cty.ValueMarks) ([]byte, error) {
 	f, err := openFile(baseDir, path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			// An extra Terraform-specific hint for this situation
+			// An extra OpenTofu-specific hint for this situation
 			return nil, fmt.Errorf("no file exists at %s; this function works only with files that are distributed as part of the configuration source code, so if this file will be created by a resource in this configuration you must instead obtain this result from an attribute of that resource", redactIfSensitive(path, marks))
 		}
 		return nil, err
 	}
 	defer f.Close()
 
-	src, err := ioutil.ReadAll(f)
+	src, err := io.ReadAll(f)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %w", err)
 	}

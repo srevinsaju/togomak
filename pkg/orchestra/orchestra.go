@@ -65,6 +65,7 @@ func Perform(togomak *conductor.Togomak) int {
 
 	// whitelist all stages if unspecified
 	filterList := cfg.Pipeline.Filtered
+	filterQuery := cfg.Pipeline.FilterQuery
 
 	// write the pipeline to the temporary directory
 	pipelineFilePath := filepath.Join(togomak.Process.TempDir, meta.ConfigFileName)
@@ -142,7 +143,7 @@ func Perform(togomak *conductor.Togomak) int {
 				break
 			}
 
-			ok, d, overridden := CanRun(runnable, ctx, filterList, runnableId, depGraph, opts...)
+			ok, overridden, d := CanRun(runnable, ctx, filterList, filterQuery, runnableId, depGraph, opts...)
 			diagsMutex.Lock()
 			h.Diags.Extend(d)
 			diagsMutex.Unlock()

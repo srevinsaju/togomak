@@ -5,6 +5,6 @@ import (
 	"github.com/hashicorp/hcl/v2"
 )
 
-func (s *Data) Lifecycle(ctx context.Context) (*DaemonLifecycle, hcl.Diagnostics) {
+func (s *Data) ExecutionOptions(ctx context.Context) (*DaemonLifecycleConfig, hcl.Diagnostics) {
 	return nil, nil
 }

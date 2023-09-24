@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/hashicorp/hcl/v2"
 	"github.com/mattn/go-isatty"
 	"github.com/srevinsaju/togomak/v1/pkg/behavior"
 	"github.com/srevinsaju/togomak/v1/pkg/cache"
@@ -10,6 +11,7 @@ import (
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/orchestra"
 	"github.com/srevinsaju/togomak/v1/pkg/path"
+	"github.com/srevinsaju/togomak/v1/pkg/rules"
 	"github.com/urfave/cli/v2"
 	"os"
 )
@@ -136,6 +138,11 @@ func main() {
 			Usage:   "Don't actually run any stage; just print the commands",
 			EnvVars: []string{"TOGOMAK_DRY_RUN"},
 		},
+		&cli.StringSliceFlag{
+			Name:    "query",
+			Aliases: []string{"q"},
+			Usage:   "filter the pipeline by a query",
+		},
 	}
 	cli.VersionFlag = &cli.BoolFlag{
 		Name:    "version",
@@ -186,6 +193,20 @@ func newConfigFromCliContext(ctx *cli.Context) conductor.Config {
 	for _, stage := range ctx.Args().Slice() {
 		stages = append(stages, filter.NewFilterItem(stage))
 	}
+
+	diagWriter := hcl.NewDiagnosticTextWriter(os.Stdout, nil, 0, true)
+	filterQueries := ctx.StringSlice("query")
+	engines, d := rules.NewSlice(filterQueries)
+	if d.HasErrors() {
+		diagWriter.WriteDiagnostics(d)
+		os.Exit(1)
+	}
+	filtered, d := rules.Unmarshal(ctx.Args().Slice())
+	if d.HasErrors() {
+		diagWriter.WriteDiagnostics(d)
+		os.Exit(1)
+	}
+
 	cfg := conductor.Config{
 
 		Behavior: &behavior.Behavior{
@@ -209,9 +230,9 @@ func newConfigFromCliContext(ctx *cli.Context) conductor.Config {
 		Hostname:  hostname,
 		Interface: conductor.Interface{Verbosity: verboseCount},
 		Pipeline: conductor.ConfigPipeline{
-			Filtered: stages,
-
-			DryRun: ctx.Bool("dry-run"),
+			FilterQuery: engines,
+			Filtered:    filtered,
+			DryRun:      ctx.Bool("dry-run"),
 		},
 	}
 	return cfg

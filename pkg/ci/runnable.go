@@ -65,7 +65,7 @@ type Killable interface {
 type Daemon interface {
 	// IsDaemon returns true if the runnable is a daemon
 	IsDaemon() bool
-	Lifecycle(ctx context.Context) (*DaemonLifecycle, hcl.Diagnostics)
+	ExecutionOptions(ctx context.Context) (*DaemonLifecycleConfig, hcl.Diagnostics)
 }
 
 type Block interface {
