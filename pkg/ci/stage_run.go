@@ -620,7 +620,7 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 				})
 			}
 
-			pb := ui.NewDockerProgressWriter(reader, logger.Writer(), fmt.Sprintf("pulling image %s", s.Container.Image))
+			pb := ui.NewDockerProgressWriter(reader, logger.Writer(), fmt.Sprintf("pulling image %s", image))
 			defer pb.Close()
 			defer reader.Close()
 			io.Copy(pb, reader)
