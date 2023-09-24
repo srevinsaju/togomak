@@ -24,22 +24,60 @@ Okay, enough talk, let's see some code.
 declaratively. If you are already familiar with Terraform, this becomes
 a piece of cake. 
 
+Here is a sample `togomak.hcl` file:
 ```hcl 
 togomak {
   version = 2
 }
 
-stage "hello" {
-    script = "echo hello world"
+data "prompt" "repo_name" {
+  prompt = "enter repo name: "
+  default = "username/repo"
+}
+
+locals {
+  repo = "srevinsaju/togomak"
+  lint_tools = ["misspell", "golangci-lint", "abcgo"]
+  build_types = ["amd64", "i386", "arm64"]
+}
+
+stage "lint" {
+  script = <<-EOT
+  echo 💅 running style checks for repo ${local.repo}
+  %{ for tool in local.lint_tools }
+  echo "* running linter: ${tool}"
+  sleep 1
+  %{ endfor }
+  EOT
+}
+
+
+stage "build" {
+  script = <<-EOT
+  echo 👷 running ${ansifmt("green", "build")}
+  %{ for arch in local.build_types }
+  echo "* building ${local.repo} for ${arch}..."
+  sleep 1
+  %{ endfor }
+  EOT
+}
+
+stage "deploy" {
+  if = data.prompt.repo_name.value == "srevinsaju/togomak"
+  depends_on = [stage.build]
+  container {
+    image = "hashicorp/terraform"
+  }
+  args = ["version"]
 }
 ```
 
 simple, isn't it?
 
 ### Documentation
-* We have a WIP [documentation](https://togomak.srev.in/v1) (also available over [docs](./docs) directory)
+* Head over to our [documentation page](https://togomak.srev.in). 
 * Check out the [examples](./examples) directory for examples
-* Check out the [tests](./tests) directory for more bizarre examples.
+* Check out the [tests](./tests/tests) directory for even bizarre examples.
 
 ### Features (in a nutshell)
 * Declarative pipeline definition
@@ -52,7 +90,7 @@ simple, isn't it?
 
 ## Installation 
 Check out the [releases](https://github.com/srevinsaju/togomak/releases) page
-for the `v1.x.y` release binaries, and other pre-built packages for your 
+for the `v2.0.0-alpha.*` release binaries, and other pre-built packages for your 
 desired platform.
 
 ### Building from Source
