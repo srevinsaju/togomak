@@ -1,21 +1,21 @@
 package ci
 
-func (s Data) CanRetry() bool {
+func (s *Data) CanRetry() bool {
 	return false
 }
 
-func (s Data) MaxRetries() int {
+func (s *Data) MaxRetries() int {
 	return 0
 }
 
-func (s Data) MinRetryBackoff() int {
+func (s *Data) MinRetryBackoff() int {
 	return 0
 }
-func (s Data) MaxRetryBackoff() int {
+func (s *Data) MaxRetryBackoff() int {
 	return 0
 }
 
-func (s Data) RetryExponentialBackoff() bool {
+func (s *Data) RetryExponentialBackoff() bool {
 	return false
 
 }

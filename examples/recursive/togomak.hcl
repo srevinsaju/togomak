@@ -1,13 +1,13 @@
 togomak {
-  version = 1
+  version = 2
 }
 
 
 macro "hello" {
-  source = "./hello.hcl"
+  source = "./hello"
 }
 macro "bye" {
-  source = "./bye.hcl"
+  source = "./bye"
 }
 
 stage "hello_phase" {

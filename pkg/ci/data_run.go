@@ -4,9 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/sirupsen/logrus"
 	dataBlock "github.com/srevinsaju/togomak/v1/pkg/blocks/data"
-	"github.com/srevinsaju/togomak/v1/pkg/c"
 	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/runnable"
 	"github.com/zclconf/go-cty/cty"
@@ -16,17 +14,22 @@ const (
 	DataAttrValue = "value"
 )
 
-func (s Data) Prepare(ctx context.Context, skip bool, overridden bool) hcl.Diagnostics {
+func (s *Data) Prepare(ctx context.Context, skip bool, overridden bool) hcl.Diagnostics {
 	return nil // no-op
 }
 
-func (s Data) Run(ctx context.Context, options ...runnable.Option) (diags hcl.Diagnostics) {
-	// _ := ctx.Value(TogomakContextHclDiagWriter).(hcl.DiagnosticWriter)
-	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField(DataBlock, s.Id)
+func (s *Data) Run(ctx context.Context, options ...runnable.Option) (diags hcl.Diagnostics) {
+	logger := s.Logger()
 	logger.Debugf("running %s.%s.%s", DataBlock, s.Provider, s.Id)
-	hclContext := ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
+	hclContext := global.HclEvalContext()
 
 	var d hcl.Diagnostics
+
+	cfg := runnable.NewConfig(options...)
+	opts := []dataBlock.ProviderOption{
+		dataBlock.WithPaths(cfg.Paths),
+		dataBlock.WithBehavior(cfg.Behavior),
+	}
 
 	// region: mutating the data map
 	// TODO: move it to a dedicated helper function
@@ -40,22 +43,27 @@ func (s Data) Run(ctx context.Context, options ...runnable.Option) (diags hcl.Di
 			validProvider = true
 			provide := pr.New()
 			provide.SetContext(ctx)
-			diags = diags.Extend(provide.DecodeBody(s.Body))
-			value, d = provide.Value(ctx, s.Id)
+			diags = diags.Extend(provide.DecodeBody(s.Body, opts...))
+			value, d = provide.Value(ctx, s.Id, opts...)
 			diags = diags.Extend(d)
-			attr, d = provide.Attributes(ctx, s.Id)
+			attr, d = provide.Attributes(ctx, s.Id, opts...)
 			diags = diags.Extend(d)
 			break
 		}
 	}
-	if !validProvider || diags.HasErrors() {
+	if !validProvider {
 		diags = diags.Append(&hcl.Diagnostic{
 			Severity: hcl.DiagError,
 			Summary:  fmt.Sprintf("invalid provider %s", s.Provider),
-			Detail:   fmt.Sprintf("built-in providers are %v", dataBlock.DefaultProviders),
+			Detail:   fmt.Sprintf("built-in providers are %s", dataBlock.DefaultProviders),
 		})
 		return diags
 	}
+
+	if diags.HasErrors() {
+		return diags
+	}
+
 	m := make(map[string]cty.Value)
 	m[DataAttrValue] = cty.StringVal(value)
 	for k, v := range attr {
@@ -65,6 +73,7 @@ func (s Data) Run(ctx context.Context, options ...runnable.Option) (diags hcl.Di
 	global.DataBlockEvalContextMutex.Lock()
 
 	global.EvalContextMutex.RLock()
+
 	data := hclContext.Variables[DataBlock]
 
 	var dataMutated map[string]cty.Value
@@ -100,10 +109,10 @@ func (s Data) Run(ctx context.Context, options ...runnable.Option) (diags hcl.Di
 	return nil
 }
 
-func (s Data) CanRun(ctx context.Context, options ...runnable.Option) (bool, hcl.Diagnostics) {
+func (s *Data) CanRun(ctx context.Context, options ...runnable.Option) (bool, hcl.Diagnostics) {
 	return true, nil
 }
 
-func (s Data) Terminated() bool {
+func (s *Data) Terminated() bool {
 	return true
 }

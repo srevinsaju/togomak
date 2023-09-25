@@ -11,6 +11,9 @@ builds:
       - amd64
       - arm64
 
+release:
+  prerelease: auto 
+
 nfpms:
 - maintainer: Srevin Saju
   description: A CI/CD which works everywhere, even on your local environment.

@@ -8,12 +8,11 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/sirupsen/logrus"
-	"github.com/srevinsaju/togomak/v1/pkg/c"
+	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/ui"
 	"github.com/srevinsaju/togomak/v1/pkg/x"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/gocty"
-	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -40,6 +39,10 @@ type TfProvider struct {
 	cfg TfProviderConfig
 }
 
+func (e *TfProvider) Logger() *logrus.Entry {
+	return global.Logger().WithField("provider", e.Name())
+}
+
 func (e *TfProvider) Name() string {
 	return "tf"
 }
@@ -60,18 +63,21 @@ func (e *TfProvider) Url() string {
 	return "embedded::togomak.srev.in/providers/data/tf"
 }
 
-func (e *TfProvider) DecodeBody(body hcl.Body) hcl.Diagnostics {
+func (e *TfProvider) DecodeBody(body hcl.Body, opts ...ProviderOption) hcl.Diagnostics {
 	if !e.initialized {
 		panic("provider not initialized")
 	}
 	var diags hcl.Diagnostics
-	hclContext := e.ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
+	hclContext := global.HclEvalContext()
 
 	schema := e.Schema()
 	content, d := body.Content(schema)
 	diags = diags.Extend(d)
 
+	global.EvalContextMutex.RLock()
 	source, d := content.Attributes[TfBlockArgumentSource].Expr.Value(hclContext)
+	global.EvalContextMutex.RUnlock()
+
 	diags = diags.Extend(d)
 
 	var allowApply cty.Value
@@ -79,12 +85,16 @@ func (e *TfProvider) DecodeBody(body hcl.Body) hcl.Diagnostics {
 
 	attr, ok := content.Attributes[TfBlockArgumentAllowApply]
 	if ok {
+		global.EvalContextMutex.RLock()
 		allowApply, d = attr.Expr.Value(hclContext)
+		global.EvalContextMutex.RUnlock()
 		diags = diags.Extend(d)
 	}
 	attr, ok = content.Attributes[TfBlockArgumentVars]
 	if ok {
+		global.EvalContextMutex.RLock()
 		vars, d = attr.Expr.Value(hclContext)
+		global.EvalContextMutex.RUnlock()
 		diags = diags.Extend(d)
 	}
 	var varsGo map[string]cty.Value
@@ -130,17 +140,17 @@ func (e *TfProvider) Initialized() bool {
 	return e.initialized
 }
 
-func (e *TfProvider) Value(ctx context.Context, id string) (string, hcl.Diagnostics) {
+func (e *TfProvider) Value(ctx context.Context, id string, opts ...ProviderOption) (string, hcl.Diagnostics) {
 	if !e.initialized {
 		panic("provider not initialized")
 	}
 	return "", nil
 }
 
-func (e *TfProvider) Attributes(ctx context.Context, id string) (map[string]cty.Value, hcl.Diagnostics) {
-	logger := ctx.Value(c.TogomakContextLogger).(*logrus.Logger).WithField("provider", e.Name())
-	tmpDir := ctx.Value(c.TogomakContextTempDir).(string)
-	cwd := ctx.Value(c.TogomakContextCwd).(string)
+func (e *TfProvider) Attributes(ctx context.Context, id string, opts ...ProviderOption) (map[string]cty.Value, hcl.Diagnostics) {
+	logger := e.Logger()
+	tmpDir := global.TempDir()
+	cfg := NewProviderConfig(opts...)
 
 	var diags hcl.Diagnostics
 	if !e.initialized {
@@ -156,13 +166,14 @@ func (e *TfProvider) Attributes(ctx context.Context, id string) (map[string]cty.
 		Src: e.cfg.source,
 		Dst: dst,
 		Dir: true,
-		Pwd: cwd,
-
-		ProgressListener: (&TfProgressBar{logger: logger}).Init(),
+		Pwd: cfg.Paths.Cwd,
 	}
 
 	logger.Tracef("downloading source")
+	ppb := ui.NewPassiveProgressBar(logger, fmt.Sprintf("pulling %s", e.cfg.source))
+	ppb.Init()
 	err := client.Get()
+	ppb.Done()
 	if err != nil {
 		diags = diags.Append(&hcl.Diagnostic{
 			Severity: hcl.DiagError,
@@ -193,6 +204,10 @@ func (e *TfProvider) Attributes(ctx context.Context, id string) (map[string]cty.
 			Detail:   err.Error(),
 		})
 	}
+
+	ppb = ui.NewPassiveProgressBar(logger, fmt.Sprintf("reading %s.%s", e.Identifier(), id))
+	ppb.Init()
+	defer ppb.Done()
 	logger.Tracef("running terraform init on %s", dst)
 	err = tf.Init(ctx, tfexec.Upgrade(true))
 	if err != nil {
@@ -213,6 +228,7 @@ func (e *TfProvider) Attributes(ctx context.Context, id string) (map[string]cty.
 
 	var vars []tfexec.PlanOption
 	for k, v := range e.cfg.vars {
+		logger.Tracef("setting variable %s to %s", k, v.AsString())
 		vars = append(vars, tfexec.Var(fmt.Sprintf("%s=%s", k, v.AsString())))
 	}
 	planOpts := []tfexec.PlanOption{tfexec.Lock(false), tfexec.Out(planFile)}
@@ -252,38 +268,14 @@ func (e *TfProvider) Attributes(ctx context.Context, id string) (map[string]cty.
 	}
 
 	for k, v := range tfMap {
-		attrs[k] = cty.MapVal(getMapType(v.(map[string]interface{})))
+		attrs[k] = cty.ObjectVal(getObjectType(v.(map[string]interface{})))
 	}
 	// get the commit
 	return attrs, diags
 }
 
-// TfProgressBar is a progress bar implementation for terraform downloads
-type TfProgressBar struct {
-	logger *logrus.Entry
-	src    string
-	pb     *ui.ProgressWriter
-}
-
-// Init initializes the progress bar
-func (e *TfProgressBar) Init() *TfProgressBar {
-	e.pb = ui.NewProgressWriter(e.logger, fmt.Sprintf("downloading %s", e.src))
-	return e
-}
-
-// TrackProgress tracks the progress of the download using the default ui.ProgressWriter implementation
-func (e *TfProgressBar) TrackProgress(src string, currentSize, totalSize int64, stream io.ReadCloser) (body io.ReadCloser) {
-	for {
-		_, err := io.CopyN(e.pb, stream, 1)
-		if err != nil {
-			e.pb.Close()
-			return stream
-		}
-	}
-}
-
-// getMapType recursively converts a map[string]interface{} to map[string]cty.Value
-func getMapType(m map[string]interface{}) map[string]cty.Value {
+// getObjectType recursively converts a map[string]interface{} to map[string]cty.Value
+func getObjectType(m map[string]interface{}) map[string]cty.Value {
 	s := map[string]cty.Value{}
 	for k, v := range m {
 		typeRaw := reflect.TypeOf(v)
@@ -293,7 +285,7 @@ func getMapType(m map[string]interface{}) map[string]cty.Value {
 		}
 		typeOf := typeRaw.Kind()
 		if typeOf == reflect.Map {
-			s[k] = cty.MapVal(getMapType(v.(map[string]interface{})))
+			s[k] = cty.ObjectVal(getObjectType(v.(map[string]interface{})))
 		} else if typeOf == reflect.Slice {
 			s[k] = cty.ListVal(getListType(v.([]interface{})))
 		} else {
@@ -317,7 +309,7 @@ func getListType(m []interface{}) []cty.Value {
 	for _, v := range m {
 		typeOf := reflect.TypeOf(v).Kind()
 		if typeOf == reflect.Map {
-			s = append(s, cty.MapVal(getMapType(v.(map[string]interface{}))))
+			s = append(s, cty.ObjectVal(getObjectType(v.(map[string]interface{}))))
 		} else if typeOf == reflect.Slice {
 			s = append(s, cty.ListVal(getListType(v.([]interface{}))))
 		} else {

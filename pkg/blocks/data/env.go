@@ -2,8 +2,9 @@ package data
 
 import (
 	"context"
+	"fmt"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/srevinsaju/togomak/v1/pkg/c"
+	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/zclconf/go-cty/cty"
 	"os"
 )
@@ -20,6 +21,7 @@ type EnvProvider struct {
 
 	keyParsed string
 	def       string
+	defOk     bool
 	ctx       context.Context
 }
 
@@ -48,7 +50,7 @@ func (e *EnvProvider) New() Provider {
 	}
 }
 
-func (e *EnvProvider) Attributes(ctx context.Context, id string) (map[string]cty.Value, hcl.Diagnostics) {
+func (e *EnvProvider) Attributes(ctx context.Context, id string, opts ...ProviderOption) (map[string]cty.Value, hcl.Diagnostics) {
 	return map[string]cty.Value{
 		EnvProviderAttrKey:     cty.StringVal(e.keyParsed),
 		EnvProviderAttrDefault: cty.StringVal(e.def),
@@ -76,12 +78,12 @@ func (e *EnvProvider) Schema() *hcl.BodySchema {
 
 }
 
-func (e *EnvProvider) DecodeBody(body hcl.Body) hcl.Diagnostics {
+func (e *EnvProvider) DecodeBody(body hcl.Body, opts ...ProviderOption) hcl.Diagnostics {
 	if !e.initialized {
 		panic("provider not initialized")
 	}
 	var diags hcl.Diagnostics
-	hclContext := e.ctx.Value(c.TogomakContextHclEval).(*hcl.EvalContext)
+	hclContext := global.HclEvalContext()
 
 	schema := e.Schema()
 	content, d := body.Content(schema)
@@ -89,32 +91,49 @@ func (e *EnvProvider) DecodeBody(body hcl.Body) hcl.Diagnostics {
 
 	attr := content.Attributes["key"]
 	var key cty.Value
+
+	global.EvalContextMutex.RLock()
 	key, d = attr.Expr.Value(hclContext)
+	global.EvalContextMutex.RUnlock()
 	diags = diags.Extend(d)
 
 	e.keyParsed = key.AsString()
 
 	attr, ok := content.Attributes["default"]
 	if !ok {
+		e.defOk = false
 		e.def = ""
 		return diags
 	}
+
+	global.EvalContextMutex.RLock()
 	key, d = attr.Expr.Value(hclContext)
+	global.EvalContextMutex.RUnlock()
 	diags = diags.Extend(d)
 
 	e.def = key.AsString()
+	e.defOk = true
 
 	return diags
 
 }
 
-func (e *EnvProvider) Value(ctx context.Context, id string) (string, hcl.Diagnostics) {
+func (e *EnvProvider) Value(ctx context.Context, id string, opts ...ProviderOption) (string, hcl.Diagnostics) {
 	if !e.initialized {
 		panic("provider not initialized")
 	}
 	v, exists := os.LookupEnv(e.keyParsed)
 	if exists {
 		return v, nil
+	}
+	if !e.defOk {
+		return "", hcl.Diagnostics{
+			{
+				Severity: hcl.DiagError,
+				Summary:  "environment variable not found",
+				Detail:   fmt.Sprintf("environment variable %s not found", e.keyParsed),
+			},
+		}
 	}
 	return e.def, nil
 }

@@ -8,5 +8,4 @@ var (
 	DataBlockEvalContextMutex  = sync.Mutex{}
 	MacroBlockEvalContextMutex = sync.Mutex{}
 	LocalBlockEvalContextMutex = sync.Mutex{}
-	StageBlockEvalContextMutex = sync.Mutex{}
 )

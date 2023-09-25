@@ -30,7 +30,8 @@ stage "integration_tests" {
   #!/usr/bin/env bash
   set -e
   ls ../examples
-  for i in ../examples/*; do 
+  for i in ../examples/*; do
+    echo ${ansi.fg.green}$i${ansi.reset}
     ./togomak_coverage -C "$i" --ci -v
     ./togomak_coverage -C "$i" --ci -v root
     ./togomak_coverage -C "$i" --ci -v -n
@@ -40,6 +41,7 @@ stage "integration_tests" {
 
   for i in tests/failing/*; do 
     set +e
+    echo ${ansi.fg.green}$i${ansi.reset}
     ./togomak_coverage -C "$i" --ci -v
     result=$?
     if [ $result -eq 0 ]; then 

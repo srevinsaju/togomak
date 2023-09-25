@@ -36,7 +36,7 @@ func (l *Lifecycle) Parse(ctx context.Context) (*DaemonLifecycle, hcl.Diagnostic
 	}
 	var runnables Blocks
 	for _, runnableId := range runnableString {
-		runnable, diags := Resolve(ctx, pipe, runnableId)
+		runnable, diags := Resolve(pipe, runnableId)
 		if diags.HasErrors() {
 			return nil, diags
 		}

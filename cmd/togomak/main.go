@@ -3,9 +3,13 @@ package main
 import (
 	"fmt"
 	"github.com/mattn/go-isatty"
+	"github.com/srevinsaju/togomak/v1/pkg/behavior"
 	"github.com/srevinsaju/togomak/v1/pkg/cache"
+	"github.com/srevinsaju/togomak/v1/pkg/conductor"
+	"github.com/srevinsaju/togomak/v1/pkg/filter"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/orchestra"
+	"github.com/srevinsaju/togomak/v1/pkg/path"
 	"github.com/urfave/cli/v2"
 	"os"
 )
@@ -158,7 +162,7 @@ func initPipeline(ctx *cli.Context) error {
 	return nil
 }
 
-func newConfigFromCliContext(ctx *cli.Context) orchestra.Config {
+func newConfigFromCliContext(ctx *cli.Context) conductor.Config {
 	owd, err := os.Getwd()
 	if err != nil {
 		panic(err)
@@ -178,28 +182,36 @@ func newConfigFromCliContext(ctx *cli.Context) orchestra.Config {
 		hostname = "localhost"
 	}
 
-	var stages []orchestra.ConfigPipelineStage
+	var stages []filter.Item
 	for _, stage := range ctx.Args().Slice() {
-		stages = append(stages, orchestra.NewConfigPipelineStage(stage))
+		stages = append(stages, filter.NewFilterItem(stage))
 	}
-	cfg := orchestra.Config{
-		Owd: owd,
-		Dir: dir,
+	cfg := conductor.Config{
 
-		Child:        ctx.Bool("child"),
-		Parent:       ctx.String("parent"),
-		ParentParams: ctx.StringSlice("parent-param"),
+		Behavior: &behavior.Behavior{
+			Unattended: ctx.Bool("unattended") || ctx.Bool("ci"),
+			Ci:         ctx.Bool("ci"),
+			DryRun:     ctx.Bool("dry-run"),
 
-		Ci:         ctx.Bool("ci"),
-		Unattended: ctx.Bool("unattended") || ctx.Bool("ci"),
+			Child: behavior.Child{
+				Enabled:      ctx.Bool("child"),
+				Parent:       ctx.String("parent"),
+				ParentParams: ctx.StringSlice("parent-param"),
+			},
+		},
 
+		Paths: &path.Path{
+			Pipeline: pipelineFilePath,
+			Cwd:      dir,
+			Owd:      owd,
+		},
 		User:      os.Getenv("USER"),
 		Hostname:  hostname,
-		Verbosity: verboseCount,
-		Pipeline: orchestra.ConfigPipeline{
-			Stages:   stages,
-			FilePath: pipelineFilePath,
-			DryRun:   ctx.Bool("dry-run"),
+		Interface: conductor.Interface{Verbosity: verboseCount},
+		Pipeline: conductor.ConfigPipeline{
+			Filtered: stages,
+
+			DryRun: ctx.Bool("dry-run"),
 		},
 	}
 	return cfg
@@ -208,7 +220,10 @@ func newConfigFromCliContext(ctx *cli.Context) orchestra.Config {
 func run(ctx *cli.Context) error {
 	cfg := newConfigFromCliContext(ctx)
 
-	os.Exit(orchestra.Orchestra(cfg))
+	t := conductor.NewTogomak(cfg)
+	v := orchestra.Perform(t)
+	t.Destroy()
+	os.Exit(v)
 	return nil
 }
 

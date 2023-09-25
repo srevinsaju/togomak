@@ -6,11 +6,11 @@ import (
 
 const DataBlock = "data"
 
-func (s Data) Description() string {
+func (s *Data) Description() string {
 	return ""
 }
 
-func (s Data) Identifier() string {
+func (s *Data) Identifier() string {
 	return s.Id
 }
 
@@ -29,25 +29,25 @@ func (d Datas) ById(provider string, id string) (*Data, hcl.Diagnostics) {
 	}
 }
 
-func (s Data) Type() string {
+func (s *Data) Type() string {
 	return DataBlock
 }
 
-func (s Data) Set(k any, v any) {
+func (s *Data) Set(k any, v any) {
 }
 
-func (s Data) Get(k any) any {
+func (s *Data) Get(k any) any {
 	return nil
 }
 
-func (s Data) IsDaemon() bool {
+func (s *Data) IsDaemon() bool {
 	return false
 }
 
-func (s Data) Terminate(safe bool) hcl.Diagnostics {
+func (s *Data) Terminate(safe bool) hcl.Diagnostics {
 	return nil
 }
 
-func (s Data) Kill() hcl.Diagnostics {
+func (s *Data) Kill() hcl.Diagnostics {
 	return nil
 }

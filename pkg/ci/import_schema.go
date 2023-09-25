@@ -1,7 +1,10 @@
 package ci
 
+import "github.com/hashicorp/hcl/v2"
+
 type Import struct {
-	Source string `hcl:"source" json:"source"`
+	id     string
+	Source hcl.Expression `hcl:"source" json:"source"`
 }
 
-type Imports []Import
+type Imports []*Import

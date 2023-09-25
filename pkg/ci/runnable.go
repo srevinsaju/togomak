@@ -88,7 +88,7 @@ func (r Blocks) Variables() []hcl.Traversal {
 	return traversal
 }
 
-func (r Blocks) Run(ctx context.Context) hcl.Diagnostics {
+func (r Blocks) Run(ctx context.Context, opts ...runnable.Option) hcl.Diagnostics {
 	// run all runnables in parallel, collect errors and return
 	// create a channel to receive errors
 	var wg sync.WaitGroup
@@ -97,7 +97,7 @@ func (r Blocks) Run(ctx context.Context) hcl.Diagnostics {
 		wg.Add(1)
 		go func(runnable Block) {
 			defer wg.Done()
-			errChan <- runnable.Run(ctx)
+			errChan <- runnable.Run(ctx, opts...)
 		}(runnable)
 	}
 	wg.Wait()
@@ -106,7 +106,7 @@ func (r Blocks) Run(ctx context.Context) hcl.Diagnostics {
 	return nil
 }
 
-func Resolve(ctx context.Context, pipe *Pipeline, id string) (Block, hcl.Diagnostics) {
+func Resolve(pipe *Pipeline, id string) (Block, hcl.Diagnostics) {
 	var diags hcl.Diagnostics
 	blocks := strings.Split(id, ".")
 	if len(blocks) != 2 && len(blocks) != 3 {
@@ -145,6 +145,10 @@ func Resolve(ctx context.Context, pipe *Pipeline, id string) (Block, hcl.Diagnos
 		return local, diags
 	case LocalsBlock:
 		panic("locals block cannot be resolved")
+	case ModuleBlock:
+		module, d := pipe.Modules.ById(blocks[1])
+		diags = diags.Extend(d)
+		return module, diags
 
 	case ThisBlock:
 		return nil, nil
@@ -181,6 +185,10 @@ func ResolveFromTraversal(variable hcl.Traversal) (string, hcl.Diagnostics) {
 		// the local block has the name
 		name := variable[1].(hcl.TraverseAttr).Name
 		parent = x.RenderBlock(MacroBlock, name)
+	case ModuleBlock:
+		// the module block has the name
+		name := variable[1].(hcl.TraverseAttr).Name
+		parent = x.RenderBlock(ModuleBlock, name)
 	case ParamBlock, ThisBlock, BuilderBlock:
 		return "", nil
 	default:

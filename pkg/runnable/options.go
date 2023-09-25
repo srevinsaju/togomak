@@ -1,11 +1,18 @@
 package runnable
 
-import "github.com/hashicorp/hcl/v2"
+import (
+	"github.com/srevinsaju/togomak/v1/pkg/behavior"
+	"github.com/srevinsaju/togomak/v1/pkg/path"
+)
 
 type Config struct {
 	Status *Status
 	Parent *ParentConfig
 	Hook   bool
+
+	Paths *path.Path
+
+	Behavior *behavior.Behavior
 }
 
 type ParentConfig struct {
@@ -15,11 +22,17 @@ type ParentConfig struct {
 
 type Option func(*Config)
 
-func WithStatus(status StatusType, diags ...hcl.Diagnostic) Option {
+func WithStatus(status StatusType) Option {
 	return func(c *Config) {
 		c.Status = &Status{
 			Status: status,
 		}
+	}
+}
+
+func WithPaths(paths *path.Path) Option {
+	return func(c *Config) {
+		c.Paths = paths
 	}
 }
 
@@ -29,11 +42,19 @@ func WithParent(parent ParentConfig) Option {
 	}
 }
 
+func WithBehavior(behavior *behavior.Behavior) Option {
+	return func(c *Config) {
+		c.Behavior = behavior
+	}
+}
+
 func NewDefaultConfig() *Config {
 	return &Config{
-		Status: &Status{Status: StatusRunning},
-		Parent: nil,
-		Hook:   false,
+		Status:   &Status{Status: StatusRunning},
+		Parent:   nil,
+		Hook:     false,
+		Paths:    nil,
+		Behavior: nil,
 	}
 }
 

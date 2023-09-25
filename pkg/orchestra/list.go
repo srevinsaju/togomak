@@ -1,48 +1,27 @@
 package orchestra
 
 import (
-	"context"
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/hclparse"
-	"github.com/srevinsaju/togomak/v1/pkg/c"
-	"github.com/srevinsaju/togomak/v1/pkg/meta"
-	"github.com/srevinsaju/togomak/v1/pkg/pipeline"
+	"github.com/srevinsaju/togomak/v1/pkg/ci"
+	"github.com/srevinsaju/togomak/v1/pkg/conductor"
 	"github.com/srevinsaju/togomak/v1/pkg/ui"
-	"github.com/srevinsaju/togomak/v1/pkg/x"
 	"os"
-	"path/filepath"
 )
 
-func List(cfg Config) error {
-	logger := NewLogger(cfg)
-	parser := hclparse.NewParser()
+func List(cfg conductor.Config) error {
 
-	// TODO: move this to a function
-	// TODO: reduce duplication
-	pipelineId := uuid.New().String()
-	tmpDir := filepath.Join(meta.BuildDirPrefix, "pipelines", "tmp")
-	err := os.MkdirAll(tmpDir, 0755)
-	x.Must(err)
-	tmpDir, err = os.MkdirTemp(tmpDir, pipelineId)
-	x.Must(err)
+	togomak := conductor.NewTogomak(cfg)
+	logger := togomak.Logger
+	ctx := togomak.Context
 
-	// TODO: move this to a function
-	ctx := context.Background()
-	cwd := Chdir(cfg, logger)
-	ctx = context.WithValue(ctx, c.TogomakContextOwd, cfg.Owd)
-	ctx = context.WithValue(ctx, c.TogomakContextCwd, cwd)
-	ctx = context.WithValue(ctx, c.TogomakContextPipelineFilePath, cfg.Pipeline.FilePath)
-	ctx = context.WithValue(ctx, c.TogomakContextTempDir, tmpDir)
-
-	dgwriter := hcl.NewDiagnosticTextWriter(os.Stdout, parser.Files(), 0, true)
-	pipe, hclDiags := pipeline.Read(ctx, parser)
+	dgwriter := hcl.NewDiagnosticTextWriter(os.Stdout, togomak.Parser.Files(), 0, true)
+	pipe, hclDiags := ci.Read(cfg.Paths, togomak.Parser)
 	if hclDiags.HasErrors() {
 		logger.Fatal(dgwriter.WriteDiagnostics(hclDiags))
 	}
 
-	pipe, d := pipeline.ExpandImports(ctx, pipe)
+	pipe, d := pipe.ExpandImports(ctx, togomak.Parser, togomak.Config.Paths.Cwd)
 	hclDiags = hclDiags.Extend(d)
 
 	for _, stage := range pipe.Stages {
