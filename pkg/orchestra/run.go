@@ -100,18 +100,26 @@ func CanRun(runnable ci.Block, ctx context.Context, filterList rules.Operations,
 		}
 	}
 
+	oldOk := ok
+	ok = false
+	overridden = false
+
 	for _, rule := range filterList {
 		if rule.RunnableId() == runnableId && rule.Operation() == rules.OperationTypeAdd {
-			return true, true, diags
+			ok = true
+			overridden = true
 		}
 		if rule.RunnableId() == runnableId && rule.Operation() == rules.OperationTypeSub {
-			return false, true, diags
+			ok = false
+			overridden = true
 		}
 		if rule.RunnableId() == runnableId && rule.Operation() == rules.OperationTypeAnd {
-			return ok, false, diags
+			ok = oldOk
+			overridden = true
 		}
-		if depGraph.DependsOn(rule.RunnableId(), runnableId) {
-			return true, false, diags
+		if rule.Operation() == rules.OperationTypeAnd && depGraph.DependsOn(rule.RunnableId(), runnableId) {
+			ok = oldOk
+			overridden = true
 		}
 		if runnable.Type() == ci.StageBlock {
 			stage := runnable.(*ci.Stage)
@@ -129,22 +137,19 @@ func CanRun(runnable ci.Block, ctx context.Context, filterList rules.Operations,
 
 				for _, phase := range phases {
 					if rule.RunnableId() == phase.AsString() {
-						return ok, false, diags
+						overridden = false
+						ok = oldOk
 					}
 				}
 				if len(phases) == 0 && rule.RunnableId() == "default" {
-					return ok, false, diags
+					overridden = false
 				}
 			} else {
 				if rule.RunnableId() == "default" {
-					return ok, false, diags
+					overridden = false
 				}
 			}
 		}
 	}
-	if runnable.Type() == ci.StageBlock {
-		return false, overridden, diags
-
-	}
-	return true, overridden, diags
+	return ok, overridden, diags
 }
