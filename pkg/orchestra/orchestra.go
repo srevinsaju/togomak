@@ -97,6 +97,7 @@ func Perform(togomak *conductor.Togomak) int {
 
 	// store the pipe in the context
 	ctx = context.WithValue(ctx, c.TogomakContextPipeline, pipe)
+	h.Update(handler.WithContext(ctx))
 
 	// --> validate the pipeline
 	// TODO: validate the pipeline

@@ -159,10 +159,14 @@ func NewHandler(opts ...HandlerOption) *Handler {
 		cancel:     cancel,
 	}
 
+	h.Update(opts...)
+	return h
+}
+
+func (h *Handler) Update(opts ...HandlerOption) {
 	for _, opt := range opts {
 		opt(h)
 	}
-	return h
 }
 
 func (h *Handler) Kill() {
@@ -199,7 +203,6 @@ func (h *Handler) Kill() {
 }
 
 func (h *Handler) Daemons() {
-	ctx := h.ctx
 	logger := h.Logger.WithField("watchdog", "")
 	var completedRunnables ci.Blocks
 
@@ -218,7 +221,7 @@ func (h *Handler) Daemons() {
 				continue
 			}
 			logger.Tracef("checking daemon %s", daemon.Identifier())
-			lifecycle, d := daemon.ExecutionOptions(ctx)
+			lifecycle, d := daemon.ExecutionOptions(h.ctx)
 			if d.HasErrors() {
 				h.Diags.Extend(d)
 				d := daemon.Terminate(false)

@@ -14,6 +14,7 @@ import (
 )
 
 func RunWithRetries(runnableId string, runnable ci.Block, ctx context.Context, handler *handler.Handler, logger *logrus.Logger, opts ...runnable.Option) {
+	handler.Logger.Debug("starting runnable with retries ", runnableId)
 	stageDiags := runnable.Run(ctx, opts...)
 
 	handler.Tracker.AppendCompleted(runnable)
@@ -80,6 +81,11 @@ func CanRun(runnable ci.Block, ctx context.Context, filterList rules.Operations,
 		return false, false, diags
 	}
 
+	if runnable.Type() != ci.StageBlock {
+		// TODO: optimize, run only required data blocks
+		return ok, false, diags
+	}
+
 	runnable.Set(ci.StageContextChildStatuses, filterList.Children(runnableId).Marshall())
 
 	if runnable.Type() == ci.StageBlock && len(filterQuery) != 0 {
@@ -89,6 +95,7 @@ func CanRun(runnable ci.Block, ctx context.Context, filterList rules.Operations,
 			return false, false, diags
 		}
 	}
+
 	if len(filterList) == 0 {
 		filterList = append(filterList, rules.NewOperation(rules.OperationTypeAnd, "default"))
 	}
@@ -142,10 +149,12 @@ func CanRun(runnable ci.Block, ctx context.Context, filterList rules.Operations,
 					}
 				}
 				if len(phases) == 0 && rule.RunnableId() == "default" {
+					ok = oldOk
 					overridden = false
 				}
 			} else {
 				if rule.RunnableId() == "default" {
+					ok = oldOk
 					overridden = false
 				}
 			}
