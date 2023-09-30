@@ -489,13 +489,15 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 	}
 
 	envStrings := make([]string, len(environment))
+	envCounter := 0
 	for k, v := range environment {
 		envParsed := fmt.Sprintf("%s=%s", k, v.AsString())
 		if cfg.Behavior.DryRun {
 			fmt.Println(ui.Blue("export"), envParsed)
 		}
 
-		envStrings = append(envStrings, envParsed)
+		envStrings[envCounter] = envParsed
+		envCounter = envCounter + 1
 	}
 	togomakEnvExport := fmt.Sprintf("%s=%s", meta.OutputEnvVar, filepath.Join(tmpDir, meta.OutputEnvFile))
 	logger.Tracef("exporting %s", togomakEnvExport)
@@ -707,6 +709,7 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 				})
 			}
 			s.ContainerId = resp.ID
+			fmt.Println("sss", s.ContainerId)
 
 			container, err := cli.ContainerInspect(ctx, resp.ID)
 			if err != nil {
@@ -889,6 +892,7 @@ func dockerContainerSourceFmt(containerId string) string {
 }
 
 func (s *Stage) Terminate(safe bool) hcl.Diagnostics {
+	s.Logger().Debug("terminating stage")
 	ctx := context.Background()
 	var diags hcl.Diagnostics
 	if safe {
@@ -914,6 +918,7 @@ func (s *Stage) Terminate(safe bool) hcl.Diagnostics {
 				Detail:   fmt.Sprintf("%s: %s", dockerContainerSourceFmt(s.ContainerId), err.Error()),
 			})
 		}
+		s.Logger().Debug("stopping container")
 		err = cli.ContainerStop(ctx, s.ContainerId, dockerContainer.StopOptions{})
 		if err != nil {
 			diags = diags.Append(&hcl.Diagnostic{
@@ -922,6 +927,12 @@ func (s *Stage) Terminate(safe bool) hcl.Diagnostics {
 				Detail:   fmt.Sprintf("%s: %s", dockerContainerSourceFmt(s.ContainerId), err.Error()),
 			})
 		}
+		s.Logger().Debug("removing container")
+		err = cli.ContainerRemove(ctx, s.ContainerId, types.ContainerRemoveOptions{
+			RemoveVolumes: true,
+		})
+		s.Logger().Debug("removed container")
+
 	} else if s.process != nil && s.process.Process != nil {
 		if s.process.ProcessState != nil {
 			if s.process.ProcessState.Exited() {
@@ -937,6 +948,7 @@ func (s *Stage) Terminate(safe bool) hcl.Diagnostics {
 			})
 		}
 	}
+	s.Logger().Debug("terminated stage")
 
 	return diags
 }
