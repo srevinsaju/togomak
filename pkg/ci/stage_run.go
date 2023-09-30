@@ -709,7 +709,6 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 				})
 			}
 			s.ContainerId = resp.ID
-			fmt.Println("sss", s.ContainerId)
 
 			container, err := cli.ContainerInspect(ctx, resp.ID)
 			if err != nil {
