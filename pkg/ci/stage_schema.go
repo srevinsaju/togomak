@@ -48,7 +48,7 @@ type StageContainer struct {
 	Volumes StageContainerVolumes `hcl:"volume,block" json:"volumes"`
 
 	// Ports have a list of ports that needs to be exposed from the container
-	Ports StageContainerPorts `hcl:"ports,optional" json:"ports"`
+	Ports StageContainerPorts `hcl:"port,block" json:"ports"`
 
 	// Entrypoint allows you to specify the entrypoint of the container
 	// If the Entrypoint is null, it defaults to the container's default entrypoint
