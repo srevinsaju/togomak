@@ -8,7 +8,9 @@ import (
 	"github.com/docker/docker/api/types"
 	dockerContainer "github.com/docker/docker/api/types/container"
 	dockerClient "github.com/docker/docker/client"
+	"github.com/srevinsaju/togomak/v1/pkg/dg"
 	"github.com/srevinsaju/togomak/v1/pkg/x"
+	"sync"
 
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/google/uuid"
@@ -367,16 +369,29 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 			return diags
 		}
 
+		var wg sync.WaitGroup
+
+		var safeDg dg.SafeDiagnostics
+
 		forEachItems.ForEachElement(func(k cty.Value, v cty.Value) bool {
-			fmt.Println("ok!", k, v)
-			return true
+			id := fmt.Sprintf("%s[\"%s\"]", s.Id, k.AsString())
+			wg.Add(1)
+			stage := &Stage{Id: id, CoreStage: s.CoreStage, Lifecycle: s.Lifecycle}
+			go func(options ...runnable.Option) {
+				options = append(options, runnable.WithEach(k, v))
+				d := stage.Run(ctx, options...)
+				safeDg.Extend(d)
+				wg.Done()
+			}(options...)
+			return false
 		})
+		wg.Wait()
+		return safeDg.Diagnostics()
 	} else {
 		d = s.run(ctx, evalCtx, options...)
 		diags = diags.Extend(d)
 		return diags
 	}
-	return diags
 }
 
 func (s *Stage) run(ctx context.Context, evalCtx *hcl.EvalContext, options ...runnable.Option) (diags hcl.Diagnostics) {
@@ -437,6 +452,9 @@ func (s *Stage) run(ctx context.Context, evalCtx *hcl.EvalContext, options ...ru
 			"hook":   cty.BoolVal(cfg.Hook),
 			"status": cty.StringVal(string(cfg.Status.Status)),
 		}),
+	}
+	if cfg.Each != nil {
+		evalCtx.Variables[EachBlock] = cty.ObjectVal(cfg.Each)
 	}
 
 	logger.Debugf("expanding macro parameters")
