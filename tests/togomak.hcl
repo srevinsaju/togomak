@@ -32,9 +32,9 @@ stage "integration_tests" {
   ls ../examples
   for i in ../examples/*; do
     echo ${ansi.fg.green}$i${ansi.reset}
-    ./togomak_coverage -C "$i" --ci -v
-    ./togomak_coverage -C "$i" --ci -v root
-    ./togomak_coverage -C "$i" --ci -v -n
+    ./togomak_coverage -C "$i" --ci -v -v -v 
+    ./togomak_coverage -C "$i" --ci -v -v -v root
+    ./togomak_coverage -C "$i" --ci -v -v -v -n
   done
   ./togomak_coverage cache clean --recursive
   ./togomak_coverage fmt --check --recursive
@@ -42,7 +42,7 @@ stage "integration_tests" {
   for i in tests/failing/*; do 
     set +e
     echo ${ansi.fg.green}$i${ansi.reset}
-    ./togomak_coverage -C "$i" --ci -v
+    ./togomak_coverage -C "$i" --ci -v -v -v
     result=$?
     if [ $result -eq 0 ]; then 
       set -e
