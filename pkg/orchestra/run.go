@@ -13,8 +13,9 @@ import (
 	"time"
 )
 
-func RunWithRetries(runnableId string, runnable ci.Block, ctx context.Context, handler *handler.Handler, logger *logrus.Logger, opts ...runnable.Option) {
-	handler.Logger.Debug("starting runnable with retries ", runnableId)
+func RunWithRetries(runnableId string, runnable ci.Block, ctx context.Context, handler *handler.Handler, togomakLogger *logrus.Logger, opts ...runnable.Option) {
+	logger := togomakLogger.WithField("orchestra", "run")
+	logger.Debug("starting runnable with retries ", runnableId)
 	stageDiags := runnable.Run(ctx, opts...)
 
 	handler.Tracker.AppendCompleted(runnable)

@@ -45,7 +45,7 @@ func Perform(togomak *conductor.Togomak) int {
 	cfg := togomak.Config
 	ctx, cancel := context.WithCancel(togomak.Context)
 
-	logger := togomak.Logger
+	logger := togomak.Logger.WithField("orchestra", "perform")
 	logger.Debugf("starting watchdogs and signal handlers")
 	h := StartHandlers(togomak)
 
@@ -175,7 +175,7 @@ func Perform(togomak *conductor.Togomak) int {
 				h.Tracker.AppendRunnable(runnable)
 			}
 
-			go RunWithRetries(runnableId, runnable, ctx, h, logger, opts...)
+			go RunWithRetries(runnableId, runnable, ctx, h, togomak.Logger, opts...)
 
 			if cfg.Pipeline.DryRun {
 				// TODO: implement --concurrency option

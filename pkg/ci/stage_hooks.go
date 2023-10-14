@@ -16,7 +16,7 @@ func (s *Stage) BeforeRun(ctx context.Context, opts ...runnable.Option) hcl.Diag
 
 	for _, hook := range s.PreHook {
 		diags = diags.Extend(
-			(&Stage{fmt.Sprintf("%s.pre", s.Identifier()), nil, hook.Stage, nil}).Run(ctx, opts...),
+			(&Stage{fmt.Sprintf("%s.pre", s.Id), nil, hook.Stage, nil}).Run(ctx, opts...),
 		)
 	}
 	return diags
@@ -31,7 +31,7 @@ func (s *Stage) AfterRun(ctx context.Context, opts ...runnable.Option) hcl.Diagn
 
 	for _, hook := range s.PostHook {
 		diags = diags.Extend(
-			(&Stage{fmt.Sprintf("%s.pre", s.Identifier()), nil, hook.Stage, nil}).Run(ctx, opts...),
+			(&Stage{fmt.Sprintf("%s.pre", s.Id), nil, hook.Stage, nil}).Run(ctx, opts...),
 		)
 	}
 	return diags

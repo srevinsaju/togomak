@@ -40,14 +40,14 @@ func (s *Stage) Prepare(ctx context.Context, skip bool, overridden bool) hcl.Dia
 
 	var id string
 	if !skip {
-		id = ui.Blue(s.Id)
+		id = ""
 	} else {
-		id = fmt.Sprintf("%s %s", ui.Yellow(s.Id), ui.Grey("(skipped)"))
+		id = fmt.Sprintf("%s", ui.Grey("skipped"))
 	}
 	if overridden {
-		id = fmt.Sprintf("%s %s", id, ui.Bold("(overriden)"))
+		id = fmt.Sprintf("%s", ui.Blue("overridden"))
 	}
-	logger.Infof("[%s] %s", ui.Plus, id)
+	logger.Infof("%s", id)
 	return nil
 }
 
@@ -60,7 +60,7 @@ func (s *Stage) expandMacros(ctx context.Context, opts ...runnable.Option) (*Sta
 		return s, nil
 	}
 	hclContext := global.HclEvalContext()
-	logger := s.Logger().WithField(MacroBlock, true)
+	logger := s.Logger()
 	pipe := ctx.Value(c.TogomakContextPipeline).(*Pipeline)
 
 	tmpDir := global.TempDir()
@@ -455,7 +455,7 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 
 	if s.Container == nil {
 		s.process = cmd
-		logger.Trace("running command:", cmd.String())
+		logger.Tracef("running command: %.30s...", cmd.String())
 		if !cfg.Behavior.DryRun {
 			err = cmd.Run()
 
@@ -484,7 +484,7 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 
 func (s *Stage) executeDocker(ctx context.Context, evalCtx *hcl.EvalContext, cmd *exec.Cmd, cfg *runnable.Config) hcl.Diagnostics {
 	var diags hcl.Diagnostics
-	logger := s.Logger().WithField("🐳", "")
+	logger := s.Logger()
 
 	image, d := s.hclImage(evalCtx)
 	diags = diags.Extend(d)
