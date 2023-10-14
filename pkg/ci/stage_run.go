@@ -331,14 +331,9 @@ func (s *Stage) expandMacros(ctx context.Context, opts ...runnable.Option) (*Sta
 
 func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.Diagnostics) {
 	logger := s.Logger()
-	cfg := runnable.NewConfig(options...)
 
-	tmpDir := global.TempDir()
 	logger.Debugf("running %s", x.RenderBlock(StageBlock, s.Id))
 
-	status := runnable.StatusRunning
-
-	var err error
 	evalCtx := global.HclEvalContext()
 
 	// expand stages using macros
@@ -347,28 +342,49 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 	diags = diags.Extend(d)
 	logger.Debugf("finished expanding macros with %d errors", len(diags.Errs()))
 
-	if s.ForEach != nil {
-		global.EvalContextMutex.RLock()
-		forEachItems, d := s.ForEach.Value(evalCtx)
-		global.EvalContextMutex.RUnlock()
-
+	if s.ForEach == nil {
+		d = s.run(ctx, evalCtx, options...)
 		diags = diags.Extend(d)
-		if !forEachItems.IsNull() {
-			if !forEachItems.CanIterateElements() {
-				diags = diags.Append(&hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  "invalid type for for_each",
-					Detail:   fmt.Sprintf("for_each must be a set or map of objects"),
-				})
-				return diags
-			}
-
-			forEachItems.ForEachElement(func(k cty.Value, v cty.Value) bool {
-				fmt.Println("ok!")
-				return true
-			})
-		}
+		return diags
 	}
+
+	global.EvalContextMutex.RLock()
+	forEachItems, d := s.ForEach.Value(evalCtx)
+	global.EvalContextMutex.RUnlock()
+
+	diags = diags.Extend(d)
+	if d.HasErrors() {
+		return diags
+	}
+
+	if !forEachItems.IsNull() {
+		if !forEachItems.CanIterateElements() {
+			diags = diags.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "invalid type for for_each",
+				Detail:   fmt.Sprintf("for_each must be a set or map of objects"),
+			})
+			return diags
+		}
+
+		forEachItems.ForEachElement(func(k cty.Value, v cty.Value) bool {
+			fmt.Println("ok!", k, v)
+			return true
+		})
+	} else {
+		d = s.run(ctx, evalCtx, options...)
+		diags = diags.Extend(d)
+		return diags
+	}
+	return diags
+}
+
+func (s *Stage) run(ctx context.Context, evalCtx *hcl.EvalContext, options ...runnable.Option) (diags hcl.Diagnostics) {
+	var err error
+	logger := s.Logger()
+	tmpDir := global.TempDir()
+	status := runnable.StatusRunning
+	cfg := runnable.NewConfig(options...)
 
 	defer func() {
 		logger.Debug("running post hooks")
@@ -388,7 +404,7 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 		logger.Debug("finished running post hooks")
 	}()
 
-	d = s.executePreHooks(ctx, status, options...)
+	d := s.executePreHooks(ctx, status, options...)
 	diags = diags.Extend(d)
 
 	paramsGo := map[string]cty.Value{}
