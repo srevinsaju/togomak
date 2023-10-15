@@ -7,7 +7,7 @@ stage "normal" {
 }
 
 stage "dont_execute" {
-  if = false
+  if     = false
   script = "echo this shouldnt be executed && exit 1"
 }
 

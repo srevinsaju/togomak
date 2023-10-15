@@ -24,33 +24,20 @@ stage "coverage_prepare" {
   EOT
 }
 
-stage "integration_tests" {
-  depends_on = [stage.build, stage.coverage_prepare]
-  script     = <<-EOT
-  #!/usr/bin/env bash
-  set -e
-  ls ../examples
-  for i in ../examples/*; do
-    echo ${ansi.fg.green}$i${ansi.reset}
-    ./togomak_coverage -C "$i" --ci -v
-    ./togomak_coverage -C "$i" --ci -v root
-    ./togomak_coverage -C "$i" --ci -v -n
-  done
-  ./togomak_coverage cache clean --recursive
-  ./togomak_coverage fmt --check --recursive
+stage "tests" {
+  pre_hook {
+    stage {
+      script = "echo ${ansi.fg.green}${each.key}${ansi.reset}: full"
+    }
+  }
 
-  for i in tests/failing/*; do 
-    set +e
-    echo ${ansi.fg.green}$i${ansi.reset}
-    ./togomak_coverage -C "$i" --ci -v
-    result=$?
-    if [ $result -eq 0 ]; then 
-      set -e
-      echo "$i completed successfully when it was supposed to fail"
-      exit 1
-    fi
-  done
-  EOT
+  depends_on = [stage.build, stage.coverage_prepare]
+  for_each   = fileset(cwd, "../examples/*/togomak.hcl")
+  args = [
+    "./togomak_coverage",
+    "-C", dirname(each.key),
+    "--ci", "-v", "-v", "-v",
+  ]
 
   env {
     name  = "GOCOVERDIR"
@@ -58,8 +45,60 @@ stage "integration_tests" {
   }
 }
 
+
+stage "tests_dry_run" {
+  pre_hook {
+    stage {
+      script = "echo ${ansi.fg.green}${each.key}${ansi.reset}: dry"
+    }
+  }
+
+  depends_on = [stage.build, stage.coverage_prepare]
+  for_each   = fileset(cwd, "../examples/*/togomak.hcl")
+  args = [
+    "./togomak_coverage",
+    "-C", dirname(each.key),
+    "--ci", "-v", "-v", "-v", "-n",
+  ]
+
+  env {
+    name  = "GOCOVERDIR"
+    value = local.coverage_data_dir
+  }
+}
+
+stage "fmt" {
+  depends_on = [stage.build, stage.coverage_prepare]
+  script     = "./togomak_coverage fmt --check --recursive"
+}
+
+stage "cache" {
+  depends_on = [stage.fmt, stage.tests, stage.tests_dry_run]
+  script     = "./togomak_coverage cache clean --recursive"
+}
+
+
+stage "failing" {
+  depends_on = [stage.cache]
+  for_each   = fileset(cwd, "tests/failing/*/togomak.hcl")
+  script     = <<-EOT
+  set +e
+  ./togomak_coverage -C "${dirname(each.key)}" --ci -v -v -v
+  result=$?
+  if [ $result -eq 0 ]; then 
+      set -e
+      echo "$i completed successfully when it was supposed to fail"
+      exit 1
+  fi 
+  EOT 
+  env {
+    name  = "GOCOVERDIR"
+    value = local.coverage_data_dir
+  }
+}
+
 stage "coverage_raw" {
-  depends_on = [stage.integration_tests]
+  depends_on = [stage.tests]
   script     = "go tool covdata percent -i=${local.coverage_data_dir}"
 }
 stage "coverage_merge" {

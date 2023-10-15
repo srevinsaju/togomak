@@ -172,7 +172,7 @@ func (h *Handler) Update(opts ...HandlerOption) {
 func (h *Handler) Kill() {
 	signal.Notify(h.Tracker.killSignal, os.Kill)
 	ctx := h.ctx
-	logger := h.Logger.WithField("watchdog", "")
+	logger := h.Logger.WithField("orchestra", "watchdog")
 	select {
 	case <-h.Tracker.killSignal:
 		var diags hcl.Diagnostics
@@ -203,7 +203,7 @@ func (h *Handler) Kill() {
 }
 
 func (h *Handler) Daemons() {
-	logger := h.Logger.WithField("watchdog", "")
+	logger := h.Logger.WithField("orchestra", "watchdog")
 	var completedRunnables ci.Blocks
 
 	defer h.WriteDiagnostics()
@@ -263,7 +263,7 @@ func (h *Handler) Interrupt() {
 	signal.Notify(h.Tracker.interruptSignal, syscall.SIGTERM)
 
 	ctx := h.ctx
-	logger := h.Logger.WithField("watchdog", "")
+	logger := h.Logger.WithField("orchestra", "watchdog")
 	select {
 	case <-h.Tracker.interruptSignal:
 		var diags hcl.Diagnostics

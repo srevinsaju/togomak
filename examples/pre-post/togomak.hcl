@@ -16,5 +16,5 @@ stage "example" {
 
 stage "example_2" {
   depends_on = [stage.example]
-  script = "echo hello world 2"
+  script     = "echo hello world 2"
 }

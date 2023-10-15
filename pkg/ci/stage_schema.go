@@ -131,7 +131,8 @@ type StagePreHook struct {
 // scripts, docker containers, etc. A Stage receives all properties as that of CoreStage
 // along with an Id which is used by Stages to uniquely identify a stage.
 type Stage struct {
-	Id        string `hcl:"id,label" json:"id" expr:"id"`
+	Id        string         `hcl:"id,label" json:"id" expr:"id"`
+	ForEach   hcl.Expression `hcl:"for_each,optional" json:"for_each"`
 	CoreStage `hcl:",remain"`
 
 	// Lifecycle rules tell the termination policy of a daemon stage

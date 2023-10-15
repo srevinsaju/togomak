@@ -2,12 +2,15 @@ package ci
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/alessio/shellescape"
 	"github.com/docker/docker/api/types"
 	dockerContainer "github.com/docker/docker/api/types/container"
 	dockerClient "github.com/docker/docker/client"
+	"github.com/srevinsaju/togomak/v1/pkg/dg"
 	"github.com/srevinsaju/togomak/v1/pkg/x"
+	"sync"
 
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/google/uuid"
@@ -26,7 +29,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"syscall"
 )
 
 const TogomakParamEnvVarPrefix = "TOGOMAK__param__"
@@ -40,14 +42,14 @@ func (s *Stage) Prepare(ctx context.Context, skip bool, overridden bool) hcl.Dia
 
 	var id string
 	if !skip {
-		id = ui.Blue(s.Id)
+		id = ""
 	} else {
-		id = fmt.Sprintf("%s %s", ui.Yellow(s.Id), ui.Grey("(skipped)"))
+		id = fmt.Sprintf("%s", ui.Grey("skipped"))
 	}
 	if overridden {
-		id = fmt.Sprintf("%s %s", id, ui.Bold("(overriden)"))
+		id = fmt.Sprintf("%s", ui.Blue("overridden"))
 	}
-	logger.Infof("[%s] %s", ui.Plus, id)
+	logger.Infof("%s", id)
 	return nil
 }
 
@@ -60,7 +62,7 @@ func (s *Stage) expandMacros(ctx context.Context, opts ...runnable.Option) (*Sta
 		return s, nil
 	}
 	hclContext := global.HclEvalContext()
-	logger := s.Logger().WithField(MacroBlock, true)
+	logger := s.Logger()
 	pipe := ctx.Value(c.TogomakContextPipeline).(*Pipeline)
 
 	tmpDir := global.TempDir()
@@ -331,14 +333,9 @@ func (s *Stage) expandMacros(ctx context.Context, opts ...runnable.Option) (*Sta
 
 func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.Diagnostics) {
 	logger := s.Logger()
-	cfg := runnable.NewConfig(options...)
 
-	tmpDir := global.TempDir()
 	logger.Debugf("running %s", x.RenderBlock(StageBlock, s.Id))
 
-	status := runnable.StatusRunning
-
-	var err error
 	evalCtx := global.HclEvalContext()
 
 	// expand stages using macros
@@ -346,6 +343,63 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 	s, d := s.expandMacros(ctx, options...)
 	diags = diags.Extend(d)
 	logger.Debugf("finished expanding macros with %d errors", len(diags.Errs()))
+
+	if s.ForEach == nil {
+		d = s.run(ctx, evalCtx, options...)
+		diags = diags.Extend(d)
+		return diags
+	}
+
+	global.EvalContextMutex.RLock()
+	forEachItems, d := s.ForEach.Value(evalCtx)
+	global.EvalContextMutex.RUnlock()
+
+	diags = diags.Extend(d)
+	if d.HasErrors() {
+		return diags
+	}
+
+	if !forEachItems.IsNull() {
+		if !forEachItems.CanIterateElements() {
+			diags = diags.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "invalid type for for_each",
+				Detail:   fmt.Sprintf("for_each must be a set or map of objects"),
+			})
+			return diags
+		}
+
+		var wg sync.WaitGroup
+
+		var safeDg dg.SafeDiagnostics
+
+		forEachItems.ForEachElement(func(k cty.Value, v cty.Value) bool {
+			id := fmt.Sprintf("%s[\"%s\"]", s.Id, k.AsString())
+			wg.Add(1)
+			stage := &Stage{Id: id, CoreStage: s.CoreStage, Lifecycle: s.Lifecycle}
+			go func(options ...runnable.Option) {
+				options = append(options, runnable.WithEach(k, v))
+				d := stage.Run(ctx, options...)
+				safeDg.Extend(d)
+				wg.Done()
+			}(options...)
+			return false
+		})
+		wg.Wait()
+		return safeDg.Diagnostics()
+	} else {
+		d = s.run(ctx, evalCtx, options...)
+		diags = diags.Extend(d)
+		return diags
+	}
+}
+
+func (s *Stage) run(ctx context.Context, evalCtx *hcl.EvalContext, options ...runnable.Option) (diags hcl.Diagnostics) {
+	var err error
+	logger := s.Logger()
+	tmpDir := global.TempDir()
+	status := runnable.StatusRunning
+	cfg := runnable.NewConfig(options...)
 
 	defer func() {
 		logger.Debug("running post hooks")
@@ -365,15 +419,8 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 		logger.Debug("finished running post hooks")
 	}()
 
-	logger.Debugf("running pre hooks")
-	hookOpts := []runnable.Option{
-		runnable.WithStatus(status),
-		runnable.WithHook(),
-		runnable.WithParent(runnable.ParentConfig{Name: s.Name, Id: s.Id}),
-	}
-	hookOpts = append(hookOpts, options...)
-	diags = diags.Extend(s.BeforeRun(ctx, hookOpts...))
-	logger.Debugf("finished running pre hooks")
+	d := s.executePreHooks(ctx, status, options...)
+	diags = diags.Extend(d)
 
 	paramsGo := map[string]cty.Value{}
 
@@ -406,6 +453,9 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 			"status": cty.StringVal(string(cfg.Status.Status)),
 		}),
 	}
+	if cfg.Each != nil {
+		evalCtx.Variables[EachBlock] = cty.ObjectVal(cfg.Each)
+	}
 
 	logger.Debugf("expanding macro parameters")
 	if s.Use != nil && s.Use.Parameters != nil {
@@ -419,41 +469,250 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 			}
 		}
 	}
-
 	evalCtx.Variables[ParamBlock] = cty.ObjectVal(paramsGo)
 
-	logger.Debug("evaluating script value")
-	global.EvalContextMutex.RLock()
-	script, d := s.Script.Value(evalCtx)
-	global.EvalContextMutex.RUnlock()
-
-	if d.HasErrors() && cfg.Behavior.DryRun {
-		script = cty.StringVal(ui.Italic(ui.Yellow("(will be evaluated later)")))
-	} else {
-		diags = diags.Extend(d)
+	environment, d := s.parseEnvironmentVariables(evalCtx)
+	diags = diags.Extend(d)
+	if diags.HasErrors() {
+		return diags
 	}
 
-	global.EvalContextMutex.RLock()
-	shellRaw, d := s.Shell.Value(evalCtx)
-	global.EvalContextMutex.RUnlock()
+	envStrings := s.processEnvironmentVariables(environment, cfg, tmpDir, paramsGo)
 
-	shell := ""
-	if d.HasErrors() {
-		diags = diags.Extend(d)
-	} else {
-		if shellRaw.IsNull() {
-			shell = "bash"
+	cmd, d := s.parseExecCommand(ctx, evalCtx, cfg, envStrings)
+	diags = diags.Extend(d)
+	if diags.HasErrors() {
+		return diags
+	}
+	logger.Trace("command parsed")
+	logger.Tracef("script: %.30s... ", cmd.String())
+
+	if s.Container == nil {
+		s.process = cmd
+		logger.Tracef("running command: %.30s...", cmd.String())
+		if !cfg.Behavior.DryRun {
+			err = cmd.Run()
+
+			if err != nil && err.Error() == "signal: terminated" && s.Terminated() {
+				logger.Warnf("command terminated with signal: %s", cmd.ProcessState.String())
+				err = nil
+			}
 		} else {
-			shell = shellRaw.AsString()
+			fmt.Println(cmd.String())
 		}
+	} else {
+		d := s.executeDocker(ctx, evalCtx, cmd, cfg)
+		diags = diags.Extend(d)
 	}
 
-	global.EvalContextMutex.RLock()
-	args, d := s.Args.Value(evalCtx)
-	global.EvalContextMutex.RUnlock()
+	if err != nil {
+		diags = diags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  fmt.Sprintf("failed to run command (%s)", s.Identifier()),
+			Detail:   err.Error(),
+		})
+	}
+
+	return diags
+}
+
+func (s *Stage) executeDocker(ctx context.Context, evalCtx *hcl.EvalContext, cmd *exec.Cmd, cfg *runnable.Config) hcl.Diagnostics {
+	var diags hcl.Diagnostics
+	logger := s.Logger()
+
+	image, d := s.hclImage(evalCtx)
 	diags = diags.Extend(d)
 
-	logger.Debug("evaluating environment variables")
+	// begin entrypoint evaluation
+	entrypoint, d := s.hclEndpoint(evalCtx)
+	diags = diags.Extend(d)
+
+	if diags.HasErrors() {
+		return diags
+	}
+
+	cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
+	if err != nil {
+		return diags.Append(&hcl.Diagnostic{
+			Severity:    hcl.DiagError,
+			Summary:     "could not create docker client",
+			Detail:      err.Error(),
+			Subject:     s.Container.Image.Range().Ptr(),
+			EvalContext: evalCtx,
+		})
+	}
+	defer x.Must(cli.Close())
+
+	// check if image exists
+	logger.Debugf("checking if image %s exists", image)
+	_, _, err = cli.ImageInspectWithRaw(ctx, image)
+	if err != nil {
+		logger.Infof("image %s does not exist, pulling...", image)
+		reader, err := cli.ImagePull(ctx, image, types.ImagePullOptions{})
+		if err != nil {
+			return diags.Append(&hcl.Diagnostic{
+				Severity:    hcl.DiagError,
+				Summary:     "could not pull image",
+				Detail:      err.Error(),
+				Subject:     s.Container.Image.Range().Ptr(),
+				EvalContext: evalCtx,
+			})
+		}
+
+		pb := ui.NewDockerProgressWriter(reader, logger.Writer(), fmt.Sprintf("pulling image %s", image))
+		defer pb.Close()
+		defer reader.Close()
+		io.Copy(pb, reader)
+	}
+
+	logger.Trace("parsing container arguments")
+	binds := []string{
+		fmt.Sprintf("%s:/workspace", cmd.Dir),
+	}
+
+	logger.Trace("parsing container volumes")
+	for _, m := range s.Container.Volumes {
+		global.EvalContextMutex.RLock()
+		source, d := m.Source.Value(evalCtx)
+		global.EvalContextMutex.RUnlock()
+		diags = diags.Extend(d)
+
+		global.EvalContextMutex.RLock()
+		dest, d := m.Destination.Value(evalCtx)
+		global.EvalContextMutex.RUnlock()
+		diags = diags.Extend(d)
+		if diags.HasErrors() {
+			continue
+		}
+		binds = append(binds, fmt.Sprintf("%s:%s", source.AsString(), dest.AsString()))
+	}
+	logger.Tracef("%d diagnostic(s) after parsing container volumes", len(diags.Errs()))
+	if diags.HasErrors() {
+		return diags
+	}
+
+	logger.Trace("dry run check")
+	if cfg.Behavior.DryRun {
+		fmt.Println(ui.Blue("docker:run.image"), ui.Green(image))
+		fmt.Println(ui.Blue("docker:run.workdir"), ui.Green("/workspace"))
+		fmt.Println(ui.Blue("docker:run.volume"), ui.Green(cmd.Dir+":/workspace"))
+		fmt.Println(ui.Blue("docker:run.stdin"), ui.Green(s.Container.Stdin))
+		fmt.Println(ui.Blue("docker:run.args"), ui.Green(cmd.String()))
+		return diags
+	}
+
+	logger.Trace("parsing container ports")
+	exposedPorts, bindings, d := s.Container.Ports.Nat(evalCtx)
+	diags = diags.Extend(d)
+	if diags.HasErrors() {
+		return diags
+	}
+
+	logger.Trace("creating container")
+	resp, err := cli.ContainerCreate(ctx, &dockerContainer.Config{
+		Image:      image,
+		Cmd:        cmd.Args,
+		WorkingDir: "/workspace",
+		Volumes: map[string]struct{}{
+			"/workspace": {},
+		},
+		Tty:          true,
+		AttachStdout: true,
+		AttachStderr: true,
+		AttachStdin:  s.Container.Stdin,
+		OpenStdin:    s.Container.Stdin,
+		StdinOnce:    s.Container.Stdin,
+		Entrypoint:   entrypoint,
+		Env:          cmd.Env,
+		ExposedPorts: exposedPorts,
+		// User: s.Container.User,
+	}, &dockerContainer.HostConfig{
+		Binds:        binds,
+		PortBindings: bindings,
+	}, nil, nil, "")
+	if err != nil {
+		return diags.Append(&hcl.Diagnostic{
+			Severity:    hcl.DiagError,
+			Summary:     "could not create container",
+			Detail:      err.Error(),
+			Subject:     s.Container.Image.Range().Ptr(),
+			EvalContext: evalCtx,
+		})
+	}
+
+	logger.Trace("starting container")
+	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
+		return diags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  "could not start container",
+			Detail:   err.Error(),
+			Subject:  s.Container.Image.Range().Ptr(),
+		})
+	}
+	s.ContainerId = resp.ID
+
+	logger.Trace("getting container metadata for log retrieval")
+	container, err := cli.ContainerInspect(ctx, resp.ID)
+	if err != nil {
+		panic(err)
+	}
+
+	logger.Trace("getting container logs")
+	responseBody, err := cli.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{
+		ShowStdout: true, ShowStderr: true,
+		Follow: true,
+	})
+	if err != nil {
+		return diags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  "could not get container logs",
+			Detail:   err.Error(),
+			Subject:  s.Container.Image.Range().Ptr(),
+		})
+	}
+	defer responseBody.Close()
+
+	logger.Tracef("copying container logs on container: %s", resp.ID)
+	if container.Config.Tty {
+		_, err = io.Copy(logger.Writer(), responseBody)
+	} else {
+		_, err = stdcopy.StdCopy(logger.Writer(), logger.WriterLevel(logrus.WarnLevel), responseBody)
+	}
+
+	logger.Trace("waiting for container to finish")
+	if err != nil && err != io.EOF {
+		if errors.Is(err, context.Canceled) {
+			return diags
+		}
+		diags = diags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  "failed to copy container logs",
+			Detail:   err.Error(),
+			Subject:  s.Container.Image.Range().Ptr(),
+		})
+	}
+
+	logger.Tracef("removing container with id: %s", resp.ID)
+	err = cli.ContainerRemove(ctx, resp.ID, types.ContainerRemoveOptions{
+		RemoveVolumes: true,
+	})
+	if err != nil {
+		diags = diags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  "failed to remove container",
+			Detail:   err.Error(),
+			Subject:  s.Container.Image.Range().Ptr(),
+		})
+		return diags
+	}
+
+	logger.Tracef("%d diagnostic(s) after removing container", len(diags.Errs()))
+	return diags
+}
+
+func (s *Stage) parseEnvironmentVariables(evalCtx *hcl.EvalContext) (map[string]cty.Value, hcl.Diagnostics) {
+	var diags hcl.Diagnostics
+	s.Logger().Debug("evaluating environment variables")
 	var environment map[string]cty.Value
 	environment = make(map[string]cty.Value)
 	for _, env := range s.Environment {
@@ -482,38 +741,88 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 			environment[env.Name] = v
 		}
 	}
+	return environment, diags
+}
 
-	logger.Debugf("%d diagnostics so far", len(diags.Errs()))
+func (s *Stage) parseExecCommand(ctx context.Context, evalCtx *hcl.EvalContext, cfg *runnable.Config, envStrings []string) (*exec.Cmd, hcl.Diagnostics) {
+	var diags hcl.Diagnostics
+
+	s.Logger().Trace("evaluating script value")
+	global.EvalContextMutex.RLock()
+	script, d := s.Script.Value(evalCtx)
+	global.EvalContextMutex.RUnlock()
+
+	if d.HasErrors() && cfg.Behavior.DryRun {
+		script = cty.StringVal(ui.Italic(ui.Yellow("(will be evaluated later)")))
+	} else {
+		diags = diags.Extend(d)
+	}
+
+	s.Logger().Trace("evaluating shell value")
+	global.EvalContextMutex.RLock()
+	shellRaw, d := s.Shell.Value(evalCtx)
+	global.EvalContextMutex.RUnlock()
+
+	shell := ""
+	if d.HasErrors() {
+		diags = diags.Extend(d)
+	} else {
+		if shellRaw.IsNull() {
+			shell = "bash"
+		} else {
+			shell = shellRaw.AsString()
+		}
+	}
+
+	s.Logger().Trace("evaluating args value")
+	global.EvalContextMutex.RLock()
+	args, d := s.Args.Value(evalCtx)
+	global.EvalContextMutex.RUnlock()
+	diags = diags.Extend(d)
+
+	cmdHcl, d := s.parseCommand(evalCtx, shell, script, args)
+	diags = diags.Extend(d)
 	if diags.HasErrors() {
-		return diags
+		return nil, diags
 	}
 
-	envStrings := make([]string, len(environment))
-	envCounter := 0
-	for k, v := range environment {
-		envParsed := fmt.Sprintf("%s=%s", k, v.AsString())
+	dir := cfg.Paths.Cwd
+
+	global.EvalContextMutex.RLock()
+	dirParsed, d := s.Dir.Value(evalCtx)
+	global.EvalContextMutex.RUnlock()
+
+	if d.HasErrors() {
+		diags = diags.Extend(d)
+	} else {
+		if !dirParsed.IsNull() && dirParsed.AsString() != "" {
+			dir = dirParsed.AsString()
+		}
+		if !filepath.IsAbs(dir) {
+			dir = filepath.Join(cfg.Paths.Cwd, dir)
+		}
 		if cfg.Behavior.DryRun {
-			fmt.Println(ui.Blue("export"), envParsed)
-		}
-
-		envStrings[envCounter] = envParsed
-		envCounter = envCounter + 1
-	}
-	togomakEnvExport := fmt.Sprintf("%s=%s", meta.OutputEnvVar, filepath.Join(tmpDir, meta.OutputEnvFile))
-	logger.Tracef("exporting %s", togomakEnvExport)
-	envStrings = append(envStrings, togomakEnvExport)
-
-	if s.Use != nil && s.Use.Parameters != nil {
-		for k, v := range paramsGo {
-			envParsed := fmt.Sprintf("%s%s=%s", TogomakParamEnvVarPrefix, k, v.AsString())
-			if cfg.Behavior.DryRun {
-				fmt.Println(ui.Blue("export"), envParsed)
-			}
-
-			envStrings = append(envStrings, envParsed)
+			fmt.Println(ui.Blue("cd"), dir)
 		}
 	}
 
+	cmd := exec.CommandContext(ctx, cmdHcl.command, cmdHcl.args...)
+	cmd.Stdout = s.Logger().Writer()
+	cmd.Stderr = s.Logger().WriterLevel(logrus.WarnLevel)
+	cmd.Env = append(os.Environ(), envStrings...)
+	cmd.Dir = dir
+	return cmd, diags
+}
+
+type command struct {
+	args    []string
+	command string
+
+	isEmpty bool
+}
+
+func (s *Stage) parseCommand(evalCtx *hcl.EvalContext, shell string, script cty.Value, args cty.Value) (command, hcl.Diagnostics) {
+	var diags hcl.Diagnostics
 	runArgs := make([]string, 0)
 	runCommand := shell
 
@@ -537,246 +846,63 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 		}
 	} else if s.Container == nil {
 		// if the container is not null, we may rely on internal args or entrypoint scripts
-		return diags.Append(&hcl.Diagnostic{
+		diags = diags.Append(&hcl.Diagnostic{
 			Severity:    hcl.DiagError,
 			Summary:     "No commands specified",
 			Detail:      "Either script or args must be specified",
 			Subject:     s.Script.Range().Ptr(),
 			EvalContext: evalCtx,
 		})
-
 	} else {
 		emptyCommands = true
 	}
-	dir := cfg.Paths.Cwd
+	return command{
+		args:    runArgs,
+		command: runCommand,
+		isEmpty: emptyCommands,
+	}, diags
+}
 
-	global.EvalContextMutex.RLock()
-	dirParsed, d := s.Dir.Value(evalCtx)
-	global.EvalContextMutex.RUnlock()
-
-	if d.HasErrors() {
-		diags = diags.Extend(d)
-	} else {
-		if !dirParsed.IsNull() && dirParsed.AsString() != "" {
-			dir = dirParsed.AsString()
-		}
-		if !filepath.IsAbs(dir) {
-			dir = filepath.Join(cfg.Paths.Cwd, dir)
-		}
+func (s *Stage) processEnvironmentVariables(environment map[string]cty.Value, cfg *runnable.Config, tmpDir string, paramsGo map[string]cty.Value) []string {
+	envStrings := make([]string, len(environment))
+	envCounter := 0
+	for k, v := range environment {
+		envParsed := fmt.Sprintf("%s=%s", k, v.AsString())
 		if cfg.Behavior.DryRun {
-			fmt.Println(ui.Blue("cd"), dir)
+			fmt.Println(ui.Blue("export"), envParsed)
+		}
+
+		envStrings[envCounter] = envParsed
+		envCounter = envCounter + 1
+	}
+	togomakEnvExport := fmt.Sprintf("%s=%s", meta.OutputEnvVar, filepath.Join(tmpDir, meta.OutputEnvFile))
+	s.Logger().Tracef("exporting %s", togomakEnvExport)
+	envStrings = append(envStrings, togomakEnvExport)
+
+	if s.Use != nil && s.Use.Parameters != nil {
+		for k, v := range paramsGo {
+			envParsed := fmt.Sprintf("%s%s=%s", TogomakParamEnvVarPrefix, k, v.AsString())
+			if cfg.Behavior.DryRun {
+				fmt.Println(ui.Blue("export"), envParsed)
+			}
+
+			envStrings = append(envStrings, envParsed)
 		}
 	}
+	return envStrings
+}
 
-	cmd := exec.CommandContext(ctx, runCommand, runArgs...)
-	cmd.Stdout = logger.Writer()
-	cmd.Stderr = logger.WriterLevel(logrus.WarnLevel)
-	cmd.Env = append(os.Environ(), envStrings...)
-	cmd.Dir = dir
-
-	if s.Container == nil {
-		s.process = cmd
-		logger.Trace("running command:", cmd.String())
-		if !cfg.Behavior.DryRun {
-			err = cmd.Run()
-
-			if err != nil && err.Error() == "signal: terminated" && s.Terminated() {
-				logger.Warnf("command terminated with signal: %s", cmd.ProcessState.String())
-				err = nil
-			}
-		} else {
-			fmt.Println(cmd.String())
-		}
-	} else {
-		logger := logger.WithField("🐳", "")
-
-		image, d := s.hclImage(evalCtx)
-		diags = diags.Extend(d)
-
-		// begin entrypoint evaluation
-		entrypoint, d := s.hclEndpoint(evalCtx)
-		diags = diags.Extend(d)
-
-		if diags.HasErrors() {
-			return diags
-		}
-
-		cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
-		if err != nil {
-			return diags.Append(&hcl.Diagnostic{
-				Severity:    hcl.DiagError,
-				Summary:     "could not create docker client",
-				Detail:      err.Error(),
-				Subject:     s.Container.Image.Range().Ptr(),
-				EvalContext: evalCtx,
-			})
-		}
-		defer cli.Close()
-		// check if image exists
-		logger.Debugf("checking if image %s exists", image)
-		_, _, err = cli.ImageInspectWithRaw(ctx, image)
-		if err != nil {
-			logger.Infof("image %s does not exist, pulling...", image)
-			reader, err := cli.ImagePull(ctx, image, types.ImagePullOptions{})
-			if err != nil {
-				return diags.Append(&hcl.Diagnostic{
-					Severity:    hcl.DiagError,
-					Summary:     "could not pull image",
-					Detail:      err.Error(),
-					Subject:     s.Container.Image.Range().Ptr(),
-					EvalContext: evalCtx,
-				})
-			}
-
-			pb := ui.NewDockerProgressWriter(reader, logger.Writer(), fmt.Sprintf("pulling image %s", image))
-			defer pb.Close()
-			defer reader.Close()
-			io.Copy(pb, reader)
-
-		}
-
-		var containerArgs []string
-		if !emptyCommands {
-			containerArgs = cmd.Args
-		}
-		binds := []string{
-			fmt.Sprintf("%s:/workspace", cmd.Dir),
-		}
-
-		for _, m := range s.Container.Volumes {
-			global.EvalContextMutex.RLock()
-			source, d := m.Source.Value(evalCtx)
-			global.EvalContextMutex.RUnlock()
-			diags = diags.Extend(d)
-
-			global.EvalContextMutex.RLock()
-			dest, d := m.Destination.Value(evalCtx)
-			global.EvalContextMutex.RUnlock()
-			diags = diags.Extend(d)
-			if diags.HasErrors() {
-				continue
-			}
-			binds = append(binds, fmt.Sprintf("%s:%s", source.AsString(), dest.AsString()))
-		}
-		if diags.HasErrors() {
-			return diags
-		}
-
-		if !cfg.Behavior.DryRun {
-			exposedPorts, bindings, d := s.Container.Ports.Nat(evalCtx)
-			diags = diags.Extend(d)
-			if diags.HasErrors() {
-				return diags
-			}
-
-			resp, err := cli.ContainerCreate(ctx, &dockerContainer.Config{
-				Image:      image,
-				Cmd:        containerArgs,
-				WorkingDir: "/workspace",
-				Volumes: map[string]struct{}{
-					"/workspace": {},
-				},
-				Tty:          true,
-				AttachStdout: true,
-				AttachStderr: true,
-				AttachStdin:  s.Container.Stdin,
-				OpenStdin:    s.Container.Stdin,
-				StdinOnce:    s.Container.Stdin,
-				Entrypoint:   entrypoint,
-				Env:          envStrings,
-				ExposedPorts: exposedPorts,
-				// User: s.Container.User,
-			}, &dockerContainer.HostConfig{
-				Binds:        binds,
-				PortBindings: bindings,
-			}, nil, nil, "")
-			if err != nil {
-				return diags.Append(&hcl.Diagnostic{
-					Severity:    hcl.DiagError,
-					Summary:     "could not create container",
-					Detail:      err.Error(),
-					Subject:     s.Container.Image.Range().Ptr(),
-					EvalContext: evalCtx,
-				})
-			}
-
-			if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
-				return diags.Append(&hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  "could not start container",
-					Detail:   err.Error(),
-					Subject:  s.Container.Image.Range().Ptr(),
-				})
-			}
-			s.ContainerId = resp.ID
-
-			container, err := cli.ContainerInspect(ctx, resp.ID)
-			if err != nil {
-				panic(err)
-			}
-
-			responseBody, err := cli.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{
-				ShowStdout: true, ShowStderr: true,
-				Follow: true,
-			})
-			if err != nil {
-				return diags.Append(&hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  "could not get container logs",
-					Detail:   err.Error(),
-					Subject:  s.Container.Image.Range().Ptr(),
-				})
-			}
-			defer responseBody.Close()
-
-			if container.Config.Tty {
-				_, err = io.Copy(logger.Writer(), responseBody)
-			} else {
-				_, err = stdcopy.StdCopy(logger.Writer(), logger.WriterLevel(logrus.WarnLevel), responseBody)
-			}
-			if err != nil && err != io.EOF {
-				if err == context.Canceled {
-					return diags
-				}
-				diags = diags.Append(&hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  "failed to copy container logs",
-					Detail:   err.Error(),
-					Subject:  s.Container.Image.Range().Ptr(),
-				})
-			}
-			err = cli.ContainerRemove(ctx, resp.ID, types.ContainerRemoveOptions{
-				RemoveVolumes: true,
-			})
-			if err != nil {
-				diags = diags.Append(&hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  "failed to remove container",
-					Detail:   err.Error(),
-					Subject:  s.Container.Image.Range().Ptr(),
-				})
-				return diags
-			}
-		} else {
-			fmt.Println(ui.Blue("docker:run.image"), ui.Green(image))
-			fmt.Println(ui.Blue("docker:run.workdir"), ui.Green("/workspace"))
-			fmt.Println(ui.Blue("docker:run.volume"), ui.Green(cmd.Dir+":/workspace"))
-			fmt.Println(ui.Blue("docker:run.env"), ui.Green(strings.Join(envStrings, " ")))
-			fmt.Println(ui.Blue("docker:run.stdin"), ui.Green(s.Container.Stdin))
-			fmt.Println(ui.Blue("docker:run.args"), ui.Green(strings.Join(containerArgs, " ")))
-
-		}
-
+func (s *Stage) executePreHooks(ctx context.Context, status runnable.StatusType, options ...runnable.Option) hcl.Diagnostics {
+	var diags hcl.Diagnostics
+	s.Logger().Debugf("running pre hooks")
+	hookOpts := []runnable.Option{
+		runnable.WithStatus(status),
+		runnable.WithHook(),
+		runnable.WithParent(runnable.ParentConfig{Name: s.Name, Id: s.Id}),
 	}
-
-	if err != nil {
-		diags = diags.Append(&hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  fmt.Sprintf("failed to run command (%s)", s.Identifier()),
-			Detail:   err.Error(),
-		})
-	}
-
+	hookOpts = append(hookOpts, options...)
+	diags = diags.Extend(s.BeforeRun(ctx, hookOpts...))
+	s.Logger().Debugf("finished running pre hooks")
 	return diags
 }
 
@@ -888,85 +1014,4 @@ func (s *Stage) CanRun(ctx context.Context, options ...runnable.Option) (ok bool
 
 func dockerContainerSourceFmt(containerId string) string {
 	return fmt.Sprintf("docker: container=%s", containerId)
-}
-
-func (s *Stage) Terminate(safe bool) hcl.Diagnostics {
-	s.Logger().Debug("terminating stage")
-	ctx := context.Background()
-	var diags hcl.Diagnostics
-	if safe {
-		s.terminated = true
-	}
-
-	defer func() {
-		diags = diags.Extend(s.AfterRun(
-			ctx,
-			runnable.WithHook(),
-			runnable.WithStatus(runnable.StatusTerminated),
-			runnable.WithParent(runnable.ParentConfig{Name: s.Name, Id: s.Id}),
-		))
-	}()
-
-	if s.Container != nil && s.ContainerId != "" {
-
-		cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
-		if err != nil {
-			diags = diags.Append(&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "failed to create docker client",
-				Detail:   fmt.Sprintf("%s: %s", dockerContainerSourceFmt(s.ContainerId), err.Error()),
-			})
-		}
-		s.Logger().Debug("stopping container")
-		err = cli.ContainerStop(ctx, s.ContainerId, dockerContainer.StopOptions{})
-		if err != nil {
-			diags = diags.Append(&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "failed to stop container",
-				Detail:   fmt.Sprintf("%s: %s", dockerContainerSourceFmt(s.ContainerId), err.Error()),
-			})
-		}
-		s.Logger().Debug("removing container")
-		err = cli.ContainerRemove(ctx, s.ContainerId, types.ContainerRemoveOptions{
-			RemoveVolumes: true,
-		})
-		s.Logger().Debug("removed container")
-
-	} else if s.process != nil && s.process.Process != nil {
-		if s.process.ProcessState != nil {
-			if s.process.ProcessState.Exited() {
-				return diags
-			}
-		}
-		err := s.process.Process.Signal(syscall.SIGTERM)
-		if err != nil {
-			diags = diags.Append(&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "failed to terminate process",
-				Detail:   err.Error(),
-			})
-		}
-	}
-	s.Logger().Debug("terminated stage")
-
-	return diags
-}
-
-func (s *Stage) Kill() hcl.Diagnostics {
-	diags := s.Terminate(false)
-	if s.process != nil && !s.process.ProcessState.Exited() {
-		err := s.process.Process.Kill()
-		if err != nil {
-			diags = diags.Append(&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "couldn't kill stage",
-				Detail:   err.Error(),
-			})
-		}
-	}
-	return diags
-}
-
-func (s *Stage) Terminated() bool {
-	return s.terminated
 }

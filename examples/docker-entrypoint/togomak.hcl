@@ -4,7 +4,7 @@ togomak {
 
 stage "apt" {
   container {
-    image = "ubuntu:latest"
+    image      = "ubuntu:latest"
     entrypoint = ["apt"]
   }
   args = ["install"]

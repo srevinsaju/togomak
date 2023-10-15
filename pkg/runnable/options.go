@@ -3,6 +3,7 @@ package runnable
 import (
 	"github.com/srevinsaju/togomak/v1/pkg/behavior"
 	"github.com/srevinsaju/togomak/v1/pkg/path"
+	"github.com/zclconf/go-cty/cty"
 )
 
 type Config struct {
@@ -11,6 +12,8 @@ type Config struct {
 	Hook   bool
 
 	Paths *path.Path
+
+	Each map[string]cty.Value
 
 	Behavior *behavior.Behavior
 }
@@ -39,6 +42,15 @@ func WithPaths(paths *path.Path) Option {
 func WithParent(parent ParentConfig) Option {
 	return func(c *Config) {
 		c.Parent = &parent
+	}
+}
+
+func WithEach(k cty.Value, v cty.Value) Option {
+	return func(c *Config) {
+		c.Each = map[string]cty.Value{
+			"key":   k,
+			"value": v,
+		}
 	}
 }
 

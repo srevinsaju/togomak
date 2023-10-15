@@ -12,6 +12,7 @@ import (
 )
 
 const ThisBlock = "this"
+const EachBlock = "each"
 
 type Retryable interface {
 	// CanRetry decides if the runnable can be retried

@@ -3,7 +3,7 @@ togomak {
 }
 
 data "tf" "this" {
-  source = "."
+  source      = "."
   allow_apply = true
 }
 

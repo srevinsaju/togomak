@@ -15,7 +15,7 @@ import (
 
 func ExpandOutputs(togomak *conductor.Togomak) hcl.Diagnostics {
 	var diags hcl.Diagnostics
-	logger := togomak.Logger
+	logger := togomak.Logger.WithField("orchestra", "outputs")
 	togomakEnvFile := filepath.Join(togomak.Process.TempDir, meta.OutputEnvFile)
 	logger.Tracef("%s will be stored and exported here: %s", meta.OutputEnvVar, togomakEnvFile)
 	envFile, err := os.OpenFile(togomakEnvFile, os.O_RDONLY|os.O_CREATE, 0644)
