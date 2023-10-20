@@ -10,6 +10,7 @@ import (
 	"github.com/srevinsaju/togomak/v1/pkg/ui"
 	"github.com/srevinsaju/togomak/v1/pkg/x"
 	"github.com/zclconf/go-cty/cty"
+	"path/filepath"
 )
 
 func (m *Module) Prepare(ctx context.Context, skip bool, overridden bool) hcl.Diagnostics {
@@ -62,15 +63,26 @@ func (m *Module) Run(ctx context.Context, options ...runnable.Option) (diags hcl
 		})
 	}
 
+	paths := cfg.Paths
 	src := v.AsString()
 	get := &getter.Client{
 		Ctx: ctx,
 		Src: src,
-		Dst: "",
-		Pwd: "",
+		Dst: filepath.Join(global.TempDir(), "modules", m.Id),
+		Pwd: paths.Cwd,
 		Dir: true,
 	}
-	get.Get()
+	err := get.Get()
+	if err != nil {
+		return diags.Append(&hcl.Diagnostic{
+			Severity:    hcl.DiagError,
+			Summary:     "failed to download source",
+			Detail:      err.Error(),
+			Subject:     m.Source.Range().Ptr(),
+			EvalContext: evalCtx,
+		})
+	}
+
 	return diags
 }
 

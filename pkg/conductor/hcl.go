@@ -205,6 +205,12 @@ func CreateEvalContext(cfg Config, process Process) *hcl.EvalContext {
 				"unattended":     cty.BoolVal(behavior.Unattended),
 			}),
 
+			"path": cty.ObjectVal(map[string]cty.Value{
+				"root":   cty.StringVal(paths.Cwd),
+				"cwd":    cty.StringVal(paths.Owd),
+				"module": cty.StringVal(paths.Cwd),
+			}),
+
 			// introduced in v1.5.0
 			"ansi": cty.ObjectVal(map[string]cty.Value{
 				"bg": cty.ObjectVal(map[string]cty.Value{
