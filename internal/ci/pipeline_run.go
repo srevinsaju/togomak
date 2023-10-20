@@ -11,7 +11,7 @@ func StartHandlers(conductor *Conductor) *Handler {
 
 	h := NewHandler(
 		WithContext(conductor.Context()),
-		WithLogger(conductor.Logger),
+		WithLogger(conductor.RootLogger),
 		WithDiagnosticWriter(conductor.DiagWriter),
 		WithProcessBootTime(conductor.Process.BootTime),
 	)
@@ -23,7 +23,7 @@ func StartHandlers(conductor *Conductor) *Handler {
 
 func (pipe *Pipeline) Run(conductor *Conductor) int {
 	var d hcl.Diagnostics
-	logger := conductor.Logger.WithField("orchestra", "run")
+	logger := conductor.Logger().WithField("orchestra", "run")
 	cfg := conductor.Config
 	ctx, cancel := context.WithCancel(conductor.Context())
 	h := StartHandlers(conductor)
@@ -122,7 +122,7 @@ func (pipe *Pipeline) Run(conductor *Conductor) int {
 				h.Tracker.AppendRunnable(runnable)
 			}
 
-			go BlockRunWithRetries(conductor, runnableId, runnable, h, conductor.Logger, opts...)
+			go BlockRunWithRetries(conductor, runnableId, runnable, h, conductor.Logger(), opts...)
 
 			if cfg.Pipeline.DryRun {
 				// TODO: implement --concurrency option

@@ -38,7 +38,7 @@ func Perform(conductor *ci.Conductor) int {
 	defer cancel()
 	conductor.Update(ci.ConductorWithContext(ctx))
 
-	logger := conductor.Logger.WithField("orchestra", "perform")
+	logger := conductor.Logger().WithField("orchestra", "perform")
 	logger.Debugf("starting watchdogs and signal handlers")
 	ExpandGlobalParams(conductor)
 

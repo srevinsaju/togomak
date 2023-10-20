@@ -11,7 +11,7 @@ import (
 func List(cfg ci.Config) error {
 
 	conductor := ci.NewConductor(cfg)
-	logger := conductor.Logger
+	logger := conductor.Logger()
 	ctx := conductor.Context()
 
 	dgwriter := hcl.NewDiagnosticTextWriter(os.Stdout, conductor.Parser.Files(), 0, true)

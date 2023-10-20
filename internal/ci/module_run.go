@@ -83,6 +83,16 @@ func (m *Module) Run(conductor *Conductor, options ...runnable.Option) (diags hc
 		})
 	}
 
+	childConductor := conductor.Child()
+
+	// parse the config file
+	pipe, hclDiags := Read(conductor.Config.Paths, conductor.Parser)
+	if hclDiags.HasErrors() {
+		logger.Fatal(conductor.DiagWriter.WriteDiagnostics(hclDiags))
+	}
+
+	return pipe.Run(conductor)
+
 	return diags
 }
 

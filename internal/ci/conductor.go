@@ -18,7 +18,7 @@ type ConductorOption func(*Conductor)
 
 func ConductorWithLogger(logger *logrus.Logger) ConductorOption {
 	return func(c *Conductor) {
-		c.Logger = logger
+		c.RootLogger = logger
 	}
 }
 
@@ -59,9 +59,9 @@ func ConductorWithProcess(process Process) ConductorOption {
 }
 
 type Conductor struct {
-	Logger *logrus.Logger
-	Config Config
-	ctx    context.Context
+	RootLogger *logrus.Logger
+	Config     Config
+	ctx        context.Context
 
 	// Process is the current process
 	Process Process
@@ -77,6 +77,33 @@ type Conductor struct {
 
 	// EvalContext is the HCL evaluation context
 	EvalContext *hcl.EvalContext
+
+	parent *Conductor
+}
+
+func (c *Conductor) Child(opts ...ConductorOption) *Conductor {
+	inheritOpts := []ConductorOption{
+		ConductorWithConfig(c.Config),
+	}
+	opts = append(inheritOpts, opts...)
+	child := NewConductor(c.Config, opts...)
+	child.parent = c
+	return child
+}
+
+func (c *Conductor) Parent() *Conductor {
+	return c.parent
+}
+
+func (c *Conductor) RootParent() *Conductor {
+	if c.parent == nil {
+		return c
+	}
+	return c.parent.RootParent()
+}
+
+func (c *Conductor) Logger() logrus.Ext1FieldLogger {
+	return c.RootLogger
 }
 
 type Process struct {
@@ -156,8 +183,8 @@ func NewConductor(cfg Config, opts ...ConductorOption) *Conductor {
 
 		Process: process,
 
-		Logger: logger,
-		Config: cfg,
+		RootLogger: logger,
+		Config:     cfg,
 
 		EvalContext: CreateEvalContext(cfg, process),
 	}
@@ -168,15 +195,15 @@ func NewConductor(cfg Config, opts ...ConductorOption) *Conductor {
 }
 
 func (c *Conductor) Destroy() {
-	c.Logger.Debug("removing temporary directory")
+	c.Logger().Debug("removing temporary directory")
 	err := os.RemoveAll(c.Process.TempDir)
 	if err != nil {
-		c.Logger.Warnf("failed to remove temporary directory: %s", err)
+		c.Logger().Warnf("failed to remove temporary directory: %s", err)
 	}
 
-	c.Logger.Debug("destroying togomak")
+	c.Logger().Debug("destroying togomak")
 
-	c.Logger = nil
+	c.RootLogger = nil
 	c.Config = Config{}
 	c.Parser = nil
 	c.DiagWriter = nil

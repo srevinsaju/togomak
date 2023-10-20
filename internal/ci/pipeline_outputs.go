@@ -11,10 +11,10 @@ import (
 	"path/filepath"
 )
 
-func ExpandOutputs(togomak *Conductor) hcl.Diagnostics {
+func ExpandOutputs(conductor *Conductor) hcl.Diagnostics {
 	var diags hcl.Diagnostics
-	logger := togomak.Logger.WithField("orchestra", "outputs")
-	togomakEnvFile := filepath.Join(togomak.Process.TempDir, meta.OutputEnvFile)
+	logger := conductor.Logger().WithField("orchestra", "outputs")
+	togomakEnvFile := filepath.Join(conductor.Process.TempDir, meta.OutputEnvFile)
 	logger.Tracef("%s will be stored and exported here: %s", meta.OutputEnvVar, togomakEnvFile)
 	envFile, err := os.OpenFile(togomakEnvFile, os.O_RDONLY|os.O_CREATE, 0644)
 	if err == nil {
@@ -33,7 +33,7 @@ func ExpandOutputs(togomak *Conductor) hcl.Diagnostics {
 			ee[k] = cty.StringVal(v)
 		}
 		global.EvalContextMutex.Lock()
-		togomak.EvalContext.Variables[OutputBlock] = cty.ObjectVal(ee)
+		conductor.EvalContext.Variables[OutputBlock] = cty.ObjectVal(ee)
 		global.EvalContextMutex.Unlock()
 	} else {
 		logger.Warnf("could not open %s file, ignoring... :%s", meta.OutputEnvVar, err)
