@@ -9,14 +9,11 @@ import (
 	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/graph"
 	"github.com/srevinsaju/togomak/v1/pkg/handler"
-	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/runnable"
 	"strings"
 
 	"github.com/zclconf/go-cty/cty"
 	"os"
-	"path/filepath"
-	"sync"
 )
 
 func ExpandGlobalParams(togomak *conductor.Togomak) {
@@ -42,44 +39,33 @@ func ExpandGlobalParams(togomak *conductor.Togomak) {
 }
 
 func Perform(togomak *conductor.Togomak) int {
-	cfg := togomak.Config
 	ctx, cancel := context.WithCancel(togomak.Context)
+	defer cancel()
 
 	logger := togomak.Logger.WithField("orchestra", "perform")
 	logger.Debugf("starting watchdogs and signal handlers")
-	h := StartHandlers(togomak)
-
-	defer cancel()
-	defer h.WriteDiagnostics()
-
-	// region: external parameters
 	ExpandGlobalParams(togomak)
-	// endregion
 
-	// --> parse the config file
-	// we will now read the pipeline from togomak.hcl
+	// parse the config file
 	pipe, hclDiags := ci.Read(togomak.Config.Paths, togomak.Parser)
 	if hclDiags.HasErrors() {
 		logger.Fatal(togomak.DiagWriter.WriteDiagnostics(hclDiags))
 	}
 
-	// whitelist all stages if unspecified
-	filterList := cfg.Pipeline.Filtered
-	filterQuery := cfg.Pipeline.FilterQuery
+	return PipelineRun(togomak, pipe, ctx)
+}
 
-	// write the pipeline to the temporary directory
-	pipelineFilePath := filepath.Join(togomak.Process.TempDir, meta.ConfigFileName)
-	var pipelineData []byte
-	for _, f := range togomak.Parser.Files() {
-		pipelineData = append(pipelineData, f.Bytes...)
-	}
-
-	err := os.WriteFile(pipelineFilePath, pipelineData, 0644)
-	if err != nil {
-		return h.Fatal()
-	}
+func PipelineRun(togomak *conductor.Togomak, pipe *ci.Pipeline, ctx context.Context) int {
 	var d hcl.Diagnostics
+	logger := togomak.Logger.WithField("orchestra", "PipelineRun")
+	cfg := togomak.Config
+	h := StartHandlers(togomak)
+	ctx, cancel := context.WithCancel(ctx)
 
+	defer cancel()
+	defer h.WriteDiagnostics()
+
+	// --> expand imports
 	pipe, d = ExpandImports(ctx, pipe, togomak.Parser, togomak.Config.Paths)
 	h.Diags.Extend(d)
 	if h.Diags.HasErrors() {
@@ -101,6 +87,9 @@ func Perform(togomak *conductor.Togomak) int {
 
 	// --> validate the pipeline
 	// TODO: validate the pipeline
+	// whitelist all stages if unspecified
+	filterList := cfg.Pipeline.Filtered
+	filterQuery := cfg.Pipeline.FilterQuery
 
 	// --> generate a dependency graph
 	// we will now generate a dependency graph from the pipeline
@@ -117,8 +106,6 @@ func Perform(togomak *conductor.Togomak) int {
 		runnable.WithBehavior(togomak.Config.Behavior),
 		runnable.WithPaths(togomak.Config.Paths),
 	}
-
-	var diagsMutex sync.Mutex
 
 	logger.Debugf("starting runnables")
 	for _, layer := range depGraph.TopoSortedLayers() {
@@ -138,26 +125,20 @@ func Perform(togomak *conductor.Togomak) int {
 				continue
 			}
 			if d.HasErrors() {
-				diagsMutex.Lock()
 				h.Diags.Extend(d)
-				diagsMutex.Unlock()
 				break
 			}
 
 			ok, overridden, d := CanRun(runnable, ctx, filterList, filterQuery, runnableId, depGraph, opts...)
-			diagsMutex.Lock()
 			h.Diags.Extend(d)
-			diagsMutex.Unlock()
 			if d.HasErrors() {
 				break
 			}
 
-			// prepare step needs to run before the runnable is run
+			// prepare step needs to PipelineRun before the runnable is PipelineRun
 			// we will also need to prompt the user with the information saying that it has been skipped
 			d = runnable.Prepare(ctx, !ok, overridden)
-			diagsMutex.Lock()
 			h.Diags.Extend(d)
-			diagsMutex.Unlock()
 			if d.HasErrors() {
 				break
 			}

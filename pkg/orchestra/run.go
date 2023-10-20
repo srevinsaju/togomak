@@ -14,7 +14,7 @@ import (
 )
 
 func RunWithRetries(runnableId string, runnable ci.Block, ctx context.Context, handler *handler.Handler, togomakLogger *logrus.Logger, opts ...runnable.Option) {
-	logger := togomakLogger.WithField("orchestra", "run")
+	logger := togomakLogger.WithField("orchestra", "PipelineRun")
 	logger.Debug("starting runnable with retries ", runnableId)
 	stageDiags := runnable.Run(ctx, opts...)
 
@@ -83,7 +83,7 @@ func CanRun(runnable ci.Block, ctx context.Context, filterList rules.Operations,
 	}
 
 	if runnable.Type() != ci.StageBlock {
-		// TODO: optimize, run only required data blocks
+		// TODO: optimize, PipelineRun only required data blocks
 		return ok, false, diags
 	}
 
