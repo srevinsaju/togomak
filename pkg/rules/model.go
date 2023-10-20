@@ -3,7 +3,7 @@ package rules
 import (
 	"fmt"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/srevinsaju/togomak/v1/pkg/ci"
+	"github.com/srevinsaju/togomak/v1/pkg/blocks"
 	"regexp"
 	"strings"
 )
@@ -73,7 +73,7 @@ func (ops Operations) Children(runnableId string) Operations {
 	childOps := make(Operations, 0)
 	for _, op := range ops {
 		genericParam := true
-		for _, block := range []string{ci.StageBlock, ci.ModuleBlock, ci.MacroBlock} {
+		for _, block := range []string{blocks.StageBlock, blocks.ModuleBlock, blocks.MacroBlock} {
 			if strings.HasPrefix(op.runnable, fmt.Sprintf("%s.", block)) {
 				genericParam = false
 			}

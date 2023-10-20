@@ -1,4 +1,4 @@
-package conductor
+package ci
 
 import (
 	"github.com/sirupsen/logrus"

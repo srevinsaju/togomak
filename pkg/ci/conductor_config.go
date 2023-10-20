@@ -1,4 +1,4 @@
-package conductor
+package ci
 
 import (
 	"github.com/srevinsaju/togomak/v1/pkg/behavior"
@@ -8,7 +8,7 @@ import (
 
 type ConfigPipeline struct {
 	Filtered    rules.Operations
-	FilterQuery rules.QueryEngines
+	FilterQuery QueryEngines
 	DryRun      bool
 }
 

@@ -1,9 +1,8 @@
-package conductor
+package ci
 
 import (
 	"context"
 	"github.com/google/uuid"
-
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/sirupsen/logrus"
@@ -15,10 +14,54 @@ import (
 	"time"
 )
 
-type Togomak struct {
-	Logger  *logrus.Logger
-	Config  Config
-	Context context.Context
+type ConductorOption func(*Conductor)
+
+func ConductorWithLogger(logger *logrus.Logger) ConductorOption {
+	return func(c *Conductor) {
+		c.Logger = logger
+	}
+}
+
+func ConductorWithConfig(cfg Config) ConductorOption {
+	return func(c *Conductor) {
+		c.Config = cfg
+	}
+}
+
+func ConductorWithContext(ctx context.Context) ConductorOption {
+	return func(c *Conductor) {
+		c.ctx = ctx
+	}
+}
+
+func ConductorWithParser(parser *hclparse.Parser) ConductorOption {
+	return func(c *Conductor) {
+		c.Parser = parser
+	}
+}
+
+func ConductorWithDiagWriter(diagWriter hcl.DiagnosticWriter) ConductorOption {
+	return func(c *Conductor) {
+		c.DiagWriter = diagWriter
+	}
+}
+
+func ConductorWithEvalContext(evalContext *hcl.EvalContext) ConductorOption {
+	return func(c *Conductor) {
+		c.EvalContext = evalContext
+	}
+}
+
+func ConductorWithProcess(process Process) ConductorOption {
+	return func(c *Conductor) {
+		c.Process = process
+	}
+}
+
+type Conductor struct {
+	Logger *logrus.Logger
+	Config Config
+	ctx    context.Context
 
 	// Process is the current process
 	Process Process
@@ -46,6 +89,10 @@ type Process struct {
 
 	// TempDir is the temporary directory created for the process
 	TempDir string
+}
+
+func (c *Conductor) Context() context.Context {
+	return c.ctx
 }
 
 func NewProcess(cfg Config) Process {
@@ -86,7 +133,7 @@ func Chdir(cfg Config, logger *logrus.Logger) string {
 
 }
 
-func NewTogomak(cfg Config) *Togomak {
+func NewConductor(cfg Config, opts ...ConductorOption) *Conductor {
 	parser := hclparse.NewParser()
 
 	diagWriter := hcl.NewDiagnosticTextWriter(os.Stdout, parser.Files(), 0, true)
@@ -102,10 +149,10 @@ func NewTogomak(cfg Config) *Togomak {
 
 	process := NewProcess(cfg)
 
-	return &Togomak{
+	c := &Conductor{
 		Parser:     parser,
 		DiagWriter: diagWriter,
-		Context:    context.Background(),
+		ctx:        context.Background(),
 
 		Process: process,
 
@@ -114,20 +161,29 @@ func NewTogomak(cfg Config) *Togomak {
 
 		EvalContext: CreateEvalContext(cfg, process),
 	}
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c
 }
 
-func (t *Togomak) Destroy() {
-	t.Logger.Debug("removing temporary directory")
-	err := os.RemoveAll(t.Process.TempDir)
+func (c *Conductor) Destroy() {
+	c.Logger.Debug("removing temporary directory")
+	err := os.RemoveAll(c.Process.TempDir)
 	if err != nil {
-		t.Logger.Warnf("failed to remove temporary directory: %s", err)
+		c.Logger.Warnf("failed to remove temporary directory: %s", err)
 	}
 
-	t.Logger.Debug("destroying togomak")
+	c.Logger.Debug("destroying togomak")
 
-	t.Logger = nil
-	t.Config = Config{}
-	t.Context = nil
-	t.Parser = nil
-	t.DiagWriter = nil
+	c.Logger = nil
+	c.Config = Config{}
+	c.Parser = nil
+	c.DiagWriter = nil
+}
+
+func (c *Conductor) Update(opts ...ConductorOption) {
+	for _, opt := range opts {
+		opt(c)
+	}
 }

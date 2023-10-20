@@ -21,7 +21,7 @@ func TestLocal_Kill(t *testing.T) {
 
 func TestLocal_Terminate(t *testing.T) {
 	local := Local{}
-	if local.Terminate(false) != nil {
+	if local.Terminate(nil, false) != nil {
 		t.Error("Terminate() should return nil")
 	}
 }

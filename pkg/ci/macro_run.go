@@ -1,8 +1,8 @@
 package ci
 
 import (
-	"context"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/srevinsaju/togomak/v1/pkg/blocks"
 	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/runnable"
 	"github.com/zclconf/go-cty/cty"
@@ -12,14 +12,14 @@ const (
 	SourceTypeGit = "git"
 )
 
-func (m *Macro) Prepare(ctx context.Context, skip bool, overridden bool) hcl.Diagnostics {
+func (m *Macro) Prepare(conductor *Conductor, skip bool, overridden bool) hcl.Diagnostics {
 	return nil // no-op
 }
 
-func (m *Macro) Run(ctx context.Context, options ...runnable.Option) (diags hcl.Diagnostics) {
+func (m *Macro) Run(conductor *Conductor, options ...runnable.Option) (diags hcl.Diagnostics) {
 	// _ := ctx.Value(TogomakContextHclDiagWriter).(hcl.DiagnosticWriter)
 	logger := m.Logger()
-	logger.Tracef("running %s.%s", MacroBlock, m.Id)
+	logger.Tracef("running %s.%s", blocks.MacroBlock, m.Id)
 	hclContext := global.HclEvalContext()
 
 	// region: mutating the data map
@@ -28,7 +28,7 @@ func (m *Macro) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 	global.MacroBlockEvalContextMutex.Lock()
 
 	global.EvalContextMutex.RLock()
-	macro := hclContext.Variables[MacroBlock]
+	macro := hclContext.Variables[blocks.MacroBlock]
 
 	var macroMutated map[string]cty.Value
 	if macro.IsNull() {
@@ -48,7 +48,7 @@ func (m *Macro) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 	})
 
 	global.EvalContextMutex.Lock()
-	hclContext.Variables[MacroBlock] = cty.ObjectVal(macroMutated)
+	hclContext.Variables[blocks.MacroBlock] = cty.ObjectVal(macroMutated)
 	global.EvalContextMutex.Unlock()
 
 	global.MacroBlockEvalContextMutex.Unlock()
@@ -57,7 +57,7 @@ func (m *Macro) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 	return diags
 }
 
-func (m *Macro) CanRun(ctx context.Context, options ...runnable.Option) (ok bool, diags hcl.Diagnostics) {
+func (m *Macro) CanRun(conductor *Conductor, options ...runnable.Option) (ok bool, diags hcl.Diagnostics) {
 	return false, diags
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/srevinsaju/togomak/v1/pkg/blocks"
 )
 
 const StageContextChildStatuses = "child_statuses"
@@ -14,7 +15,7 @@ func (s *Stage) Description() string {
 }
 
 func (s *Stage) Identifier() string {
-	return fmt.Sprintf("%s.%s", StageBlock, s.Id)
+	return fmt.Sprintf("%s.%s", blocks.StageBlock, s.Id)
 }
 
 func (s *Stage) Set(k any, v any) {
@@ -33,7 +34,7 @@ func (s *Stage) Get(k any) any {
 }
 
 func (s *Stage) Type() string {
-	return StageBlock
+	return blocks.StageBlock
 }
 
 func (s *Stage) IsDaemon() bool {

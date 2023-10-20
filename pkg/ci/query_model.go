@@ -1,10 +1,10 @@
-package rules
+package ci
 
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/sirupsen/logrus"
-	"github.com/srevinsaju/togomak/v1/pkg/ci"
+	"github.com/srevinsaju/togomak/v1/pkg/blocks"
 	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/zclconf/go-cty/cty"
 	"strings"
@@ -41,7 +41,7 @@ func New(comp string) (*QueryEngine, hcl.Diagnostics) {
 	}, diags
 }
 
-func (e *QueryEngine) Eval(ok bool, stage ci.Stage) (bool, bool, hcl.Diagnostics) {
+func (e *QueryEngine) Eval(ok bool, stage Stage) (bool, bool, hcl.Diagnostics) {
 	var diags hcl.Diagnostics
 	var d hcl.Diagnostics
 	if e.empty {
@@ -70,7 +70,7 @@ func (e *QueryEngine) Eval(ok bool, stage ci.Stage) (bool, bool, hcl.Diagnostics
 		diags = diags.Extend(d)
 	}
 
-	ectx.Variables["lifecycle"] = cty.ObjectVal(map[string]cty.Value{
+	ectx.Variables[blocks.LifecycleBlock] = cty.ObjectVal(map[string]cty.Value{
 		"phase":   lifecyclePhase,
 		"timeout": lifecycleTimeout,
 	})

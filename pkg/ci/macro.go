@@ -2,10 +2,8 @@ package ci
 
 import (
 	"github.com/hashicorp/hcl/v2"
+	"github.com/srevinsaju/togomak/v1/pkg/blocks"
 )
-
-const MacroBlock = "macro"
-const ParamBlock = "param"
 
 func (m *Macro) Description() string {
 	return ""
@@ -31,7 +29,7 @@ func (m Macros) ById(id string) (*Macro, hcl.Diagnostics) {
 }
 
 func (m *Macro) Type() string {
-	return MacroBlock
+	return blocks.MacroBlock
 }
 
 func (m *Macro) Variables() []hcl.Traversal {
@@ -49,7 +47,7 @@ func (m *Macro) IsDaemon() bool {
 	return false
 }
 
-func (m *Macro) Terminate(safe bool) hcl.Diagnostics {
+func (m *Macro) Terminate(conductor *Conductor, safe bool) hcl.Diagnostics {
 	return nil
 }
 

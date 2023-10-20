@@ -1,11 +1,10 @@
-package handler
+package ci
 
 import (
 	"context"
 	"fmt"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
-	"github.com/srevinsaju/togomak/v1/pkg/ci"
 	"github.com/srevinsaju/togomak/v1/pkg/dg"
 	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/ui"
@@ -18,17 +17,17 @@ import (
 )
 
 type Tracker struct {
-	runnables   ci.Blocks
+	runnables   Blocks
 	runnablesMu sync.Mutex
 	runnablesWg sync.WaitGroup
 
-	daemons   ci.Blocks
+	daemons   Blocks
 	daemonsMu sync.Mutex
 	daemonsWg sync.WaitGroup
 
-	completed       ci.Blocks
+	completed       Blocks
 	completedMu     sync.Mutex
-	completedSignal chan ci.Block
+	completedSignal chan Block
 
 	killSignal      chan os.Signal
 	interruptSignal chan os.Signal
@@ -36,14 +35,14 @@ type Tracker struct {
 
 func NewTracker() *Tracker {
 	return &Tracker{
-		completedSignal: make(chan ci.Block, 1),
+		completedSignal: make(chan Block, 1),
 
 		killSignal:      make(chan os.Signal, 1),
 		interruptSignal: make(chan os.Signal, 1),
 	}
 }
 
-func (t *Tracker) AppendRunnable(runnable ci.Block) {
+func (t *Tracker) AppendRunnable(runnable Block) {
 	t.runnablesWg.Add(1)
 	t.runnablesMu.Lock()
 	defer t.runnablesMu.Unlock()
@@ -58,7 +57,7 @@ func (t *Tracker) RunnableDone() {
 	t.runnablesWg.Done()
 }
 
-func (t *Tracker) AppendDaemon(daemon ci.Block) {
+func (t *Tracker) AppendDaemon(daemon Block) {
 	t.daemonsWg.Add(1)
 	t.daemonsMu.Lock()
 	defer t.daemonsMu.Unlock()
@@ -77,7 +76,7 @@ func (t *Tracker) HasDaemons() bool {
 	return len(t.daemons) > 0
 }
 
-func (t *Tracker) AppendCompleted(completed ci.Block) {
+func (t *Tracker) AppendCompleted(completed Block) {
 	t.completedMu.Lock()
 	defer t.completedMu.Unlock()
 	t.completed = append(t.completed, completed)
@@ -88,7 +87,7 @@ type Handler struct {
 	Tracker *Tracker
 	Diags   *dg.SafeDiagnostics
 	Logger  *logrus.Logger
-	Process *Process
+	Process *HandlerProcess
 
 	diagWriter hcl.DiagnosticWriter
 	ctx        context.Context
@@ -135,12 +134,12 @@ func WithProcessBootTime(bootTime time.Time) HandlerOption {
 	}
 }
 
-type Process struct {
+type HandlerProcess struct {
 	BootTime time.Time
 }
 
-func NewProcess() *Process {
-	return &Process{
+func NewHandlerProcess() *HandlerProcess {
+	return &HandlerProcess{
 		BootTime: time.Now(),
 	}
 }
@@ -152,7 +151,7 @@ func NewHandler(opts ...HandlerOption) *Handler {
 		Tracker: NewTracker(),
 		Diags:   &dg.SafeDiagnostics{},
 		Logger:  logrus.New(),
-		Process: NewProcess(),
+		Process: NewHandlerProcess(),
 
 		diagWriter: hcl.NewDiagnosticTextWriter(os.Stdout, nil, 0, true),
 		ctx:        ctx,
@@ -204,7 +203,7 @@ func (h *Handler) Kill() {
 
 func (h *Handler) Daemons() {
 	logger := h.Logger.WithField("orchestra", "watchdog")
-	var completedRunnables ci.Blocks
+	var completedRunnables Blocks
 
 	defer h.WriteDiagnostics()
 	logger.Tracef("starting watchdog")
@@ -224,7 +223,7 @@ func (h *Handler) Daemons() {
 			lifecycle, d := daemon.ExecutionOptions(h.ctx)
 			if d.HasErrors() {
 				h.Diags.Extend(d)
-				d := daemon.Terminate(false)
+				d := daemon.Terminate(nil, false)
 				h.Diags.Extend(d)
 				return
 			}
@@ -249,7 +248,7 @@ func (h *Handler) Daemons() {
 			}
 			if allCompleted {
 				logger.Infof("stopping daemon %s", daemon.Identifier())
-				d := daemon.Terminate(true)
+				d := daemon.Terminate(nil, true)
 				if d.HasErrors() {
 					h.Diags.Extend(d)
 				}
@@ -286,7 +285,7 @@ func (h *Handler) Interrupt() {
 		}()
 		for _, runnable := range h.Tracker.runnables {
 			logger.Debugf("stopping runnable %s", runnable.Identifier())
-			d := runnable.Terminate(false)
+			d := runnable.Terminate(nil, false)
 			diags = diags.Extend(d)
 		}
 

@@ -1,10 +1,10 @@
 package ci
 
 import (
-	"context"
 	"fmt"
 	"github.com/hashicorp/go-getter"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/srevinsaju/togomak/v1/pkg/blocks"
 	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/runnable"
 	"github.com/srevinsaju/togomak/v1/pkg/ui"
@@ -13,12 +13,12 @@ import (
 	"path/filepath"
 )
 
-func (m *Module) Prepare(ctx context.Context, skip bool, overridden bool) hcl.Diagnostics {
+func (m *Module) Prepare(conductor *Conductor, skip bool, overridden bool) hcl.Diagnostics {
 	logger := m.Logger()
 	// show some user-friendly output on the details of the stage about to be run
 
 	var id string
-	identifier := fmt.Sprintf("%s.%s", ModuleBlock, m.Id)
+	identifier := fmt.Sprintf("%s.%s", blocks.ModuleBlock, m.Id)
 	if !skip {
 		id = ui.Blue(identifier)
 	} else {
@@ -31,10 +31,10 @@ func (m *Module) Prepare(ctx context.Context, skip bool, overridden bool) hcl.Di
 	return nil
 }
 
-func (m *Module) Run(ctx context.Context, options ...runnable.Option) (diags hcl.Diagnostics) {
+func (m *Module) Run(conductor *Conductor, options ...runnable.Option) (diags hcl.Diagnostics) {
 	//TODO implement me
 	logger := m.Logger()
-	logger.Debugf("running %s", x.RenderBlock(ModuleBlock, m.Id))
+	logger.Debugf("running %s", x.RenderBlock(blocks.ModuleBlock, m.Id))
 	evalCtx := global.HclEvalContext()
 	evalCtx = evalCtx.NewChild()
 
@@ -66,7 +66,7 @@ func (m *Module) Run(ctx context.Context, options ...runnable.Option) (diags hcl
 	paths := cfg.Paths
 	src := v.AsString()
 	get := &getter.Client{
-		Ctx: ctx,
+		Ctx: conductor.Context(),
 		Src: src,
 		Dst: filepath.Join(global.TempDir(), "modules", m.Id),
 		Pwd: paths.Cwd,
@@ -86,9 +86,9 @@ func (m *Module) Run(ctx context.Context, options ...runnable.Option) (diags hcl
 	return diags
 }
 
-func (m *Module) CanRun(ctx context.Context, options ...runnable.Option) (ok bool, diags hcl.Diagnostics) {
+func (m *Module) CanRun(conductor *Conductor, options ...runnable.Option) (ok bool, diags hcl.Diagnostics) {
 	logger := m.Logger()
-	logger.Debugf("checking if %s can run", x.RenderBlock(ModuleBlock, m.Id))
+	logger.Debugf("checking if %s can run", x.RenderBlock(blocks.ModuleBlock, m.Id))
 	evalCtx := global.HclEvalContext()
 	evalCtx = evalCtx.NewChild()
 

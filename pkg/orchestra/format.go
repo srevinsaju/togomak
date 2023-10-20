@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"github.com/bmatcuk/doublestar"
 	"github.com/hashicorp/hcl/v2/hclwrite"
-	"github.com/srevinsaju/togomak/v1/pkg/conductor"
+	"github.com/srevinsaju/togomak/v1/pkg/ci"
 	"github.com/srevinsaju/togomak/v1/pkg/parse"
 	"os"
 	"path/filepath"
 )
 
-func Format(cfg conductor.Config, check bool, recursive bool) error {
-	togomak := conductor.NewTogomak(cfg)
+func Format(cfg ci.Config, check bool, recursive bool) error {
+	togomak := ci.NewConductor(cfg)
 
 	var toFormat []string
 

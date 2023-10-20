@@ -1,10 +1,8 @@
-package orchestra
+package ci
 
 import (
 	"context"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/srevinsaju/togomak/v1/pkg/ci"
-	"github.com/srevinsaju/togomak/v1/pkg/graph"
 	"github.com/srevinsaju/togomak/v1/pkg/rules"
 	"github.com/zclconf/go-cty/cty"
 	"testing"
@@ -12,10 +10,12 @@ import (
 
 func TestCanRun(t *testing.T) {
 	ctx := context.Background()
+	conductor := NewConductor(Config{})
+	conductor.Update(ConductorWithContext(ctx))
 
-	stage3 := ci.Stage{
+	stage3 := Stage{
 		Id: "stage2",
-		CoreStage: ci.CoreStage{
+		CoreStage: CoreStage{
 			DependsOn:   hcl.StaticExpr(cty.NilVal, hcl.Range{}),
 			Condition:   hcl.StaticExpr(cty.NilVal, hcl.Range{}),
 			Use:         nil,
@@ -34,9 +34,9 @@ func TestCanRun(t *testing.T) {
 		},
 	}
 
-	stage1 := ci.Stage{
+	stage1 := Stage{
 		Id: "test",
-		CoreStage: ci.CoreStage{
+		CoreStage: CoreStage{
 			DependsOn: hcl.StaticExpr(cty.ListVal([]cty.Value{
 				cty.StringVal(stage3.Identifier()),
 			}), hcl.Range{}),
@@ -57,15 +57,15 @@ func TestCanRun(t *testing.T) {
 		},
 	}
 
-	stage2 := ci.Stage{
+	stage2 := Stage{
 		Id: "test2",
-		Lifecycle: &ci.Lifecycle{
+		Lifecycle: &Lifecycle{
 			Phase: hcl.StaticExpr(cty.ListVal([]cty.Value{
 				cty.StringVal("build"),
 			}), hcl.Range{}),
 			Timeout: hcl.StaticExpr(cty.NumberIntVal(0), hcl.Range{}),
 		},
-		CoreStage: ci.CoreStage{
+		CoreStage: CoreStage{
 			DependsOn:   hcl.StaticExpr(cty.NilVal, hcl.Range{}),
 			Condition:   hcl.StaticExpr(cty.NilVal, hcl.Range{}),
 			Use:         nil,
@@ -84,15 +84,15 @@ func TestCanRun(t *testing.T) {
 		},
 	}
 
-	pipe := &ci.Pipeline{
-		Stages: []ci.Stage{
+	pipe := &Pipeline{
+		Stages: []Stage{
 			stage1,
 			stage2,
 			stage3,
 		},
 	}
 
-	depGraph, d := graph.TopoSort(ctx, pipe)
+	depGraph, d := GraphTopoSort(conductor.Context(), pipe)
 	depGraph.DependOn(stage1.Identifier(), stage3.Identifier())
 	if d.HasErrors() {
 		t.Errorf("error while sorting: %s", d.Error())
@@ -105,9 +105,9 @@ func TestCanRun(t *testing.T) {
 		return
 	}
 
-	ok, overridden, err := CanRun(&stage1, ctx, filtered, nil, stage1.Identifier(), depGraph)
+	ok, overridden, err := BlockCanRun(&stage1, conductor, filtered, nil, stage1.Identifier(), depGraph)
 	if err != nil {
-		t.Errorf("error while running CanRun: %s", err.Error())
+		t.Errorf("error while running BlockCanRun: %s", err.Error())
 		return
 	}
 	if !ok {
@@ -119,9 +119,9 @@ func TestCanRun(t *testing.T) {
 		return
 	}
 
-	ok, overridden, err = CanRun(&stage3, ctx, filtered, nil, stage3.Identifier(), depGraph)
+	ok, overridden, err = BlockCanRun(&stage3, conductor, filtered, nil, stage3.Identifier(), depGraph)
 	if err != nil {
-		t.Errorf("error while running CanRun: %s", err.Error())
+		t.Errorf("error while running BlockCanRun: %s", err.Error())
 		return
 	}
 	if !ok {
@@ -129,9 +129,9 @@ func TestCanRun(t *testing.T) {
 		return
 	}
 
-	ok, overridden, err = CanRun(&stage2, ctx, filtered, nil, stage2.Identifier(), depGraph)
+	ok, overridden, err = BlockCanRun(&stage2, conductor, filtered, nil, stage2.Identifier(), depGraph)
 	if err != nil {
-		t.Errorf("error while running CanRun: %s", err.Error())
+		t.Errorf("error while running BlockCanRun: %s", err.Error())
 		return
 	}
 	if ok {
@@ -139,9 +139,9 @@ func TestCanRun(t *testing.T) {
 		return
 	}
 
-	ok, overridden, err = CanRun(&stage2, ctx, nil, nil, stage2.Identifier(), depGraph)
+	ok, overridden, err = BlockCanRun(&stage2, conductor, nil, nil, stage2.Identifier(), depGraph)
 	if err != nil {
-		t.Errorf("error while running CanRun: %s", err.Error())
+		t.Errorf("error while running BlockCanRun: %s", err.Error())
 		return
 	}
 	if ok {
@@ -149,9 +149,9 @@ func TestCanRun(t *testing.T) {
 		return
 	}
 
-	ok, overridden, err = CanRun(&stage1, ctx, nil, nil, stage1.Identifier(), depGraph)
+	ok, overridden, err = BlockCanRun(&stage1, conductor, nil, nil, stage1.Identifier(), depGraph)
 	if err != nil {
-		t.Errorf("error while running CanRun: %s", err.Error())
+		t.Errorf("error while running BlockCanRun: %s", err.Error())
 		return
 	}
 	if !ok {
@@ -165,18 +165,18 @@ func TestCanRun(t *testing.T) {
 		return
 	}
 
-	ok, overridden, err = CanRun(&stage1, ctx, filtered, nil, stage1.Identifier(), depGraph)
+	ok, overridden, err = BlockCanRun(&stage1, conductor, filtered, nil, stage1.Identifier(), depGraph)
 	if err != nil {
-		t.Errorf("error while running CanRun: %s", err.Error())
+		t.Errorf("error while running BlockCanRun: %s", err.Error())
 		return
 	}
 	if !ok {
 		t.Errorf("%s should be runnable", stage1.Identifier())
 		return
 	}
-	ok, overridden, err = CanRun(&stage2, ctx, filtered, nil, stage2.Identifier(), depGraph)
+	ok, overridden, err = BlockCanRun(&stage2, conductor, filtered, nil, stage2.Identifier(), depGraph)
 	if err != nil {
-		t.Errorf("error while running CanRun: %s", err.Error())
+		t.Errorf("error while running BlockCanRun: %s", err.Error())
 		return
 	}
 	if !ok {
@@ -189,17 +189,17 @@ func TestCanRun(t *testing.T) {
 		t.Errorf("error while parsing rules: %s", d.Error())
 		return
 	}
-	ok, overridden, err = CanRun(&stage1, ctx, filtered, nil, stage1.Identifier(), depGraph)
+	ok, overridden, err = BlockCanRun(&stage1, conductor, filtered, nil, stage1.Identifier(), depGraph)
 	if err != nil {
-		t.Errorf("error while running CanRun: %s", err.Error())
+		t.Errorf("error while running BlockCanRun: %s", err.Error())
 		return
 	}
 	if ok {
 		t.Errorf("%s should not be runnable", stage1.Identifier())
 	}
-	ok, overridden, err = CanRun(&stage2, ctx, filtered, nil, stage2.Identifier(), depGraph)
+	ok, overridden, err = BlockCanRun(&stage2, conductor, filtered, nil, stage2.Identifier(), depGraph)
 	if err != nil {
-		t.Errorf("error while running CanRun: %s", err.Error())
+		t.Errorf("error while running BlockCanRun: %s", err.Error())
 		return
 	}
 	if !ok {
@@ -207,9 +207,9 @@ func TestCanRun(t *testing.T) {
 		return
 	}
 
-	//ok, overridden, err = CanRun(&stage1, ctx, nil, nil, stage1.Identifier(), depGraph)
+	//ok, overridden, err = BlockCanRun(&stage1, conductor, nil, nil, stage1.Identifier(), depGraph)
 	//if err != nil {
-	//	t.Errorf("error while running CanRun: %s", err.Error())
+	//	t.Errorf("error while running BlockCanRun: %s", err.Error())
 	//	return
 	//}
 	//if !ok {

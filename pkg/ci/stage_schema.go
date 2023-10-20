@@ -6,9 +6,6 @@ import (
 	"os/exec"
 )
 
-const StageBlock = "stage"
-const LifecycleBlock = "lifecycle"
-
 // StageContainerVolume allows configuring which volumes can be mounted
 type StageContainerVolume struct {
 	// Source sets the path on the host which needs to be mounted

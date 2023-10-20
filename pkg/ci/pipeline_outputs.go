@@ -1,10 +1,8 @@
-package orchestra
+package ci
 
 import (
 	"github.com/hashicorp/go-envparse"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/srevinsaju/togomak/v1/pkg/ci"
-	"github.com/srevinsaju/togomak/v1/pkg/conductor"
 	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/x"
@@ -13,7 +11,7 @@ import (
 	"path/filepath"
 )
 
-func ExpandOutputs(togomak *conductor.Togomak) hcl.Diagnostics {
+func ExpandOutputs(togomak *Conductor) hcl.Diagnostics {
 	var diags hcl.Diagnostics
 	logger := togomak.Logger.WithField("orchestra", "outputs")
 	togomakEnvFile := filepath.Join(togomak.Process.TempDir, meta.OutputEnvFile)
@@ -35,7 +33,7 @@ func ExpandOutputs(togomak *conductor.Togomak) hcl.Diagnostics {
 			ee[k] = cty.StringVal(v)
 		}
 		global.EvalContextMutex.Lock()
-		togomak.EvalContext.Variables[ci.OutputBlock] = cty.ObjectVal(ee)
+		togomak.EvalContext.Variables[OutputBlock] = cty.ObjectVal(ee)
 		global.EvalContextMutex.Unlock()
 	} else {
 		logger.Warnf("could not open %s file, ignoring... :%s", meta.OutputEnvVar, err)

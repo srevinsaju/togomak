@@ -1,8 +1,7 @@
-package rules
+package ci
 
 import (
 	"github.com/hashicorp/hcl/v2"
-	"github.com/srevinsaju/togomak/v1/pkg/ci"
 )
 
 type QueryEngines []*QueryEngine
@@ -18,7 +17,7 @@ func NewSlice(queries []string) (QueryEngines, hcl.Diagnostics) {
 	return engines, diags
 }
 
-func (e QueryEngines) Eval(ok bool, stage ci.Stage) (bool, bool, hcl.Diagnostics) {
+func (e QueryEngines) Eval(ok bool, stage Stage) (bool, bool, hcl.Diagnostics) {
 	var diags hcl.Diagnostics
 	var d hcl.Diagnostics
 

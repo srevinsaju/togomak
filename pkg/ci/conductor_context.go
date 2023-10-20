@@ -1,4 +1,4 @@
-package conductor
+package ci
 
 //ctx = context.WithValue(ctx, c.TogomakContextCi, cfg.Behavior.Ci)
 //ctx = context.WithValue(ctx, c.TogomakContextUnattended, cfg.Behavior.Unattended)

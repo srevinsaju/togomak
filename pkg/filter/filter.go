@@ -2,7 +2,7 @@ package filter
 
 import (
 	"fmt"
-	"github.com/srevinsaju/togomak/v1/pkg/ci"
+	"github.com/srevinsaju/togomak/v1/pkg/blocks"
 	"strings"
 )
 
@@ -94,7 +94,7 @@ func (c FilterList) HasOperationType(operation OperationTemp) bool {
 func NewFilterItem(arg string) Item {
 	var operation OperationTemp
 
-	ty := ci.StageBlock
+	ty := blocks.StageBlock
 
 	if strings.HasPrefix(arg, string(OperationWhitelist)) {
 		operation = OperationWhitelist
@@ -104,18 +104,18 @@ func NewFilterItem(arg string) Item {
 		operation = OperationDaemonize
 	} else if strings.HasPrefix(arg, string(OperationRunLifecycle)) {
 		operation = OperationRunLifecycle
-		ty = ci.LifecycleBlock
+		ty = blocks.LifecycleBlock
 	} else {
 		operation = OperationTempRun
 	}
 
 	// TODO: improve this
 	if strings.Contains("module.", arg) {
-		ty = ci.ModuleBlock
+		ty = blocks.ModuleBlock
 	} else if strings.Contains("stage.", arg) {
-		ty = ci.StageBlock
+		ty = blocks.StageBlock
 	} else if strings.Contains("lifecycle.", arg) {
-		ty = ci.LifecycleBlock
+		ty = blocks.LifecycleBlock
 	}
 
 	id := strings.TrimPrefix(arg, string(operation))

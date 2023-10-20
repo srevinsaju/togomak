@@ -1,14 +1,13 @@
-package conductor
+package ci
 
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/ext/tryfunc"
-	yaml "github.com/zclconf/go-cty-yaml"
-
 	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/third-party/hashicorp/terraform/lang/funcs"
 	"github.com/srevinsaju/togomak/v1/pkg/ui"
+	"github.com/zclconf/go-cty-yaml"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"

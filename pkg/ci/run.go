@@ -1,22 +1,20 @@
-package orchestra
+package ci
 
 import (
-	"context"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/kendru/darwin/go/depgraph"
 	"github.com/sirupsen/logrus"
-	"github.com/srevinsaju/togomak/v1/pkg/ci"
+	"github.com/srevinsaju/togomak/v1/pkg/blocks"
 	"github.com/srevinsaju/togomak/v1/pkg/global"
-	"github.com/srevinsaju/togomak/v1/pkg/handler"
 	"github.com/srevinsaju/togomak/v1/pkg/rules"
 	"github.com/srevinsaju/togomak/v1/pkg/runnable"
 	"time"
 )
 
-func RunWithRetries(runnableId string, runnable ci.Block, ctx context.Context, handler *handler.Handler, togomakLogger *logrus.Logger, opts ...runnable.Option) {
-	logger := togomakLogger.WithField("orchestra", "PipelineRun")
+func BlockRunWithRetries(conductor *Conductor, runnableId string, runnable Block, handler *Handler, togomakLogger *logrus.Logger, opts ...runnable.Option) {
+	logger := togomakLogger.WithField("orchestra", "run")
 	logger.Debug("starting runnable with retries ", runnableId)
-	stageDiags := runnable.Run(ctx, opts...)
+	stageDiags := runnable.Run(conductor, opts...)
 
 	handler.Tracker.AppendCompleted(runnable)
 	logger.Tracef("signaling runnable %s", runnableId)
@@ -52,7 +50,7 @@ func RunWithRetries(runnableId string, runnable ci.Block, ctx context.Context, h
 			}
 			logger.Warnf("runnable %s failed, retrying in %s", runnableId, sleepDuration)
 			time.Sleep(sleepDuration)
-			sDiags := runnable.Run(ctx, opts...)
+			sDiags := runnable.Run(conductor, opts...)
 			stageDiags = append(stageDiags, sDiags...)
 
 			if !sDiags.HasErrors() {
@@ -74,23 +72,23 @@ func RunWithRetries(runnableId string, runnable ci.Block, ctx context.Context, h
 	}
 }
 
-func CanRun(runnable ci.Block, ctx context.Context, filterList rules.Operations, filterQuery rules.QueryEngines, runnableId string, depGraph *depgraph.Graph, opts ...runnable.Option) (ok bool, overridden bool, diags hcl.Diagnostics) {
+func BlockCanRun(runnable Block, conductor *Conductor, filterList rules.Operations, filterQuery QueryEngines, runnableId string, depGraph *depgraph.Graph, opts ...runnable.Option) (ok bool, overridden bool, diags hcl.Diagnostics) {
 
-	ok, d := runnable.CanRun(ctx, opts...)
+	ok, d := runnable.CanRun(conductor, opts...)
 	if d.HasErrors() {
 		diags = diags.Extend(d)
 		return false, false, diags
 	}
 
-	if runnable.Type() != ci.StageBlock {
+	if runnable.Type() != blocks.StageBlock {
 		// TODO: optimize, PipelineRun only required data blocks
 		return ok, false, diags
 	}
 
-	runnable.Set(ci.StageContextChildStatuses, filterList.Children(runnableId).Marshall())
+	runnable.Set(StageContextChildStatuses, filterList.Children(runnableId).Marshall())
 
-	if runnable.Type() == ci.StageBlock && len(filterQuery) != 0 {
-		ok, overridden, d = filterQuery.Eval(ok, *runnable.(*ci.Stage))
+	if runnable.Type() == blocks.StageBlock && len(filterQuery) != 0 {
+		ok, overridden, d = filterQuery.Eval(ok, *runnable.(*Stage))
 		if d.HasErrors() {
 			diags = diags.Extend(d)
 			return false, false, diags
@@ -100,7 +98,7 @@ func CanRun(runnable ci.Block, ctx context.Context, filterList rules.Operations,
 	if len(filterList) == 0 {
 		filterList = append(filterList, rules.NewOperation(rules.OperationTypeAnd, "default"))
 	}
-	runnable.Set(ci.StageContextChildStatuses, filterList.Children(runnableId).Marshall())
+	runnable.Set(StageContextChildStatuses, filterList.Children(runnableId).Marshall())
 
 	for _, rule := range filterList {
 		if rule.RunnableId() == "all" {
@@ -129,8 +127,8 @@ func CanRun(runnable ci.Block, ctx context.Context, filterList rules.Operations,
 			ok = oldOk
 			overridden = true
 		}
-		if runnable.Type() == ci.StageBlock {
-			stage := runnable.(*ci.Stage)
+		if runnable.Type() == blocks.StageBlock {
+			stage := runnable.(*Stage)
 			if stage.Lifecycle != nil {
 				ectx := global.HclEvalContext()
 				global.EvalContextMutex.RLock()

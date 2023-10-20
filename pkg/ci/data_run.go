@@ -1,7 +1,6 @@
 package ci
 
 import (
-	"context"
 	"fmt"
 	"github.com/hashicorp/hcl/v2"
 	dataBlock "github.com/srevinsaju/togomak/v1/pkg/blocks/data"
@@ -14,14 +13,15 @@ const (
 	DataAttrValue = "value"
 )
 
-func (s *Data) Prepare(ctx context.Context, skip bool, overridden bool) hcl.Diagnostics {
+func (s *Data) Prepare(conductor *Conductor, skip bool, overridden bool) hcl.Diagnostics {
 	return nil // no-op
 }
 
-func (s *Data) Run(ctx context.Context, options ...runnable.Option) (diags hcl.Diagnostics) {
+func (s *Data) Run(conductor *Conductor, options ...runnable.Option) (diags hcl.Diagnostics) {
 	logger := s.Logger()
 	logger.Debugf("running %s.%s.%s", DataBlock, s.Provider, s.Id)
 	hclContext := global.HclEvalContext()
+	ctx := conductor.Context()
 
 	var d hcl.Diagnostics
 
@@ -109,7 +109,7 @@ func (s *Data) Run(ctx context.Context, options ...runnable.Option) (diags hcl.D
 	return nil
 }
 
-func (s *Data) CanRun(ctx context.Context, options ...runnable.Option) (bool, hcl.Diagnostics) {
+func (s *Data) CanRun(conductor *Conductor, options ...runnable.Option) (bool, hcl.Diagnostics) {
 	return true, nil
 }
 

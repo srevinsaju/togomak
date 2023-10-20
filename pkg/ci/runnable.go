@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/hashicorp/hcl/v2"
+	b "github.com/srevinsaju/togomak/v1/pkg/blocks"
 	"github.com/srevinsaju/togomak/v1/pkg/runnable"
 	"github.com/srevinsaju/togomak/v1/pkg/x"
 	"strings"
@@ -37,15 +38,15 @@ type Describable interface {
 
 type Runnable interface {
 	// Prepare is called before the runnable is run
-	Prepare(ctx context.Context, skip bool, overridden bool) hcl.Diagnostics
-	Run(ctx context.Context, options ...runnable.Option) (diags hcl.Diagnostics)
-	CanRun(ctx context.Context, options ...runnable.Option) (ok bool, diags hcl.Diagnostics)
+	Prepare(conductor *Conductor, skip bool, overridden bool) hcl.Diagnostics
+	Run(conductor *Conductor, options ...runnable.Option) (diags hcl.Diagnostics)
+	CanRun(conductor *Conductor, options ...runnable.Option) (ok bool, diags hcl.Diagnostics)
 }
 
 type RunnableWithHooks interface {
 	Runnable
-	BeforeRun(ctx context.Context, opts ...runnable.Option) hcl.Diagnostics
-	AfterRun(ctx context.Context, opts ...runnable.Option) hcl.Diagnostics
+	BeforeRun(conductor *Conductor, opts ...runnable.Option) hcl.Diagnostics
+	AfterRun(conductor *Conductor, opts ...runnable.Option) hcl.Diagnostics
 }
 
 type Traversable interface {
@@ -58,7 +59,7 @@ type Contextual interface {
 }
 
 type Killable interface {
-	Terminate(safe bool) hcl.Diagnostics
+	Terminate(conductor *Conductor, safe bool) hcl.Diagnostics
 	Kill() hcl.Diagnostics
 	Terminated() bool
 }
@@ -89,7 +90,7 @@ func (r Blocks) Variables() []hcl.Traversal {
 	return traversal
 }
 
-func (r Blocks) Run(ctx context.Context, opts ...runnable.Option) hcl.Diagnostics {
+func (r Blocks) Run(conductor *Conductor, opts ...runnable.Option) hcl.Diagnostics {
 	// run all runnables in parallel, collect errors and return
 	// create a channel to receive errors
 	var wg sync.WaitGroup
@@ -98,7 +99,7 @@ func (r Blocks) Run(ctx context.Context, opts ...runnable.Option) hcl.Diagnostic
 		wg.Add(1)
 		go func(runnable Block) {
 			defer wg.Done()
-			errChan <- runnable.Run(ctx, opts...)
+			errChan <- runnable.Run(conductor, opts...)
 		}(runnable)
 	}
 	wg.Wait()
@@ -128,7 +129,7 @@ func Resolve(pipe *Pipeline, id string) (Block, hcl.Diagnostics) {
 			Summary:  "Unsupported identifier",
 			Detail:   fmt.Sprintf("Expected a valid identifier, got %s", id),
 		})
-	case StageBlock:
+	case b.StageBlock:
 		stage, d := pipe.Stages.ById(blocks[1])
 		diags = diags.Extend(d)
 		return stage, diags
@@ -136,7 +137,7 @@ func Resolve(pipe *Pipeline, id string) (Block, hcl.Diagnostics) {
 		data, d := pipe.Data.ById(blocks[1], blocks[2])
 		diags = diags.Extend(d)
 		return data, diags
-	case MacroBlock:
+	case b.MacroBlock:
 		macro, d := pipe.Macros.ById(blocks[1])
 		diags = diags.Extend(d)
 		return macro, diags
@@ -146,14 +147,14 @@ func Resolve(pipe *Pipeline, id string) (Block, hcl.Diagnostics) {
 		return local, diags
 	case LocalsBlock:
 		panic("locals block cannot be resolved")
-	case ModuleBlock:
+	case b.ModuleBlock:
 		module, d := pipe.Modules.ById(blocks[1])
 		diags = diags.Extend(d)
 		return module, diags
 
 	case ThisBlock:
 		return nil, nil
-	case ParamBlock:
+	case b.ParamBlock:
 		return nil, nil
 	}
 
@@ -174,23 +175,23 @@ func ResolveFromTraversal(variable hcl.Traversal) (string, hcl.Diagnostics) {
 		provider := variable[1].(hcl.TraverseAttr).Name
 		name := variable[2].(hcl.TraverseAttr).Name
 		parent = x.RenderBlock(DataBlock, provider, name)
-	case StageBlock:
+	case b.StageBlock:
 		// the stage block has the name
 		name := variable[1].(hcl.TraverseAttr).Name
-		parent = x.RenderBlock(StageBlock, name)
+		parent = x.RenderBlock(b.StageBlock, name)
 	case LocalBlock:
 		// the local block has the name
 		name := variable[1].(hcl.TraverseAttr).Name
 		parent = x.RenderBlock(LocalBlock, name)
-	case MacroBlock:
+	case b.MacroBlock:
 		// the local block has the name
 		name := variable[1].(hcl.TraverseAttr).Name
-		parent = x.RenderBlock(MacroBlock, name)
-	case ModuleBlock:
+		parent = x.RenderBlock(b.MacroBlock, name)
+	case b.ModuleBlock:
 		// the module block has the name
 		name := variable[1].(hcl.TraverseAttr).Name
-		parent = x.RenderBlock(ModuleBlock, name)
-	case ParamBlock, ThisBlock, BuilderBlock:
+		parent = x.RenderBlock(b.ModuleBlock, name)
+	case b.ParamBlock, ThisBlock, BuilderBlock:
 		return "", nil
 	default:
 		return "", nil

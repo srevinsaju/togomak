@@ -1,32 +1,32 @@
-package graph
+package ci
 
 import (
 	"context"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/kendru/darwin/go/depgraph"
-	"github.com/srevinsaju/togomak/v1/pkg/ci"
+	"github.com/srevinsaju/togomak/v1/pkg/blocks"
 	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/x"
 )
 
-func Resolve(ctx context.Context, pipe *ci.Pipeline, g *depgraph.Graph, v []hcl.Traversal, child string) hcl.Diagnostics {
+func GraphResolve(ctx context.Context, pipe *Pipeline, g *depgraph.Graph, v []hcl.Traversal, child string) hcl.Diagnostics {
 	var diags hcl.Diagnostics
 
-	_, d := ci.Resolve(pipe, child)
+	_, d := Resolve(pipe, child)
 	diags = diags.Extend(d)
 	if diags.HasErrors() {
 		return diags
 	}
 
 	for _, variable := range v {
-		parent, d := ci.ResolveFromTraversal(variable)
+		parent, d := ResolveFromTraversal(variable)
 		diags = diags.Extend(d)
 		if parent == "" {
 			continue
 		}
 
-		_, d = ci.Resolve(pipe, parent)
+		_, d = Resolve(pipe, parent)
 		diags = diags.Extend(d)
 		err := g.DependOn(child, parent)
 
@@ -41,28 +41,28 @@ func Resolve(ctx context.Context, pipe *ci.Pipeline, g *depgraph.Graph, v []hcl.
 	}
 	return diags
 }
-func TopoSort(ctx context.Context, pipe *ci.Pipeline) (*depgraph.Graph, hcl.Diagnostics) {
+func GraphTopoSort(ctx context.Context, pipe *Pipeline) (*depgraph.Graph, hcl.Diagnostics) {
 	g := depgraph.New()
 	var diags hcl.Diagnostics
-	logger := global.Logger().WithField("component", "graph")
+	logger := global.Logger().WithField("orchestra", "graph")
 
 	x.Must(g.DependOn(meta.PreStage, meta.RootStage))
 	x.Must(g.DependOn(meta.PostStage, meta.PreStage))
 
 	for _, local := range pipe.Local {
-		self := x.RenderBlock(ci.LocalBlock, local.Key)
+		self := x.RenderBlock(LocalBlock, local.Key)
 		err := g.DependOn(self, meta.RootStage)
 		if err != nil {
 			panic(err)
 		}
 
 		v := local.Variables()
-		d := Resolve(ctx, pipe, g, v, self)
+		d := GraphResolve(ctx, pipe, g, v, self)
 		diags = diags.Extend(d)
 	}
 
 	for _, macro := range pipe.Macros {
-		self := x.RenderBlock(ci.MacroBlock, macro.Id)
+		self := x.RenderBlock(blocks.MacroBlock, macro.Id)
 		err := g.DependOn(self, meta.RootStage)
 		// the addition of the root stage is to ensure that the macro block is always executed
 		// before any stage
@@ -72,11 +72,11 @@ func TopoSort(ctx context.Context, pipe *ci.Pipeline) (*depgraph.Graph, hcl.Diag
 		}
 
 		v := macro.Variables()
-		d := Resolve(ctx, pipe, g, v, self)
+		d := GraphResolve(ctx, pipe, g, v, self)
 		diags = diags.Extend(d)
 	}
 	for _, data := range pipe.Data {
-		self := x.RenderBlock(ci.DataBlock, data.Provider, data.Id)
+		self := x.RenderBlock(DataBlock, data.Provider, data.Id)
 		err := g.DependOn(self, meta.RootStage)
 		// the addition of the root stage is to ensure that the data block is always executed
 		// before any stage
@@ -92,12 +92,12 @@ func TopoSort(ctx context.Context, pipe *ci.Pipeline) (*depgraph.Graph, hcl.Diag
 		}
 
 		v := data.Variables()
-		d := Resolve(ctx, pipe, g, v, self)
+		d := GraphResolve(ctx, pipe, g, v, self)
 		diags = diags.Extend(d)
 	}
 
 	for _, stage := range pipe.Stages {
-		self := x.RenderBlock(ci.StageBlock, stage.Id)
+		self := x.RenderBlock(blocks.StageBlock, stage.Id)
 		err := g.DependOn(self, meta.PreStage)
 		if err != nil {
 			panic(err)
@@ -109,12 +109,12 @@ func TopoSort(ctx context.Context, pipe *ci.Pipeline) (*depgraph.Graph, hcl.Diag
 		}
 
 		v := stage.Variables()
-		d := Resolve(ctx, pipe, g, v, self)
+		d := GraphResolve(ctx, pipe, g, v, self)
 		diags = diags.Extend(d)
 	}
 
 	for _, module := range pipe.Modules {
-		self := x.RenderBlock(ci.ModuleBlock, module.Id)
+		self := x.RenderBlock(blocks.ModuleBlock, module.Id)
 		err := g.DependOn(self, meta.PreStage)
 		if err != nil {
 			panic(err)
@@ -126,7 +126,7 @@ func TopoSort(ctx context.Context, pipe *ci.Pipeline) (*depgraph.Graph, hcl.Diag
 		}
 
 		v := module.Variables()
-		d := Resolve(ctx, pipe, g, v, self)
+		d := GraphResolve(ctx, pipe, g, v, self)
 		diags = diags.Extend(d)
 	}
 

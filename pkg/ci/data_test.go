@@ -14,7 +14,7 @@ func TestData_Kill(t *testing.T) {
 
 func TestData_Terminate(t *testing.T) {
 	data := Data{}
-	if data.Terminate(false) != nil {
+	if data.Terminate(nil, false) != nil {
 		t.Error("Terminate() should do nothing")
 	}
 }

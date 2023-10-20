@@ -11,7 +11,7 @@ import (
 	"syscall"
 )
 
-func (s *Stage) Terminate(safe bool) hcl.Diagnostics {
+func (s *Stage) Terminate(conductor *Conductor, safe bool) hcl.Diagnostics {
 	s.Logger().Debug("terminating stage")
 	ctx := context.Background()
 	var diags hcl.Diagnostics
@@ -21,7 +21,7 @@ func (s *Stage) Terminate(safe bool) hcl.Diagnostics {
 
 	defer func() {
 		diags = diags.Extend(s.AfterRun(
-			ctx,
+			conductor,
 			runnable.WithHook(),
 			runnable.WithStatus(runnable.StatusTerminated),
 			runnable.WithParent(runnable.ParentConfig{Name: s.Name, Id: s.Id}),
@@ -74,7 +74,7 @@ func (s *Stage) Terminate(safe bool) hcl.Diagnostics {
 }
 
 func (s *Stage) Kill() hcl.Diagnostics {
-	diags := s.Terminate(false)
+	diags := s.Terminate(nil, false)
 	if s.process != nil && !s.process.ProcessState.Exited() {
 		err := s.process.Process.Kill()
 		if err != nil {

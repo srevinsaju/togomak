@@ -8,6 +8,7 @@ import (
 	"github.com/docker/docker/api/types"
 	dockerContainer "github.com/docker/docker/api/types/container"
 	dockerClient "github.com/docker/docker/client"
+	"github.com/srevinsaju/togomak/v1/pkg/blocks"
 	"github.com/srevinsaju/togomak/v1/pkg/dg"
 	"github.com/srevinsaju/togomak/v1/pkg/x"
 	"sync"
@@ -36,7 +37,7 @@ const TogomakParamEnvVarPrefix = "TOGOMAK__param__"
 var TogomakParamEnvVarRegexExpression = fmt.Sprintf("%s([a-zA-Z0-9_]+)", TogomakParamEnvVarPrefix)
 var TogomakParamEnvVarRegex = regexp.MustCompile(TogomakParamEnvVarRegexExpression)
 
-func (s *Stage) Prepare(ctx context.Context, skip bool, overridden bool) hcl.Diagnostics {
+func (s *Stage) Prepare(conductor *Conductor, skip bool, overridden bool) hcl.Diagnostics {
 	logger := s.Logger()
 	// show some user-friendly output on the details of the stage about to be run
 
@@ -54,8 +55,9 @@ func (s *Stage) Prepare(ctx context.Context, skip bool, overridden bool) hcl.Dia
 }
 
 // expandMacros expands the macro in the stage, if any.
-func (s *Stage) expandMacros(ctx context.Context, opts ...runnable.Option) (*Stage, hcl.Diagnostics) {
+func (s *Stage) expandMacros(conductor *Conductor, opts ...runnable.Option) (*Stage, hcl.Diagnostics) {
 	cfg := runnable.NewConfig(opts...)
+	ctx := conductor.Context()
 
 	if s.Use == nil {
 		// this stage does not use a macro
@@ -67,7 +69,7 @@ func (s *Stage) expandMacros(ctx context.Context, opts ...runnable.Option) (*Sta
 
 	tmpDir := global.TempDir()
 
-	logger.Debugf("running %s.%s", s.Identifier(), MacroBlock)
+	logger.Debugf("running %s.%s", s.Identifier(), blocks.MacroBlock)
 
 	var diags hcl.Diagnostics
 	var err error
@@ -75,7 +77,7 @@ func (s *Stage) expandMacros(ctx context.Context, opts ...runnable.Option) (*Sta
 	v := s.Use.Macro.Variables()
 
 	var macro *Macro
-	if len(v) == 1 && v[0].RootName() == MacroBlock {
+	if len(v) == 1 && v[0].RootName() == blocks.MacroBlock {
 		variable := v[0]
 		macroName := variable[1].(hcl.TraverseAttr).Name
 		logger.Debugf("stage.%s uses macro.%s", s.Id, macroName)
@@ -331,21 +333,21 @@ func (s *Stage) expandMacros(ctx context.Context, opts ...runnable.Option) (*Sta
 
 }
 
-func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.Diagnostics) {
+func (s *Stage) Run(conductor *Conductor, options ...runnable.Option) (diags hcl.Diagnostics) {
 	logger := s.Logger()
 
-	logger.Debugf("running %s", x.RenderBlock(StageBlock, s.Id))
+	logger.Debugf("running %s", x.RenderBlock(blocks.StageBlock, s.Id))
 
 	evalCtx := global.HclEvalContext()
 
 	// expand stages using macros
 	logger.Debugf("expanding macros")
-	s, d := s.expandMacros(ctx, options...)
+	s, d := s.expandMacros(conductor, options...)
 	diags = diags.Extend(d)
 	logger.Debugf("finished expanding macros with %d errors", len(diags.Errs()))
 
 	if s.ForEach == nil {
-		d = s.run(ctx, evalCtx, options...)
+		d = s.run(conductor, evalCtx, options...)
 		diags = diags.Extend(d)
 		return diags
 	}
@@ -379,7 +381,7 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 			stage := &Stage{Id: id, CoreStage: s.CoreStage, Lifecycle: s.Lifecycle}
 			go func(options ...runnable.Option) {
 				options = append(options, runnable.WithEach(k, v))
-				d := stage.Run(ctx, options...)
+				d := stage.Run(conductor, options...)
 				safeDg.Extend(d)
 				wg.Done()
 			}(options...)
@@ -388,18 +390,19 @@ func (s *Stage) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 		wg.Wait()
 		return safeDg.Diagnostics()
 	} else {
-		d = s.run(ctx, evalCtx, options...)
+		d = s.run(conductor, evalCtx, options...)
 		diags = diags.Extend(d)
 		return diags
 	}
 }
 
-func (s *Stage) run(ctx context.Context, evalCtx *hcl.EvalContext, options ...runnable.Option) (diags hcl.Diagnostics) {
+func (s *Stage) run(conductor *Conductor, evalCtx *hcl.EvalContext, options ...runnable.Option) (diags hcl.Diagnostics) {
 	var err error
 	logger := s.Logger()
 	tmpDir := global.TempDir()
 	status := runnable.StatusRunning
 	cfg := runnable.NewConfig(options...)
+	ctx := conductor.Context()
 
 	defer func() {
 		logger.Debug("running post hooks")
@@ -415,18 +418,18 @@ func (s *Stage) run(ctx context.Context, evalCtx *hcl.EvalContext, options ...ru
 			runnable.WithParent(runnable.ParentConfig{Name: s.Name, Id: s.Id}),
 		}
 		hookOpts = append(hookOpts, options...)
-		diags = diags.Extend(s.AfterRun(ctx, hookOpts...))
+		diags = diags.Extend(s.AfterRun(conductor, hookOpts...))
 		logger.Debug("finished running post hooks")
 	}()
 
-	d := s.executePreHooks(ctx, status, options...)
+	d := s.executePreHooks(conductor, status, options...)
 	diags = diags.Extend(d)
 
 	paramsGo := map[string]cty.Value{}
 
 	logger.Debugf("expanding global macro parameters")
 	global.EvalContextMutex.RLock()
-	oldParam, ok := evalCtx.Variables[ParamBlock]
+	oldParam, ok := evalCtx.Variables[blocks.ParamBlock]
 	global.EvalContextMutex.RUnlock()
 	if ok {
 		oldParamMap := oldParam.AsValueMap()
@@ -469,7 +472,7 @@ func (s *Stage) run(ctx context.Context, evalCtx *hcl.EvalContext, options ...ru
 			}
 		}
 	}
-	evalCtx.Variables[ParamBlock] = cty.ObjectVal(paramsGo)
+	evalCtx.Variables[blocks.ParamBlock] = cty.ObjectVal(paramsGo)
 
 	environment, d := s.parseEnvironmentVariables(evalCtx)
 	diags = diags.Extend(d)
@@ -501,7 +504,7 @@ func (s *Stage) run(ctx context.Context, evalCtx *hcl.EvalContext, options ...ru
 			fmt.Println(cmd.String())
 		}
 	} else {
-		d := s.executeDocker(ctx, evalCtx, cmd, cfg)
+		d := s.executeDocker(conductor, evalCtx, cmd, cfg)
 		diags = diags.Extend(d)
 	}
 
@@ -516,9 +519,10 @@ func (s *Stage) run(ctx context.Context, evalCtx *hcl.EvalContext, options ...ru
 	return diags
 }
 
-func (s *Stage) executeDocker(ctx context.Context, evalCtx *hcl.EvalContext, cmd *exec.Cmd, cfg *runnable.Config) hcl.Diagnostics {
+func (s *Stage) executeDocker(conductor *Conductor, evalCtx *hcl.EvalContext, cmd *exec.Cmd, cfg *runnable.Config) hcl.Diagnostics {
 	var diags hcl.Diagnostics
 	logger := s.Logger()
+	ctx := conductor.Context()
 
 	image, d := s.hclImage(evalCtx)
 	diags = diags.Extend(d)
@@ -609,7 +613,7 @@ func (s *Stage) executeDocker(ctx context.Context, evalCtx *hcl.EvalContext, cmd
 	}
 
 	logger.Trace("creating container")
-	resp, err := cli.ContainerCreate(ctx, &dockerContainer.Config{
+	resp, err := cli.ContainerCreate(conductor.Context(), &dockerContainer.Config{
 		Image:      image,
 		Cmd:        cmd.Args,
 		WorkingDir: "/workspace",
@@ -892,7 +896,7 @@ func (s *Stage) processEnvironmentVariables(environment map[string]cty.Value, cf
 	return envStrings
 }
 
-func (s *Stage) executePreHooks(ctx context.Context, status runnable.StatusType, options ...runnable.Option) hcl.Diagnostics {
+func (s *Stage) executePreHooks(conductor *Conductor, status runnable.StatusType, options ...runnable.Option) hcl.Diagnostics {
 	var diags hcl.Diagnostics
 	s.Logger().Debugf("running pre hooks")
 	hookOpts := []runnable.Option{
@@ -901,7 +905,7 @@ func (s *Stage) executePreHooks(ctx context.Context, status runnable.StatusType,
 		runnable.WithParent(runnable.ParentConfig{Name: s.Name, Id: s.Id}),
 	}
 	hookOpts = append(hookOpts, options...)
-	diags = diags.Extend(s.BeforeRun(ctx, hookOpts...))
+	diags = diags.Extend(s.BeforeRun(conductor, hookOpts...))
 	s.Logger().Debugf("finished running pre hooks")
 	return diags
 }
@@ -956,7 +960,7 @@ func (s *Stage) hclEndpoint(evalCtx *hcl.EvalContext) ([]string, hcl.Diagnostics
 	return entrypoint, diags
 }
 
-func (s *Stage) CanRun(ctx context.Context, options ...runnable.Option) (ok bool, diags hcl.Diagnostics) {
+func (s *Stage) CanRun(conductor *Conductor, options ...runnable.Option) (ok bool, diags hcl.Diagnostics) {
 	logger := s.Logger()
 	logger.Debugf("checking if stage.%s can run", s.Id)
 	evalCtx := global.HclEvalContext()

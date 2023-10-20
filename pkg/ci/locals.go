@@ -58,7 +58,7 @@ func (*Local) IsDaemon() bool {
 	return false
 }
 
-func (*Local) Terminate(safe bool) hcl.Diagnostics {
+func (*Local) Terminate(conductor *Conductor, safe bool) hcl.Diagnostics {
 	return nil
 }
 

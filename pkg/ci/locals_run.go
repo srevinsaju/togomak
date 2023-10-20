@@ -1,14 +1,13 @@
 package ci
 
 import (
-	"context"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/srevinsaju/togomak/v1/pkg/global"
 	"github.com/srevinsaju/togomak/v1/pkg/runnable"
 	"github.com/zclconf/go-cty/cty"
 )
 
-func (l *Local) Run(ctx context.Context, options ...runnable.Option) (diags hcl.Diagnostics) {
+func (l *Local) Run(conductor *Conductor, options ...runnable.Option) (diags hcl.Diagnostics) {
 
 	logger := l.Logger()
 	logger.Debugf("running %s.%s", LocalBlock, l.Key)
@@ -44,11 +43,11 @@ func (l *Local) Run(ctx context.Context, options ...runnable.Option) (diags hcl.
 	return diags
 }
 
-func (l *Local) CanRun(ctx context.Context, options ...runnable.Option) (bool, hcl.Diagnostics) {
+func (l *Local) CanRun(conductor *Conductor, options ...runnable.Option) (bool, hcl.Diagnostics) {
 	return true, nil
 }
 
-func (l *Local) Prepare(ctx context.Context, skip bool, overridden bool) hcl.Diagnostics {
+func (l *Local) Prepare(conductor *Conductor, skip bool, overridden bool) hcl.Diagnostics {
 	return nil
 }
 

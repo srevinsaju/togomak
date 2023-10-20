@@ -2,21 +2,16 @@ package orchestra
 
 import (
 	"context"
-	"github.com/hashicorp/hcl/v2"
-	"github.com/srevinsaju/togomak/v1/pkg/c"
+	"github.com/srevinsaju/togomak/v1/pkg/blocks"
 	"github.com/srevinsaju/togomak/v1/pkg/ci"
-	"github.com/srevinsaju/togomak/v1/pkg/conductor"
 	"github.com/srevinsaju/togomak/v1/pkg/global"
-	"github.com/srevinsaju/togomak/v1/pkg/graph"
-	"github.com/srevinsaju/togomak/v1/pkg/handler"
-	"github.com/srevinsaju/togomak/v1/pkg/runnable"
 	"strings"
 
 	"github.com/zclconf/go-cty/cty"
 	"os"
 )
 
-func ExpandGlobalParams(togomak *conductor.Togomak) {
+func ExpandGlobalParams(togomak *ci.Conductor) {
 	paramsGo := make(map[string]cty.Value)
 	if togomak.Config.Behavior.Child.Enabled {
 		m := make(map[string]string)
@@ -34,171 +29,24 @@ func ExpandGlobalParams(togomak *conductor.Togomak) {
 		}
 	}
 	global.EvalContextMutex.Lock()
-	togomak.EvalContext.Variables[ci.ParamBlock] = cty.ObjectVal(paramsGo)
+	togomak.EvalContext.Variables[blocks.ParamBlock] = cty.ObjectVal(paramsGo)
 	global.EvalContextMutex.Unlock()
 }
 
-func Perform(togomak *conductor.Togomak) int {
-	ctx, cancel := context.WithCancel(togomak.Context)
+func Perform(conductor *ci.Conductor) int {
+	ctx, cancel := context.WithCancel(conductor.Context())
 	defer cancel()
+	conductor.Update(ci.ConductorWithContext(ctx))
 
-	logger := togomak.Logger.WithField("orchestra", "perform")
+	logger := conductor.Logger.WithField("orchestra", "perform")
 	logger.Debugf("starting watchdogs and signal handlers")
-	ExpandGlobalParams(togomak)
+	ExpandGlobalParams(conductor)
 
 	// parse the config file
-	pipe, hclDiags := ci.Read(togomak.Config.Paths, togomak.Parser)
+	pipe, hclDiags := ci.Read(conductor.Config.Paths, conductor.Parser)
 	if hclDiags.HasErrors() {
-		logger.Fatal(togomak.DiagWriter.WriteDiagnostics(hclDiags))
+		logger.Fatal(conductor.DiagWriter.WriteDiagnostics(hclDiags))
 	}
 
-	return PipelineRun(togomak, pipe, ctx)
-}
-
-func PipelineRun(togomak *conductor.Togomak, pipe *ci.Pipeline, ctx context.Context) int {
-	var d hcl.Diagnostics
-	logger := togomak.Logger.WithField("orchestra", "PipelineRun")
-	cfg := togomak.Config
-	h := StartHandlers(togomak)
-	ctx, cancel := context.WithCancel(ctx)
-
-	defer cancel()
-	defer h.WriteDiagnostics()
-
-	// --> expand imports
-	pipe, d = ExpandImports(ctx, pipe, togomak.Parser, togomak.Config.Paths)
-	h.Diags.Extend(d)
-	if h.Diags.HasErrors() {
-		return h.Fatal()
-	}
-
-	/// we will first expand all local blocks
-	logger.Debugf("expanding local blocks")
-	locals, d := pipe.Locals.Expand()
-	h.Diags.Extend(d)
-	if d.HasErrors() {
-		return h.Fatal()
-	}
-	pipe.Local = locals
-
-	// store the pipe in the context
-	ctx = context.WithValue(ctx, c.TogomakContextPipeline, pipe)
-	h.Update(handler.WithContext(ctx))
-
-	// --> validate the pipeline
-	// TODO: validate the pipeline
-	// whitelist all stages if unspecified
-	filterList := cfg.Pipeline.Filtered
-	filterQuery := cfg.Pipeline.FilterQuery
-
-	// --> generate a dependency graph
-	// we will now generate a dependency graph from the pipeline
-	// this will be used to generate the pipeline
-	logger.Debugf("generating dependency graph")
-	depGraph, d := graph.TopoSort(ctx, pipe)
-	h.Diags.Extend(d)
-	if h.Diags.HasErrors() {
-		return h.Fatal()
-	}
-
-	// endregion: interrupt h
-	opts := []runnable.Option{
-		runnable.WithBehavior(togomak.Config.Behavior),
-		runnable.WithPaths(togomak.Config.Paths),
-	}
-
-	logger.Debugf("starting runnables")
-	for _, layer := range depGraph.TopoSortedLayers() {
-		// we parse the TOGOMAK_ENV file at the beginning of every layer
-		// this allows us to have different environments for different layers
-
-		d = ExpandOutputs(togomak)
-		h.Diags.Extend(d)
-		if h.Diags.HasErrors() {
-			break
-		}
-
-		for _, runnableId := range layer {
-
-			runnable, skip, d := pipe.Resolve(runnableId)
-			if skip {
-				continue
-			}
-			if d.HasErrors() {
-				h.Diags.Extend(d)
-				break
-			}
-
-			ok, overridden, d := CanRun(runnable, ctx, filterList, filterQuery, runnableId, depGraph, opts...)
-			h.Diags.Extend(d)
-			if d.HasErrors() {
-				break
-			}
-
-			// prepare step needs to PipelineRun before the runnable is PipelineRun
-			// we will also need to prompt the user with the information saying that it has been skipped
-			d = runnable.Prepare(ctx, !ok, overridden)
-			h.Diags.Extend(d)
-			if d.HasErrors() {
-				break
-			}
-
-			if !ok {
-				logger.Debugf("skipping runnable %s, condition evaluated to false", runnableId)
-				continue
-			}
-
-			logger.Debugf("runnable %s is %T", runnableId, runnable)
-
-			if runnable.IsDaemon() {
-				h.Tracker.AppendDaemon(runnable)
-			} else {
-				h.Tracker.AppendRunnable(runnable)
-			}
-
-			go RunWithRetries(runnableId, runnable, ctx, h, togomak.Logger, opts...)
-
-			if cfg.Pipeline.DryRun {
-				// TODO: implement --concurrency option
-				// wait for the runnable to finish
-				// disable concurrency
-				h.Tracker.RunnableWait()
-				h.Tracker.DaemonWait()
-			}
-		}
-		h.Tracker.RunnableWait()
-
-		if h.Diags.HasErrors() {
-			if h.Tracker.HasDaemons() && !cfg.Pipeline.DryRun && !cfg.Behavior.Unattended {
-				logger.Info("pipeline failed, waiting for daemons to shut down")
-				logger.Info("hit Ctrl+C to force stop them")
-				// wait for daemons to stop
-				h.Tracker.DaemonWait()
-			} else if h.Tracker.HasDaemons() && !cfg.Pipeline.DryRun {
-				logger.Info("pipeline failed, waiting for daemons to shut down...")
-				// wait for daemons to stop
-				cancel()
-			}
-			break
-		}
-	}
-
-	h.Tracker.DaemonWait()
-	if h.Diags.HasErrors() {
-		return h.Fatal()
-	}
-	return h.Ok()
-}
-
-func StartHandlers(togomak *conductor.Togomak) *handler.Handler {
-	h := handler.NewHandler(
-		handler.WithContext(togomak.Context),
-		handler.WithLogger(togomak.Logger),
-		handler.WithDiagnosticWriter(togomak.DiagWriter),
-		handler.WithProcessBootTime(togomak.Process.BootTime),
-	)
-	go h.Interrupt()
-	go h.Kill()
-	go h.Daemons()
-	return h
+	return pipe.Run(conductor)
 }

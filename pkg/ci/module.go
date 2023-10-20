@@ -1,8 +1,9 @@
 package ci
 
-import "github.com/hashicorp/hcl/v2"
-
-const ModuleBlock = "module"
+import (
+	"github.com/hashicorp/hcl/v2"
+	"github.com/srevinsaju/togomak/v1/pkg/blocks"
+)
 
 func (m *Module) Description() string {
 	return ""
@@ -31,14 +32,14 @@ func (i Modules) ById(id string) (*Module, hcl.Diagnostics) {
 }
 
 func (m *Module) Type() string {
-	return ModuleBlock
+	return blocks.ModuleBlock
 }
 
 func (m *Module) IsDaemon() bool {
 	return false
 }
 
-func (m *Module) Terminate(safe bool) hcl.Diagnostics {
+func (m *Module) Terminate(conductor *Conductor, safe bool) hcl.Diagnostics {
 	return nil
 }
 

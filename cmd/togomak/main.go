@@ -6,7 +6,7 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/srevinsaju/togomak/v1/pkg/behavior"
 	"github.com/srevinsaju/togomak/v1/pkg/cache"
-	"github.com/srevinsaju/togomak/v1/pkg/conductor"
+	"github.com/srevinsaju/togomak/v1/pkg/ci"
 	"github.com/srevinsaju/togomak/v1/pkg/filter"
 	"github.com/srevinsaju/togomak/v1/pkg/meta"
 	"github.com/srevinsaju/togomak/v1/pkg/orchestra"
@@ -169,7 +169,7 @@ func initPipeline(ctx *cli.Context) error {
 	return nil
 }
 
-func newConfigFromCliContext(ctx *cli.Context) conductor.Config {
+func newConfigFromCliContext(ctx *cli.Context) ci.Config {
 	owd, err := os.Getwd()
 	if err != nil {
 		panic(err)
@@ -196,7 +196,7 @@ func newConfigFromCliContext(ctx *cli.Context) conductor.Config {
 
 	diagWriter := hcl.NewDiagnosticTextWriter(os.Stdout, nil, 0, true)
 	filterQueries := ctx.StringSlice("query")
-	engines, d := rules.NewSlice(filterQueries)
+	engines, d := ci.NewSlice(filterQueries)
 	if d.HasErrors() {
 		diagWriter.WriteDiagnostics(d)
 		os.Exit(1)
@@ -207,7 +207,7 @@ func newConfigFromCliContext(ctx *cli.Context) conductor.Config {
 		os.Exit(1)
 	}
 
-	cfg := conductor.Config{
+	cfg := ci.Config{
 
 		Behavior: &behavior.Behavior{
 			Unattended: ctx.Bool("unattended") || ctx.Bool("ci"),
@@ -228,8 +228,8 @@ func newConfigFromCliContext(ctx *cli.Context) conductor.Config {
 		},
 		User:      os.Getenv("USER"),
 		Hostname:  hostname,
-		Interface: conductor.Interface{Verbosity: verboseCount},
-		Pipeline: conductor.ConfigPipeline{
+		Interface: ci.Interface{Verbosity: verboseCount},
+		Pipeline: ci.ConfigPipeline{
 			FilterQuery: engines,
 			Filtered:    filtered,
 			DryRun:      ctx.Bool("dry-run"),
@@ -241,7 +241,7 @@ func newConfigFromCliContext(ctx *cli.Context) conductor.Config {
 func run(ctx *cli.Context) error {
 	cfg := newConfigFromCliContext(ctx)
 
-	t := conductor.NewTogomak(cfg)
+	t := ci.NewConductor(cfg)
 	v := orchestra.Perform(t)
 	t.Destroy()
 	os.Exit(v)
