@@ -8,7 +8,7 @@ import (
 	"os"
 )
 
-func List(cfg ci.Config) error {
+func List(cfg ci.ConductorConfig) error {
 
 	conductor := ci.NewConductor(cfg)
 	logger := conductor.Logger()

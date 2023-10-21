@@ -26,8 +26,8 @@ type Behavior struct {
 	DryRun bool
 }
 
-func NewDefaultBehavior() Behavior {
-	return Behavior{
+func NewDefaultBehavior() *Behavior {
+	return &Behavior{
 		Unattended: false,
 		Ci:         false,
 		DryRun:     true,

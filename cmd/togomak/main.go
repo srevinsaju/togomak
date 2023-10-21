@@ -132,6 +132,7 @@ func main() {
 			Usage:   "enable verbose logging",
 			Count:   &verboseCount,
 		},
+		&cli.BoolFlag{Name: "json", Usage: "enable json logging", EnvVars: []string{"TOGOMAK_JSON_LOG"}},
 		&cli.BoolFlag{
 			Name:    "dry-run",
 			Aliases: []string{"n", "just-print", "recon"},
@@ -169,7 +170,7 @@ func initPipeline(ctx *cli.Context) error {
 	return nil
 }
 
-func newConfigFromCliContext(ctx *cli.Context) ci.Config {
+func newConfigFromCliContext(ctx *cli.Context) ci.ConductorConfig {
 	owd, err := os.Getwd()
 	if err != nil {
 		panic(err)
@@ -207,7 +208,7 @@ func newConfigFromCliContext(ctx *cli.Context) ci.Config {
 		os.Exit(1)
 	}
 
-	cfg := ci.Config{
+	cfg := ci.ConductorConfig{
 
 		Behavior: &behavior.Behavior{
 			Unattended: ctx.Bool("unattended") || ctx.Bool("ci"),
@@ -225,10 +226,11 @@ func newConfigFromCliContext(ctx *cli.Context) ci.Config {
 			Pipeline: pipelineFilePath,
 			Cwd:      dir,
 			Owd:      owd,
+			Module:   "",
 		},
 		User:      os.Getenv("USER"),
 		Hostname:  hostname,
-		Interface: ci.Interface{Verbosity: verboseCount},
+		Interface: ci.Interface{Verbosity: verboseCount, JSONLogging: ctx.Bool("json")},
 		Pipeline: ci.ConfigPipeline{
 			FilterQuery: engines,
 			Filtered:    filtered,

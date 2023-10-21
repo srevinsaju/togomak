@@ -14,10 +14,11 @@ type ConfigPipeline struct {
 
 type Interface struct {
 	// Verbosity is the level of verbosity
-	Verbosity int
+	Verbosity   int
+	JSONLogging bool
 }
 
-type Config struct {
+type ConductorConfig struct {
 	User     string
 	Hostname string
 

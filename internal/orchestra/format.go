@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 )
 
-func Format(cfg ci.Config, check bool, recursive bool) error {
+func Format(cfg ci.ConductorConfig, check bool, recursive bool) error {
 	conductor := ci.NewConductor(cfg)
 
 	var toFormat []string

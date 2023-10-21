@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-func CreateEvalContext(cfg Config, process Process) *hcl.EvalContext {
+func CreateEvalContext(cfg ConductorConfig, process Process) *hcl.EvalContext {
 	// --> set up HCL context
 	paths := cfg.Paths
 	behavior := cfg.Behavior
@@ -55,8 +55,8 @@ func CreateEvalContext(cfg Config, process Process) *hcl.EvalContext {
 			"filebase64sha512": funcs.MakeFileBase64Sha512Func(paths.Cwd),
 			"filemd5":          funcs.MakeFileMd5Func(paths.Cwd),
 			"filesha1":         funcs.MakeFileSha1Func(paths.Cwd),
-			"filesha256":       funcs.MakeFileSha256Func(paths.Cwd),
-			"filesha512":       funcs.MakeFileSha512Func(paths.Cwd),
+			"filesha256":       funcs.MakeFileSha256Func(paths.Module),
+			"filesha512":       funcs.MakeFileSha512Func(paths.Module),
 			"flatten":          stdlib.FlattenFunc,
 			"floor":            stdlib.FloorFunc,
 			"format":           stdlib.FormatFunc,
@@ -207,7 +207,7 @@ func CreateEvalContext(cfg Config, process Process) *hcl.EvalContext {
 			"path": cty.ObjectVal(map[string]cty.Value{
 				"root":   cty.StringVal(paths.Cwd),
 				"cwd":    cty.StringVal(paths.Owd),
-				"module": cty.StringVal(paths.Cwd),
+				"module": cty.StringVal(paths.Module),
 			}),
 
 			// introduced in v1.5.0

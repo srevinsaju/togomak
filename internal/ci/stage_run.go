@@ -38,7 +38,7 @@ var TogomakParamEnvVarRegexExpression = fmt.Sprintf("%s([a-zA-Z0-9_]+)", Togomak
 var TogomakParamEnvVarRegex = regexp.MustCompile(TogomakParamEnvVarRegexExpression)
 
 func (s *Stage) Prepare(conductor *Conductor, skip bool, overridden bool) hcl.Diagnostics {
-	logger := s.Logger()
+	logger := conductor.Logger().WithField("stage", s.Id)
 	// show some user-friendly output on the details of the stage about to be run
 
 	var id string
@@ -56,6 +56,7 @@ func (s *Stage) Prepare(conductor *Conductor, skip bool, overridden bool) hcl.Di
 
 // expandMacros expands the macro in the stage, if any.
 func (s *Stage) expandMacros(conductor *Conductor, opts ...runnable.Option) (*Stage, hcl.Diagnostics) {
+	logger := conductor.Logger().WithField("stage", s.Id)
 	cfg := runnable.NewConfig(opts...)
 	ctx := conductor.Context()
 
@@ -64,7 +65,7 @@ func (s *Stage) expandMacros(conductor *Conductor, opts ...runnable.Option) (*St
 		return s, nil
 	}
 	hclContext := global.HclEvalContext()
-	logger := s.Logger()
+
 	pipe := ctx.Value(c.TogomakContextPipeline).(*Pipeline)
 
 	tmpDir := global.TempDir()
@@ -334,7 +335,7 @@ func (s *Stage) expandMacros(conductor *Conductor, opts ...runnable.Option) (*St
 }
 
 func (s *Stage) Run(conductor *Conductor, options ...runnable.Option) (diags hcl.Diagnostics) {
-	logger := s.Logger()
+	logger := conductor.Logger().WithField("stage", s.Id)
 
 	logger.Debugf("running %s", x.RenderBlock(blocks.StageBlock, s.Id))
 
@@ -398,11 +399,10 @@ func (s *Stage) Run(conductor *Conductor, options ...runnable.Option) (diags hcl
 
 func (s *Stage) run(conductor *Conductor, evalCtx *hcl.EvalContext, options ...runnable.Option) (diags hcl.Diagnostics) {
 	var err error
-	logger := s.Logger()
+	logger := conductor.Logger().WithField("stage", s.Id)
 	tmpDir := global.TempDir()
 	status := runnable.StatusRunning
 	cfg := runnable.NewConfig(options...)
-	ctx := conductor.Context()
 
 	defer func() {
 		logger.Debug("running post hooks")
@@ -474,15 +474,15 @@ func (s *Stage) run(conductor *Conductor, evalCtx *hcl.EvalContext, options ...r
 	}
 	evalCtx.Variables[blocks.ParamBlock] = cty.ObjectVal(paramsGo)
 
-	environment, d := s.parseEnvironmentVariables(evalCtx)
+	environment, d := s.parseEnvironmentVariables(conductor, evalCtx)
 	diags = diags.Extend(d)
 	if diags.HasErrors() {
 		return diags
 	}
 
-	envStrings := s.processEnvironmentVariables(environment, cfg, tmpDir, paramsGo)
+	envStrings := s.processEnvironmentVariables(conductor, environment, cfg, tmpDir, paramsGo)
 
-	cmd, d := s.parseExecCommand(ctx, evalCtx, cfg, envStrings)
+	cmd, d := s.parseExecCommand(conductor, evalCtx, cfg, envStrings)
 	diags = diags.Extend(d)
 	if diags.HasErrors() {
 		return diags
@@ -521,7 +521,7 @@ func (s *Stage) run(conductor *Conductor, evalCtx *hcl.EvalContext, options ...r
 
 func (s *Stage) executeDocker(conductor *Conductor, evalCtx *hcl.EvalContext, cmd *exec.Cmd, cfg *runnable.Config) hcl.Diagnostics {
 	var diags hcl.Diagnostics
-	logger := s.Logger()
+	logger := conductor.Logger().WithField("stage", s.Id)
 	ctx := conductor.Context()
 
 	image, d := s.hclImage(evalCtx)
@@ -714,9 +714,10 @@ func (s *Stage) executeDocker(conductor *Conductor, evalCtx *hcl.EvalContext, cm
 	return diags
 }
 
-func (s *Stage) parseEnvironmentVariables(evalCtx *hcl.EvalContext) (map[string]cty.Value, hcl.Diagnostics) {
+func (s *Stage) parseEnvironmentVariables(conductor *Conductor, evalCtx *hcl.EvalContext) (map[string]cty.Value, hcl.Diagnostics) {
+	logger := conductor.Logger().WithField("stage", s.Id)
 	var diags hcl.Diagnostics
-	s.Logger().Debug("evaluating environment variables")
+	logger.Debug("evaluating environment variables")
 	var environment map[string]cty.Value
 	environment = make(map[string]cty.Value)
 	for _, env := range s.Environment {
@@ -748,10 +749,11 @@ func (s *Stage) parseEnvironmentVariables(evalCtx *hcl.EvalContext) (map[string]
 	return environment, diags
 }
 
-func (s *Stage) parseExecCommand(ctx context.Context, evalCtx *hcl.EvalContext, cfg *runnable.Config, envStrings []string) (*exec.Cmd, hcl.Diagnostics) {
+func (s *Stage) parseExecCommand(conductor *Conductor, evalCtx *hcl.EvalContext, cfg *runnable.Config, envStrings []string) (*exec.Cmd, hcl.Diagnostics) {
 	var diags hcl.Diagnostics
+	logger := conductor.Logger().WithField("stage", s.Id)
 
-	s.Logger().Trace("evaluating script value")
+	logger.Trace("evaluating script value")
 	global.EvalContextMutex.RLock()
 	script, d := s.Script.Value(evalCtx)
 	global.EvalContextMutex.RUnlock()
@@ -762,7 +764,7 @@ func (s *Stage) parseExecCommand(ctx context.Context, evalCtx *hcl.EvalContext, 
 		diags = diags.Extend(d)
 	}
 
-	s.Logger().Trace("evaluating shell value")
+	logger.Trace("evaluating shell value")
 	global.EvalContextMutex.RLock()
 	shellRaw, d := s.Shell.Value(evalCtx)
 	global.EvalContextMutex.RUnlock()
@@ -778,7 +780,7 @@ func (s *Stage) parseExecCommand(ctx context.Context, evalCtx *hcl.EvalContext, 
 		}
 	}
 
-	s.Logger().Trace("evaluating args value")
+	logger.Trace("evaluating args value")
 	global.EvalContextMutex.RLock()
 	args, d := s.Args.Value(evalCtx)
 	global.EvalContextMutex.RUnlock()
@@ -810,9 +812,9 @@ func (s *Stage) parseExecCommand(ctx context.Context, evalCtx *hcl.EvalContext, 
 		}
 	}
 
-	cmd := exec.CommandContext(ctx, cmdHcl.command, cmdHcl.args...)
-	cmd.Stdout = s.Logger().Writer()
-	cmd.Stderr = s.Logger().WriterLevel(logrus.WarnLevel)
+	cmd := exec.CommandContext(conductor.Context(), cmdHcl.command, cmdHcl.args...)
+	cmd.Stdout = logger.Writer()
+	cmd.Stderr = logger.WriterLevel(logrus.WarnLevel)
 	cmd.Env = append(os.Environ(), envStrings...)
 	cmd.Dir = dir
 	return cmd, diags
@@ -867,7 +869,8 @@ func (s *Stage) parseCommand(evalCtx *hcl.EvalContext, shell string, script cty.
 	}, diags
 }
 
-func (s *Stage) processEnvironmentVariables(environment map[string]cty.Value, cfg *runnable.Config, tmpDir string, paramsGo map[string]cty.Value) []string {
+func (s *Stage) processEnvironmentVariables(conductor *Conductor, environment map[string]cty.Value, cfg *runnable.Config, tmpDir string, paramsGo map[string]cty.Value) []string {
+	logger := conductor.Logger().WithField("stage", s.Id)
 	envStrings := make([]string, len(environment))
 	envCounter := 0
 	for k, v := range environment {
@@ -880,7 +883,7 @@ func (s *Stage) processEnvironmentVariables(environment map[string]cty.Value, cf
 		envCounter = envCounter + 1
 	}
 	togomakEnvExport := fmt.Sprintf("%s=%s", meta.OutputEnvVar, filepath.Join(tmpDir, meta.OutputEnvFile))
-	s.Logger().Tracef("exporting %s", togomakEnvExport)
+	logger.Tracef("exporting %s", togomakEnvExport)
 	envStrings = append(envStrings, togomakEnvExport)
 
 	if s.Use != nil && s.Use.Parameters != nil {
@@ -897,8 +900,9 @@ func (s *Stage) processEnvironmentVariables(environment map[string]cty.Value, cf
 }
 
 func (s *Stage) executePreHooks(conductor *Conductor, status runnable.StatusType, options ...runnable.Option) hcl.Diagnostics {
+	logger := conductor.Logger().WithField("stage", s.Id)
 	var diags hcl.Diagnostics
-	s.Logger().Debugf("running pre hooks")
+	logger.Debugf("running pre hooks")
 	hookOpts := []runnable.Option{
 		runnable.WithStatus(status),
 		runnable.WithHook(),
@@ -906,7 +910,7 @@ func (s *Stage) executePreHooks(conductor *Conductor, status runnable.StatusType
 	}
 	hookOpts = append(hookOpts, options...)
 	diags = diags.Extend(s.BeforeRun(conductor, hookOpts...))
-	s.Logger().Debugf("finished running pre hooks")
+	logger.Debugf("finished running pre hooks")
 	return diags
 }
 
@@ -961,7 +965,7 @@ func (s *Stage) hclEndpoint(evalCtx *hcl.EvalContext) ([]string, hcl.Diagnostics
 }
 
 func (s *Stage) CanRun(conductor *Conductor, options ...runnable.Option) (ok bool, diags hcl.Diagnostics) {
-	logger := s.Logger()
+	logger := conductor.Logger().WithField("stage", s.Id)
 	logger.Debugf("checking if stage.%s can run", s.Id)
 	evalCtx := global.HclEvalContext()
 

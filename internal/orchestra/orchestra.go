@@ -48,5 +48,9 @@ func Perform(conductor *ci.Conductor) int {
 		logger.Fatal(conductor.DiagWriter.WriteDiagnostics(hclDiags))
 	}
 
-	return pipe.Run(conductor)
+	h, d := pipe.Run(conductor)
+	if d.HasErrors() {
+		return h.Fatal()
+	}
+	return h.Ok()
 }

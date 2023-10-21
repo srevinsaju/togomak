@@ -86,7 +86,7 @@ func (t *Tracker) AppendCompleted(completed Block) {
 type Handler struct {
 	Tracker *Tracker
 	Diags   *dg.SafeDiagnostics
-	Logger  *logrus.Logger
+	Logger  logrus.Ext1FieldLogger
 	Process *HandlerProcess
 
 	diagWriter hcl.DiagnosticWriter
@@ -104,7 +104,7 @@ func WithContext(ctx context.Context) HandlerOption {
 	}
 }
 
-func WithLogger(logger *logrus.Logger) HandlerOption {
+func WithLogger(logger logrus.Ext1FieldLogger) HandlerOption {
 	return func(h *Handler) {
 		h.Logger = logger
 	}
@@ -196,7 +196,7 @@ func (h *Handler) Kill() {
 		}
 		os.Exit(h.Fatal())
 	case <-ctx.Done():
-		logger.Infof("took %s to complete the pipeline", time.Since(h.Process.BootTime))
+		logger.Tracef("took %s to complete the pipeline", time.Since(h.Process.BootTime))
 		return
 	}
 }
@@ -296,7 +296,7 @@ func (h *Handler) Interrupt() {
 		}
 		h.cancel()
 	case <-ctx.Done():
-		logger.Infof("took %s to complete the pipeline", time.Since(h.Process.BootTime))
+		logger.Debugf("took %s to complete the pipeline", time.Since(h.Process.BootTime))
 		return
 	}
 }

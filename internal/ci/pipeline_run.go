@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/srevinsaju/togomak/v1/internal/c"
+	"github.com/srevinsaju/togomak/v1/internal/dg"
 	"github.com/srevinsaju/togomak/v1/internal/runnable"
 )
 
@@ -21,7 +22,7 @@ func StartHandlers(conductor *Conductor) *Handler {
 	return h
 }
 
-func (pipe *Pipeline) Run(conductor *Conductor) int {
+func (pipe *Pipeline) Run(conductor *Conductor) (*Handler, dg.AbstractDiagnostics) {
 	var d hcl.Diagnostics
 	logger := conductor.Logger().WithField("orchestra", "run")
 	cfg := conductor.Config
@@ -35,7 +36,7 @@ func (pipe *Pipeline) Run(conductor *Conductor) int {
 	pipe, d = ExpandImports(ctx, pipe, conductor.Parser, conductor.Config.Paths)
 	h.Diags.Extend(d)
 	if h.Diags.HasErrors() {
-		return h.Fatal()
+		return h, h.Diags
 	}
 
 	/// we will first expand all local blocks
@@ -43,13 +44,14 @@ func (pipe *Pipeline) Run(conductor *Conductor) int {
 	locals, d := pipe.Locals.Expand()
 	h.Diags.Extend(d)
 	if d.HasErrors() {
-		return h.Fatal()
+		return h, h.Diags
 	}
 	pipe.Local = locals
 
 	// store the pipe in the context
 	ctx = context.WithValue(ctx, c.TogomakContextPipeline, pipe)
 	h.Update(WithContext(ctx))
+	conductor.Update(ConductorWithContext(ctx))
 
 	// --> validate the pipeline
 	// TODO: validate the pipeline
@@ -64,7 +66,7 @@ func (pipe *Pipeline) Run(conductor *Conductor) int {
 	depGraph, d := GraphTopoSort(ctx, pipe)
 	h.Diags.Extend(d)
 	if h.Diags.HasErrors() {
-		return h.Fatal()
+		return h, h.Diags
 	}
 
 	// endregion: interrupt h
@@ -150,8 +152,5 @@ func (pipe *Pipeline) Run(conductor *Conductor) int {
 	}
 
 	h.Tracker.DaemonWait()
-	if h.Diags.HasErrors() {
-		return h.Fatal()
-	}
-	return h.Ok()
+	return h, h.Diags
 }

@@ -3,6 +3,8 @@ package ci
 import (
 	"context"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/srevinsaju/togomak/v1/internal/behavior"
+	"github.com/srevinsaju/togomak/v1/internal/path"
 	"github.com/srevinsaju/togomak/v1/internal/rules"
 	"github.com/zclconf/go-cty/cty"
 	"testing"
@@ -10,7 +12,26 @@ import (
 
 func TestCanRun(t *testing.T) {
 	ctx := context.Background()
-	conductor := NewConductor(Config{})
+	conductor := NewConductor(ConductorConfig{
+		User:     "",
+		Hostname: "",
+		Paths: &path.Path{
+			Pipeline: "",
+			Owd:      "",
+			Cwd:      "",
+			Module:   "",
+		},
+		Interface: Interface{
+			JSONLogging: true,
+			Verbosity:   LifecycleInvalid,
+		},
+		Pipeline: ConfigPipeline{
+			Filtered:    nil,
+			FilterQuery: nil,
+			DryRun:      false,
+		},
+		Behavior: behavior.NewDefaultBehavior(),
+	})
 	conductor.Update(ConductorWithContext(ctx))
 
 	stage3 := Stage{

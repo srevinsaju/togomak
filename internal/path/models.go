@@ -9,4 +9,7 @@ type Path struct {
 
 	// Cwd is the current working directory
 	Cwd string
+
+	// Module is the path to the module file
+	Module string
 }

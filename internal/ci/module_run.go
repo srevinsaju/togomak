@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"github.com/hashicorp/go-getter"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/srevinsaju/togomak/v1/internal/behavior"
 	"github.com/srevinsaju/togomak/v1/internal/blocks"
 	"github.com/srevinsaju/togomak/v1/internal/global"
+	"github.com/srevinsaju/togomak/v1/internal/meta"
+	"github.com/srevinsaju/togomak/v1/internal/path"
 	"github.com/srevinsaju/togomak/v1/internal/runnable"
 	"github.com/srevinsaju/togomak/v1/internal/ui"
 	"github.com/srevinsaju/togomak/v1/internal/x"
@@ -14,20 +17,19 @@ import (
 )
 
 func (m *Module) Prepare(conductor *Conductor, skip bool, overridden bool) hcl.Diagnostics {
-	logger := m.Logger()
+	logger := conductor.Logger().WithField("module", m.Id)
 	// show some user-friendly output on the details of the stage about to be run
 
 	var id string
-	identifier := fmt.Sprintf("%s.%s", blocks.ModuleBlock, m.Id)
 	if !skip {
-		id = ui.Blue(identifier)
+		id = ""
 	} else {
-		id = fmt.Sprintf("%s %s", ui.Yellow(identifier), ui.Grey("(skipped)"))
+		id = fmt.Sprintf("%s", ui.Grey("skipped"))
 	}
 	if overridden {
-		id = fmt.Sprintf("%s %s", id, ui.Bold("(overriden)"))
+		id = fmt.Sprintf("%s", ui.Blue("overridden"))
 	}
-	logger.Infof("[%s] %s", ui.Plus, id)
+	logger.Infof("%s", id)
 	return nil
 }
 
@@ -69,7 +71,7 @@ func (m *Module) Run(conductor *Conductor, options ...runnable.Option) (diags hc
 		Ctx: conductor.Context(),
 		Src: src,
 		Dst: filepath.Join(global.TempDir(), "modules", m.Id),
-		Pwd: paths.Cwd,
+		Pwd: paths.Module,
 		Dir: true,
 	}
 	err := get.Get()
@@ -83,17 +85,42 @@ func (m *Module) Run(conductor *Conductor, options ...runnable.Option) (diags hc
 		})
 	}
 
-	childConductor := conductor.Child()
+	b := &behavior.Behavior{
+		Unattended: conductor.Config.Behavior.Unattended,
+		Ci:         conductor.Config.Behavior.Ci,
+		Child: behavior.Child{
+			Enabled:      true,
+			Parent:       "",
+			ParentParams: nil,
+		},
+		DryRun: false,
+	}
+	childCfg := ConductorConfig{
+		User:     conductor.Config.User,
+		Hostname: conductor.Config.Hostname,
+		Paths: &path.Path{
+			Pipeline: filepath.Join(get.Dst, meta.ConfigFileName),
+			Owd:      conductor.Config.Paths.Owd,
+			Cwd:      conductor.Config.Paths.Cwd,
+			Module:   get.Dst,
+		},
+		Interface: conductor.Config.Interface,
+		Pipeline:  conductor.Config.Pipeline,
+		Behavior:  b,
+	}
+	childConductor := conductor.Child(ConductorWithConfig(childCfg))
+	childConductor.Update(ConductorWithLogger(m.Logger()))
 
 	// parse the config file
-	pipe, hclDiags := Read(conductor.Config.Paths, conductor.Parser)
+	pipe, hclDiags := Read(childConductor.Config.Paths, childConductor.Parser)
 	if hclDiags.HasErrors() {
-		logger.Fatal(conductor.DiagWriter.WriteDiagnostics(hclDiags))
+		logger.Fatal(childConductor.DiagWriter.WriteDiagnostics(hclDiags))
 	}
 
-	return pipe.Run(conductor)
+	//  safe diagnostics
+	_, sd := pipe.Run(childConductor)
 
-	return diags
+	return sd.Diagnostics()
 }
 
 func (m *Module) CanRun(conductor *Conductor, options ...runnable.Option) (ok bool, diags hcl.Diagnostics) {

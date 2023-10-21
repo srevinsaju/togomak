@@ -16,13 +16,13 @@ import (
 
 type ConductorOption func(*Conductor)
 
-func ConductorWithLogger(logger *logrus.Logger) ConductorOption {
+func ConductorWithLogger(logger logrus.Ext1FieldLogger) ConductorOption {
 	return func(c *Conductor) {
 		c.RootLogger = logger
 	}
 }
 
-func ConductorWithConfig(cfg Config) ConductorOption {
+func ConductorWithConfig(cfg ConductorConfig) ConductorOption {
 	return func(c *Conductor) {
 		c.Config = cfg
 	}
@@ -59,8 +59,8 @@ func ConductorWithProcess(process Process) ConductorOption {
 }
 
 type Conductor struct {
-	RootLogger *logrus.Logger
-	Config     Config
+	RootLogger logrus.Ext1FieldLogger
+	Config     ConductorConfig
 	ctx        context.Context
 
 	// Process is the current process
@@ -122,7 +122,7 @@ func (c *Conductor) Context() context.Context {
 	return c.ctx
 }
 
-func NewProcess(cfg Config) Process {
+func NewProcess(cfg ConductorConfig) Process {
 	e, err := os.Executable()
 	x.Must(err)
 
@@ -141,7 +141,7 @@ func NewProcess(cfg Config) Process {
 	}
 }
 
-func Chdir(cfg Config, logger *logrus.Logger) string {
+func Chdir(cfg ConductorConfig, logger *logrus.Logger) string {
 	cwd := cfg.Paths.Cwd
 	if cwd == "" {
 		cwd = filepath.Dir(cfg.Paths.Pipeline)
@@ -160,7 +160,7 @@ func Chdir(cfg Config, logger *logrus.Logger) string {
 
 }
 
-func NewConductor(cfg Config, opts ...ConductorOption) *Conductor {
+func NewConductor(cfg ConductorConfig, opts ...ConductorOption) *Conductor {
 	parser := hclparse.NewParser()
 
 	diagWriter := hcl.NewDiagnosticTextWriter(os.Stdout, parser.Files(), 0, true)
@@ -168,10 +168,11 @@ func NewConductor(cfg Config, opts ...ConductorOption) *Conductor {
 	logger := NewLogger(cfg)
 	global.SetLogger(logger)
 
-	cfg.Paths.Cwd = Chdir(cfg, logger)
+	dir := Chdir(cfg, logger)
+	cfg.Paths.Cwd = dir
 
-	if !cfg.Behavior.Child.Enabled {
-		logger.Infof("%s (version=%s)", meta.AppName, meta.AppVersion)
+	if cfg.Paths.Module == "" {
+		cfg.Paths.Module = cfg.Paths.Cwd
 	}
 
 	process := NewProcess(cfg)
@@ -191,6 +192,11 @@ func NewConductor(cfg Config, opts ...ConductorOption) *Conductor {
 	for _, opt := range opts {
 		opt(c)
 	}
+
+	if !c.Config.Behavior.Child.Enabled {
+		logger.Infof("%s (version=%s)", meta.AppName, meta.AppVersion)
+	}
+
 	return c
 }
 
@@ -204,7 +210,7 @@ func (c *Conductor) Destroy() {
 	c.Logger().Debug("destroying togomak")
 
 	c.RootLogger = nil
-	c.Config = Config{}
+	c.Config = ConductorConfig{}
 	c.Parser = nil
 	c.DiagWriter = nil
 }
