@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-func NewLogger(cfg Config) *logrus.Logger {
+func NewLogger(cfg ConductorConfig) *logrus.Logger {
 	logger := logrus.New()
 	logger.SetOutput(os.Stdout)
 	logger.SetFormatter(&logrus.TextFormatter{
@@ -40,6 +40,9 @@ func NewLogger(cfg Config) *logrus.Logger {
 			ForceColors:               true,
 			ForceQuote:                false,
 		})
+	}
+	if cfg.Interface.JSONLogging {
+		logger.SetFormatter(&logrus.JSONFormatter{})
 	}
 	return logger
 }
