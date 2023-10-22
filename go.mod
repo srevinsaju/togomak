@@ -136,6 +136,6 @@ require (
 	gotest.tools/v3 v3.4.0 // indirect
 )
 
-replace github.com/sirupsen/logrus v1.9.0 => github.com/srevinsaju/logrus v1.10.3-0.20231014192105-f54cbb8bc619
+replace github.com/sirupsen/logrus v1.9.0 => github.com/srevinsaju/logrus v1.10.4-0.20231021232453-c286e2e09f97
 
-replace github.com/sirupsen/logrus v1.9.2 => github.com/srevinsaju/logrus v1.10.3-0.20231014192105-f54cbb8bc619
+replace github.com/sirupsen/logrus v1.9.2 => github.com/srevinsaju/logrus v1.10.4-0.20231021232453-c286e2e09f97

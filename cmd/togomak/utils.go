@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/moby/sys/mountinfo"
 	"github.com/spf13/afero"
-	"github.com/srevinsaju/togomak/v1/pkg/meta"
+	"github.com/srevinsaju/togomak/v1/internal/meta"
 	"log"
 	"path"
 	"path/filepath"
