@@ -395,12 +395,12 @@ func (s *Stage) Run(conductor *Conductor, options ...runnable.Option) (diags hcl
 		id := fmt.Sprintf("%s[%s]", s.Id, key)
 		wg.Add(1)
 		stage := &Stage{Id: id, CoreStage: s.CoreStage, Lifecycle: s.Lifecycle}
-		go func(options ...runnable.Option) {
+		go func(keyCty cty.Value, options ...runnable.Option) {
 			options = append(options, runnable.WithEach(keyCty, v))
 			d := stage.Run(conductor, options...)
 			safeDg.Extend(d)
 			wg.Done()
-		}(options...)
+		}(keyCty, options...)
 		return false
 	})
 	wg.Wait()

@@ -124,12 +124,12 @@ func (m *Module) Run(conductor *Conductor, options ...runnable.Option) (diags hc
 			Daemon:    m.Daemon,
 			Body:      m.Body,
 		}
-		go func(options ...runnable.Option) {
+		go func(keyCty cty.Value, options ...runnable.Option) {
 			options = append(options, runnable.WithEach(keyCty, v))
 			d := module.Run(conductor, options...)
 			safeDg.Extend(d)
 			wg.Done()
-		}(options...)
+		}(keyCty, options...)
 		return false
 	})
 	wg.Wait()
