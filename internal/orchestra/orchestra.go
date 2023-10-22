@@ -4,16 +4,15 @@ import (
 	"context"
 	"github.com/srevinsaju/togomak/v1/internal/blocks"
 	"github.com/srevinsaju/togomak/v1/internal/ci"
-	"github.com/srevinsaju/togomak/v1/internal/global"
 	"strings"
 
 	"github.com/zclconf/go-cty/cty"
 	"os"
 )
 
-func ExpandGlobalParams(togomak *ci.Conductor) {
+func ExpandGlobalParams(conductor *ci.Conductor) {
 	paramsGo := make(map[string]cty.Value)
-	if togomak.Config.Behavior.Child.Enabled {
+	if conductor.Config.Behavior.Child.Enabled {
 		m := make(map[string]string)
 		for _, e := range os.Environ() {
 			if i := strings.Index(e, "="); i >= 0 {
@@ -28,9 +27,9 @@ func ExpandGlobalParams(togomak *ci.Conductor) {
 			}
 		}
 	}
-	global.EvalContextMutex.Lock()
-	togomak.EvalContext.Variables[blocks.ParamBlock] = cty.ObjectVal(paramsGo)
-	global.EvalContextMutex.Unlock()
+	conductor.Eval().Mutex().Lock()
+	conductor.Eval().Context().Variables[blocks.ParamBlock] = cty.ObjectVal(paramsGo)
+	conductor.Eval().Mutex().Unlock()
 }
 
 func Perform(conductor *ci.Conductor) int {

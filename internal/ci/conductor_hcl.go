@@ -3,7 +3,6 @@ package ci
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/ext/tryfunc"
-	"github.com/srevinsaju/togomak/v1/internal/global"
 	"github.com/srevinsaju/togomak/v1/internal/meta"
 	"github.com/srevinsaju/togomak/v1/internal/third-party/hashicorp/terraform/lang/funcs"
 	"github.com/srevinsaju/togomak/v1/internal/ui"
@@ -240,6 +239,5 @@ func CreateEvalContext(cfg ConductorConfig, process Process) *hcl.EvalContext {
 			}),
 		},
 	}
-	global.SetHclEvalContext(hclContext)
 	return hclContext
 }

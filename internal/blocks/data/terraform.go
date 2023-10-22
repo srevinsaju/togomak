@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/sirupsen/logrus"
+	"github.com/srevinsaju/togomak/v1/internal/conductor"
 	"github.com/srevinsaju/togomak/v1/internal/global"
 	"github.com/srevinsaju/togomak/v1/internal/ui"
 	"github.com/srevinsaju/togomak/v1/internal/x"
@@ -63,20 +64,20 @@ func (e *TfProvider) Url() string {
 	return "embedded::togomak.srev.in/providers/data/tf"
 }
 
-func (e *TfProvider) DecodeBody(body hcl.Body, opts ...ProviderOption) hcl.Diagnostics {
+func (e *TfProvider) DecodeBody(conductor conductor.Conductor, body hcl.Body, opts ...ProviderOption) hcl.Diagnostics {
 	if !e.initialized {
 		panic("provider not initialized")
 	}
 	var diags hcl.Diagnostics
-	hclContext := global.HclEvalContext()
+	hclContext := conductor.Eval().Context()
 
 	schema := e.Schema()
 	content, d := body.Content(schema)
 	diags = diags.Extend(d)
 
-	global.EvalContextMutex.RLock()
+	conductor.Eval().Mutex().RLock()
 	source, d := content.Attributes[TfBlockArgumentSource].Expr.Value(hclContext)
-	global.EvalContextMutex.RUnlock()
+	conductor.Eval().Mutex().RUnlock()
 
 	diags = diags.Extend(d)
 
@@ -85,16 +86,16 @@ func (e *TfProvider) DecodeBody(body hcl.Body, opts ...ProviderOption) hcl.Diagn
 
 	attr, ok := content.Attributes[TfBlockArgumentAllowApply]
 	if ok {
-		global.EvalContextMutex.RLock()
+		conductor.Eval().Mutex().RLock()
 		allowApply, d = attr.Expr.Value(hclContext)
-		global.EvalContextMutex.RUnlock()
+		conductor.Eval().Mutex().RUnlock()
 		diags = diags.Extend(d)
 	}
 	attr, ok = content.Attributes[TfBlockArgumentVars]
 	if ok {
-		global.EvalContextMutex.RLock()
+		conductor.Eval().Mutex().RLock()
 		vars, d = attr.Expr.Value(hclContext)
-		global.EvalContextMutex.RUnlock()
+		conductor.Eval().Mutex().RUnlock()
 		diags = diags.Extend(d)
 	}
 	var varsGo map[string]cty.Value
@@ -140,14 +141,14 @@ func (e *TfProvider) Initialized() bool {
 	return e.initialized
 }
 
-func (e *TfProvider) Value(ctx context.Context, id string, opts ...ProviderOption) (string, hcl.Diagnostics) {
+func (e *TfProvider) Value(conductor conductor.Conductor, ctx context.Context, id string, opts ...ProviderOption) (string, hcl.Diagnostics) {
 	if !e.initialized {
 		panic("provider not initialized")
 	}
 	return "", nil
 }
 
-func (e *TfProvider) Attributes(ctx context.Context, id string, opts ...ProviderOption) (map[string]cty.Value, hcl.Diagnostics) {
+func (e *TfProvider) Attributes(conductor conductor.Conductor, ctx context.Context, id string, opts ...ProviderOption) (map[string]cty.Value, hcl.Diagnostics) {
 	logger := e.Logger()
 	tmpDir := global.TempDir()
 	cfg := NewProviderConfig(opts...)

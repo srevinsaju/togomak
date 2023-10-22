@@ -20,7 +20,7 @@ func (s *Data) Prepare(conductor *Conductor, skip bool, overridden bool) hcl.Dia
 func (s *Data) Run(conductor *Conductor, options ...runnable.Option) (diags hcl.Diagnostics) {
 	logger := s.Logger()
 	logger.Debugf("running %s.%s.%s", DataBlock, s.Provider, s.Id)
-	hclContext := global.HclEvalContext()
+	hclContext := conductor.Eval().Context()
 	ctx := conductor.Context()
 
 	var d hcl.Diagnostics
@@ -43,10 +43,10 @@ func (s *Data) Run(conductor *Conductor, options ...runnable.Option) (diags hcl.
 			validProvider = true
 			provide := pr.New()
 			provide.SetContext(ctx)
-			diags = diags.Extend(provide.DecodeBody(s.Body, opts...))
-			value, d = provide.Value(ctx, s.Id, opts...)
+			diags = diags.Extend(provide.DecodeBody(conductor, s.Body, opts...))
+			value, d = provide.Value(conductor, ctx, s.Id, opts...)
 			diags = diags.Extend(d)
-			attr, d = provide.Attributes(ctx, s.Id, opts...)
+			attr, d = provide.Attributes(conductor, ctx, s.Id, opts...)
 			diags = diags.Extend(d)
 			break
 		}
@@ -72,7 +72,7 @@ func (s *Data) Run(conductor *Conductor, options ...runnable.Option) (diags hcl.
 
 	global.DataBlockEvalContextMutex.Lock()
 
-	global.EvalContextMutex.RLock()
+	conductor.Eval().Mutex().RLock()
 
 	data := hclContext.Variables[DataBlock]
 
@@ -91,11 +91,11 @@ func (s *Data) Run(conductor *Conductor, options ...runnable.Option) (diags hcl.
 	}
 	providerMutated[s.Id] = cty.ObjectVal(m)
 	dataMutated[s.Provider] = cty.ObjectVal(providerMutated)
-	global.EvalContextMutex.RUnlock()
+	conductor.Eval().Mutex().RUnlock()
 
-	global.EvalContextMutex.Lock()
+	conductor.Eval().Mutex().Lock()
 	hclContext.Variables[DataBlock] = cty.ObjectVal(dataMutated)
-	global.EvalContextMutex.Unlock()
+	conductor.Eval().Mutex().Unlock()
 
 	global.DataBlockEvalContextMutex.Unlock()
 	// endregion

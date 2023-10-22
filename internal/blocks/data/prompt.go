@@ -6,6 +6,7 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
+	"github.com/srevinsaju/togomak/v1/internal/conductor"
 	"github.com/srevinsaju/togomak/v1/internal/global"
 	"github.com/srevinsaju/togomak/v1/internal/meta"
 	"github.com/zclconf/go-cty/cty"
@@ -39,13 +40,13 @@ func (e *PromptProvider) Url() string {
 	return "embedded::togomak.srev.in/providers/data/prompt"
 }
 
-func (e *PromptProvider) DecodeBody(body hcl.Body, opts ...ProviderOption) hcl.Diagnostics {
+func (e *PromptProvider) DecodeBody(conductor conductor.Conductor, body hcl.Body, opts ...ProviderOption) hcl.Diagnostics {
 	if !e.initialized {
 		panic("provider not initialized")
 	}
 	var diags hcl.Diagnostics
 
-	hclContext := global.HclEvalContext()
+	hclContext := conductor.Eval().Context()
 
 	schema := e.Schema()
 	content, d := body.Content(schema)
@@ -54,17 +55,17 @@ func (e *PromptProvider) DecodeBody(body hcl.Body, opts ...ProviderOption) hcl.D
 	attr := content.Attributes["prompt"]
 	var key cty.Value
 
-	global.EvalContextMutex.RLock()
+	conductor.Eval().Mutex().RLock()
 	key, d = attr.Expr.Value(hclContext)
-	global.EvalContextMutex.RUnlock()
+	conductor.Eval().Mutex().RUnlock()
 	diags = append(diags, d...)
 
 	e.promptParsed = key.AsString()
 
 	attr = content.Attributes["default"]
-	global.EvalContextMutex.RLock()
+	conductor.Eval().Mutex().RLock()
 	key, d = attr.Expr.Value(hclContext)
-	global.EvalContextMutex.RUnlock()
+	conductor.Eval().Mutex().RUnlock()
 	diags = append(diags, d...)
 
 	e.def = key.AsString()
@@ -94,7 +95,7 @@ func (e *PromptProvider) Schema() *hcl.BodySchema {
 	}
 }
 
-func (e *PromptProvider) Attributes(ctx context.Context, id string, opts ...ProviderOption) (map[string]cty.Value, hcl.Diagnostics) {
+func (e *PromptProvider) Attributes(conductor conductor.Conductor, ctx context.Context, id string, opts ...ProviderOption) (map[string]cty.Value, hcl.Diagnostics) {
 	return map[string]cty.Value{
 		"prompt":  cty.StringVal(e.promptParsed),
 		"default": cty.StringVal(e.def),
@@ -109,7 +110,7 @@ func (e *PromptProvider) Logger() *logrus.Entry {
 	return global.Logger().WithField("provider", e.Name())
 }
 
-func (e *PromptProvider) Value(ctx context.Context, id string, opts ...ProviderOption) (string, hcl.Diagnostics) {
+func (e *PromptProvider) Value(conductor conductor.Conductor, ctx context.Context, id string, opts ...ProviderOption) (string, hcl.Diagnostics) {
 	var diags hcl.Diagnostics
 	if !e.initialized {
 		panic("provider not initialized")

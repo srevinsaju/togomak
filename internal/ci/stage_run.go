@@ -64,7 +64,7 @@ func (s *Stage) expandMacros(conductor *Conductor, opts ...runnable.Option) (*St
 		// this stage does not use a macro
 		return s, nil
 	}
-	hclContext := global.HclEvalContext()
+	hclContext := conductor.Eval().Context()
 
 	pipe := ctx.Value(c.TogomakContextPipeline).(*Pipeline)
 
@@ -88,9 +88,9 @@ func (s *Stage) expandMacros(conductor *Conductor, opts ...runnable.Option) (*St
 		}
 		macro = macroRunnable.(*Macro)
 	} else {
-		global.EvalContextMutex.RLock()
+		conductor.Eval().Mutex().RLock()
 		source, d := s.Use.Macro.Value(hclContext)
-		global.EvalContextMutex.RUnlock()
+		conductor.Eval().Mutex().RUnlock()
 
 		if d.HasErrors() {
 			return s, diags.Extend(d)
@@ -128,9 +128,9 @@ func (s *Stage) expandMacros(conductor *Conductor, opts ...runnable.Option) (*St
 	oldStageDependsOn := s.DependsOn
 
 	// chdir
-	global.EvalContextMutex.RLock()
+	conductor.Eval().Mutex().RLock()
 	chdirRaw, d := s.Use.Chdir.Value(hclContext)
-	global.EvalContextMutex.RUnlock()
+	conductor.Eval().Mutex().RUnlock()
 	if d.HasErrors() {
 		return s, diags.Extend(d)
 	}
@@ -152,9 +152,9 @@ func (s *Stage) expandMacros(conductor *Conductor, opts ...runnable.Option) (*St
 		}
 		parent := shellescape.Quote(s.Id)
 
-		global.EvalContextMutex.RLock()
+		conductor.Eval().Mutex().RLock()
 		stageDir, d := s.Dir.Value(hclContext)
-		global.EvalContextMutex.RUnlock()
+		conductor.Eval().Mutex().RUnlock()
 		if d.HasErrors() {
 			return s, diags.Extend(d)
 		}
@@ -218,9 +218,9 @@ func (s *Stage) expandMacros(conductor *Conductor, opts ...runnable.Option) (*St
 		s.dependsOnVariablesMacro = macro.Stage.DependsOn.Variables()
 
 	} else {
-		global.EvalContextMutex.RLock()
+		conductor.Eval().Mutex().RLock()
 		f, d := macro.Files.Value(hclContext)
-		global.EvalContextMutex.RUnlock()
+		conductor.Eval().Mutex().RUnlock()
 		if d.HasErrors() {
 			return s, diags.Extend(d)
 		}
@@ -339,7 +339,7 @@ func (s *Stage) Run(conductor *Conductor, options ...runnable.Option) (diags hcl
 
 	logger.Debugf("running %s", x.RenderBlock(blocks.StageBlock, s.Id))
 
-	evalCtx := global.HclEvalContext()
+	evalCtx := conductor.Eval().Context()
 
 	// expand stages using macros
 	logger.Debugf("expanding macros")
@@ -353,9 +353,9 @@ func (s *Stage) Run(conductor *Conductor, options ...runnable.Option) (diags hcl
 		return diags
 	}
 
-	global.EvalContextMutex.RLock()
+	conductor.Eval().Mutex().RLock()
 	forEachItems, d := s.ForEach.Value(evalCtx)
-	global.EvalContextMutex.RUnlock()
+	conductor.Eval().Mutex().RUnlock()
 
 	diags = diags.Extend(d)
 	if d.HasErrors() {
@@ -380,12 +380,23 @@ func (s *Stage) Run(conductor *Conductor, options ...runnable.Option) (diags hcl
 
 	var safeDg dg.SafeDiagnostics
 
+	var counter int
+	var key string
+	var keyCty cty.Value
 	forEachItems.ForEachElement(func(k cty.Value, v cty.Value) bool {
-		id := fmt.Sprintf("%s[\"%s\"]", s.Id, k.AsString())
+		if k.Type() == cty.String {
+			key = fmt.Sprintf("\"%s\"", k.AsString())
+			keyCty = k
+		} else {
+			key = fmt.Sprintf("%d", counter)
+			keyCty = cty.NumberIntVal(int64(counter))
+		}
+		counter++
+		id := fmt.Sprintf("%s[%s]", s.Id, key)
 		wg.Add(1)
 		stage := &Stage{Id: id, CoreStage: s.CoreStage, Lifecycle: s.Lifecycle}
 		go func(options ...runnable.Option) {
-			options = append(options, runnable.WithEach(k, v))
+			options = append(options, runnable.WithEach(keyCty, v))
 			d := stage.Run(conductor, options...)
 			safeDg.Extend(d)
 			wg.Done()
@@ -428,9 +439,9 @@ func (s *Stage) run(conductor *Conductor, evalCtx *hcl.EvalContext, options ...r
 	paramsGo := map[string]cty.Value{}
 
 	logger.Debugf("expanding global macro parameters")
-	global.EvalContextMutex.RLock()
+	conductor.Eval().Mutex().RLock()
 	oldParam, ok := evalCtx.Variables[blocks.ParamBlock]
-	global.EvalContextMutex.RUnlock()
+	conductor.Eval().Mutex().RUnlock()
 	if ok {
 		oldParamMap := oldParam.AsValueMap()
 		for k, v := range oldParamMap {
@@ -462,9 +473,9 @@ func (s *Stage) run(conductor *Conductor, evalCtx *hcl.EvalContext, options ...r
 
 	logger.Debugf("expanding macro parameters")
 	if s.Use != nil && s.Use.Parameters != nil {
-		global.EvalContextMutex.RLock()
+		conductor.Eval().Mutex().RLock()
 		parameters, d := s.Use.Parameters.Value(evalCtx)
-		global.EvalContextMutex.RUnlock()
+		conductor.Eval().Mutex().RUnlock()
 		diags = diags.Extend(d)
 		if !parameters.IsNull() {
 			for k, v := range parameters.AsValueMap() {
@@ -524,11 +535,11 @@ func (s *Stage) executeDocker(conductor *Conductor, evalCtx *hcl.EvalContext, cm
 	logger := conductor.Logger().WithField("stage", s.Id)
 	ctx := conductor.Context()
 
-	image, d := s.hclImage(evalCtx)
+	image, d := s.hclImage(conductor, evalCtx)
 	diags = diags.Extend(d)
 
 	// begin entrypoint evaluation
-	entrypoint, d := s.hclEndpoint(evalCtx)
+	entrypoint, d := s.hclEndpoint(conductor, evalCtx)
 	diags = diags.Extend(d)
 
 	if diags.HasErrors() {
@@ -576,14 +587,14 @@ func (s *Stage) executeDocker(conductor *Conductor, evalCtx *hcl.EvalContext, cm
 
 	logger.Trace("parsing container volumes")
 	for _, m := range s.Container.Volumes {
-		global.EvalContextMutex.RLock()
+		conductor.Eval().Mutex().RLock()
 		source, d := m.Source.Value(evalCtx)
-		global.EvalContextMutex.RUnlock()
+		conductor.Eval().Mutex().RUnlock()
 		diags = diags.Extend(d)
 
-		global.EvalContextMutex.RLock()
+		conductor.Eval().Mutex().RLock()
 		dest, d := m.Destination.Value(evalCtx)
-		global.EvalContextMutex.RUnlock()
+		conductor.Eval().Mutex().RUnlock()
 		diags = diags.Extend(d)
 		if diags.HasErrors() {
 			continue
@@ -606,7 +617,7 @@ func (s *Stage) executeDocker(conductor *Conductor, evalCtx *hcl.EvalContext, cm
 	}
 
 	logger.Trace("parsing container ports")
-	exposedPorts, bindings, d := s.Container.Ports.Nat(evalCtx)
+	exposedPorts, bindings, d := s.Container.Ports.Nat(conductor, evalCtx)
 	diags = diags.Extend(d)
 	if diags.HasErrors() {
 		return diags
@@ -721,9 +732,9 @@ func (s *Stage) parseEnvironmentVariables(conductor *Conductor, evalCtx *hcl.Eva
 	var environment map[string]cty.Value
 	environment = make(map[string]cty.Value)
 	for _, env := range s.Environment {
-		global.EvalContextMutex.RLock()
+		conductor.Eval().Mutex().RLock()
 		v, d := env.Value.Value(evalCtx)
-		global.EvalContextMutex.RUnlock()
+		conductor.Eval().Mutex().RUnlock()
 
 		diags = diags.Extend(d)
 		if v.IsNull() {
@@ -754,9 +765,9 @@ func (s *Stage) parseExecCommand(conductor *Conductor, evalCtx *hcl.EvalContext,
 	logger := conductor.Logger().WithField("stage", s.Id)
 
 	logger.Trace("evaluating script value")
-	global.EvalContextMutex.RLock()
+	conductor.Eval().Mutex().RLock()
 	script, d := s.Script.Value(evalCtx)
-	global.EvalContextMutex.RUnlock()
+	conductor.Eval().Mutex().RUnlock()
 
 	if d.HasErrors() && cfg.Behavior.DryRun {
 		script = cty.StringVal(ui.Italic(ui.Yellow("(will be evaluated later)")))
@@ -765,9 +776,9 @@ func (s *Stage) parseExecCommand(conductor *Conductor, evalCtx *hcl.EvalContext,
 	}
 
 	logger.Trace("evaluating shell value")
-	global.EvalContextMutex.RLock()
+	conductor.Eval().Mutex().RLock()
 	shellRaw, d := s.Shell.Value(evalCtx)
-	global.EvalContextMutex.RUnlock()
+	conductor.Eval().Mutex().RUnlock()
 
 	shell := ""
 	if d.HasErrors() {
@@ -781,9 +792,9 @@ func (s *Stage) parseExecCommand(conductor *Conductor, evalCtx *hcl.EvalContext,
 	}
 
 	logger.Trace("evaluating args value")
-	global.EvalContextMutex.RLock()
+	conductor.Eval().Mutex().RLock()
 	args, d := s.Args.Value(evalCtx)
-	global.EvalContextMutex.RUnlock()
+	conductor.Eval().Mutex().RUnlock()
 	diags = diags.Extend(d)
 
 	cmdHcl, d := s.parseCommand(evalCtx, shell, script, args)
@@ -794,9 +805,9 @@ func (s *Stage) parseExecCommand(conductor *Conductor, evalCtx *hcl.EvalContext,
 
 	dir := cfg.Paths.Cwd
 
-	global.EvalContextMutex.RLock()
+	conductor.Eval().Mutex().RLock()
 	dirParsed, d := s.Dir.Value(evalCtx)
-	global.EvalContextMutex.RUnlock()
+	conductor.Eval().Mutex().RUnlock()
 
 	if d.HasErrors() {
 		diags = diags.Extend(d)
@@ -914,10 +925,10 @@ func (s *Stage) executePreHooks(conductor *Conductor, status runnable.StatusType
 	return diags
 }
 
-func (s *Stage) hclImage(evalCtx *hcl.EvalContext) (image string, diags hcl.Diagnostics) {
-	global.EvalContextMutex.RLock()
+func (s *Stage) hclImage(conductor *Conductor, evalCtx *hcl.EvalContext) (image string, diags hcl.Diagnostics) {
+	conductor.Eval().Mutex().RLock()
 	imageRaw, d := s.Container.Image.Value(evalCtx)
-	global.EvalContextMutex.RUnlock()
+	conductor.Eval().Mutex().RUnlock()
 
 	if d.HasErrors() {
 		diags = diags.Extend(d)
@@ -935,12 +946,12 @@ func (s *Stage) hclImage(evalCtx *hcl.EvalContext) (image string, diags hcl.Diag
 	return image, diags
 }
 
-func (s *Stage) hclEndpoint(evalCtx *hcl.EvalContext) ([]string, hcl.Diagnostics) {
+func (s *Stage) hclEndpoint(conductor *Conductor, evalCtx *hcl.EvalContext) ([]string, hcl.Diagnostics) {
 	var diags hcl.Diagnostics
 
-	global.EvalContextMutex.RLock()
+	conductor.Eval().Mutex().RLock()
 	entrypointRaw, d := s.Container.Entrypoint.Value(evalCtx)
-	global.EvalContextMutex.RUnlock()
+	conductor.Eval().Mutex().RUnlock()
 
 	var entrypoint []string
 	if d.HasErrors() {
@@ -967,7 +978,7 @@ func (s *Stage) hclEndpoint(evalCtx *hcl.EvalContext) ([]string, hcl.Diagnostics
 func (s *Stage) CanRun(conductor *Conductor, options ...runnable.Option) (ok bool, diags hcl.Diagnostics) {
 	logger := conductor.Logger().WithField("stage", s.Id)
 	logger.Debugf("checking if stage.%s can run", s.Id)
-	evalCtx := global.HclEvalContext()
+	evalCtx := conductor.Eval().Context()
 
 	cfg := runnable.NewConfig(options...)
 
@@ -992,9 +1003,9 @@ func (s *Stage) CanRun(conductor *Conductor, options ...runnable.Option) (ok boo
 	}
 
 	if s.Use != nil && s.Use.Parameters != nil {
-		global.EvalContextMutex.RLock()
+		conductor.Eval().Mutex().RLock()
 		parameters, d := s.Use.Parameters.Value(evalCtx)
-		global.EvalContextMutex.RUnlock()
+		conductor.Eval().Mutex().RUnlock()
 
 		diags = diags.Extend(d)
 		if !parameters.IsNull() {
@@ -1004,9 +1015,9 @@ func (s *Stage) CanRun(conductor *Conductor, options ...runnable.Option) (ok boo
 		}
 	}
 
-	global.EvalContextMutex.RLock()
+	conductor.Eval().Mutex().RLock()
 	v, d := s.Condition.Value(evalCtx)
-	global.EvalContextMutex.RUnlock()
+	conductor.Eval().Mutex().RUnlock()
 	if d.HasErrors() {
 		return false, diags.Extend(d)
 	}

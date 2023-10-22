@@ -77,6 +77,13 @@ func Merge(pipelines MetaList) (*Pipeline, hcl.Diagnostics) {
 				Detail:   fmt.Sprintf("duplicate data block definition in %s", p.filename),
 			})
 		}
+		if pipe.Vars.CheckIfDistinct(p.pipe.Vars).HasErrors() {
+			return nil, diags.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "duplicate variable",
+				Detail:   fmt.Sprintf("duplicate variable definition in %s", p.filename),
+			})
+		}
 		if pipe.Local.CheckIfDistinct(p.pipe.Local).HasErrors() {
 			return nil, diags.Append(&hcl.Diagnostic{
 				Severity: hcl.DiagError,
@@ -130,6 +137,7 @@ func Merge(pipelines MetaList) (*Pipeline, hcl.Diagnostics) {
 		pipe.Local = append(pipe.Local, p.pipe.Local...)
 		pipe.Locals = append(pipe.Locals, p.pipe.Locals...)
 		pipe.Imports = append(pipe.Imports, p.pipe.Imports...)
+		pipe.Vars = append(pipe.Vars, p.pipe.Vars...)
 
 	}
 	pipe.Pre = pre

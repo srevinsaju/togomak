@@ -5,7 +5,6 @@ import (
 	"github.com/kendru/darwin/go/depgraph"
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/internal/blocks"
-	"github.com/srevinsaju/togomak/v1/internal/global"
 	"github.com/srevinsaju/togomak/v1/internal/rules"
 	"github.com/srevinsaju/togomak/v1/internal/runnable"
 	"time"
@@ -88,7 +87,7 @@ func BlockCanRun(runnable Block, conductor *Conductor, filterList rules.Operatio
 	runnable.Set(StageContextChildStatuses, filterList.Children(runnableId).Marshall())
 
 	if (runnable.Type() == blocks.StageBlock || runnable.Type() == blocks.ModuleBlock) && len(filterQuery) != 0 {
-		ok, overridden, d = filterQuery.Eval(ok, runnable.(PhasedBlock))
+		ok, overridden, d = filterQuery.Eval(conductor, ok, runnable.(PhasedBlock))
 		if d.HasErrors() {
 			diags = diags.Extend(d)
 			return false, false, diags
@@ -130,10 +129,10 @@ func BlockCanRun(runnable Block, conductor *Conductor, filterList rules.Operatio
 		if runnable.Type() == blocks.StageBlock || runnable.Type() == blocks.ModuleBlock {
 			stage := runnable.(PhasedBlock)
 			if stage.LifecycleConfig() != nil {
-				ectx := global.HclEvalContext()
-				global.EvalContextMutex.RLock()
-				phaseHcl, d := stage.LifecycleConfig().Phase.Value(ectx)
-				global.EvalContextMutex.RUnlock()
+				evalContext := conductor.Eval().Context()
+				conductor.Eval().Mutex().RLock()
+				phaseHcl, d := stage.LifecycleConfig().Phase.Value(evalContext)
+				conductor.Eval().Mutex().RUnlock()
 
 				if d.HasErrors() {
 					diags = diags.Extend(d)

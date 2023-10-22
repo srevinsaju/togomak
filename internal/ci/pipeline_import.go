@@ -1,19 +1,18 @@
 package ci
 
 import (
-	"context"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/srevinsaju/togomak/v1/internal/path"
 )
 
-func ExpandImports(ctx context.Context, pipe *Pipeline, parser *hclparse.Parser, paths *path.Path) (*Pipeline, hcl.Diagnostics) {
+func ExpandImports(conductor *Conductor, pipe *Pipeline, parser *hclparse.Parser, paths *path.Path) (*Pipeline, hcl.Diagnostics) {
 	var d hcl.Diagnostics
 	var diags hcl.Diagnostics
 
 	if len(pipe.Imports) != 0 {
 		pipe.Logger().Debugf("expanding imports")
-		d = pipe.Imports.PopulateProperties()
+		d = pipe.Imports.PopulateProperties(conductor)
 		diags = diags.Extend(d)
 		if d.HasErrors() {
 			return pipe, diags
@@ -21,7 +20,7 @@ func ExpandImports(ctx context.Context, pipe *Pipeline, parser *hclparse.Parser,
 
 		pipe.Logger().Debugf("populating properties for imports completed with %d error(s)", len(d.Errs()))
 
-		pipe, d = pipe.ExpandImports(ctx, parser, paths.Cwd)
+		pipe, d = pipe.ExpandImports(conductor, parser, paths.Cwd)
 		diags = diags.Extend(d)
 		pipe.Logger().Debugf("expanding imports completed with %d error(s)", len(d.Errs()))
 

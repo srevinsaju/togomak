@@ -31,4 +31,6 @@ type ConductorConfig struct {
 
 	// Behavior is the behavior of the program
 	Behavior *behavior.Behavior
+
+	Variables Variables
 }

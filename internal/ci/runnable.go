@@ -158,6 +158,10 @@ func Resolve(pipe *Pipeline, id string) (Block, hcl.Diagnostics) {
 		return local, diags
 	case LocalsBlock:
 		panic("locals block cannot be resolved")
+	case b.VarBlock, b.VariableBlock:
+		variable, d := pipe.Vars.ById(blocks[1])
+		diags = diags.Extend(d)
+		return variable, diags
 	case b.ModuleBlock:
 		module, d := pipe.Modules.ById(blocks[1])
 		diags = diags.Extend(d)
@@ -202,6 +206,11 @@ func ResolveFromTraversal(variable hcl.Traversal) (string, hcl.Diagnostics) {
 		// the module block has the name
 		name := variable[1].(hcl.TraverseAttr).Name
 		parent = x.RenderBlock(b.ModuleBlock, name)
+	case b.VarBlock, b.VariableBlock:
+		// the variable block has the name
+		name := variable[1].(hcl.TraverseAttr).Name
+		parent = x.RenderBlock(b.VarBlock, name)
+		parent = x.RenderBlock(b.VarBlock, name)
 	case b.ParamBlock, ThisBlock, BuilderBlock:
 		return "", nil
 	default:

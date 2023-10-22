@@ -17,7 +17,7 @@ func NewSlice(queries []string) (QueryEngines, hcl.Diagnostics) {
 	return engines, diags
 }
 
-func (e QueryEngines) Eval(ok bool, stage PhasedBlock) (bool, bool, hcl.Diagnostics) {
+func (e QueryEngines) Eval(conductor *Conductor, ok bool, stage PhasedBlock) (bool, bool, hcl.Diagnostics) {
 	var diags hcl.Diagnostics
 	var d hcl.Diagnostics
 
@@ -25,7 +25,7 @@ func (e QueryEngines) Eval(ok bool, stage PhasedBlock) (bool, bool, hcl.Diagnost
 	var resultOk bool
 
 	for _, engine := range e {
-		resultOk, overridden, d = engine.Eval(ok, stage)
+		resultOk, overridden, d = engine.Eval(conductor, ok, stage)
 		diags = diags.Extend(d)
 		if d.HasErrors() {
 			continue

@@ -144,6 +144,13 @@ func main() {
 			Aliases: []string{"q"},
 			Usage:   "filter the pipeline by a query",
 		},
+		&cli.StringSliceFlag{
+			Name: "var",
+			Usage: "set a variable in the pipeline. " + "The format is <key>=<value>. " +
+				"Multiple variables can be set by passing the flag multiple times. " +
+				"Variables set this way take precedence over variables set in the pipeline file.",
+			Aliases: []string{"variable"},
+		},
 	}
 	cli.VersionFlag = &cli.BoolFlag{
 		Name:    "version",
@@ -171,6 +178,7 @@ func initPipeline(ctx *cli.Context) error {
 }
 
 func newConfigFromCliContext(ctx *cli.Context) ci.ConductorConfig {
+	var diags hcl.Diagnostics
 	owd, err := os.Getwd()
 	if err != nil {
 		panic(err)
@@ -207,9 +215,18 @@ func newConfigFromCliContext(ctx *cli.Context) ci.ConductorConfig {
 		diagWriter.WriteDiagnostics(d)
 		os.Exit(1)
 	}
+	var variables []*ci.Variable
+	for _, v := range ctx.StringSlice("var") {
+		shell, d := ci.ParseVariableShell(v)
+		diags = diags.Extend(d)
+		variables = append(variables, shell)
+	}
+	if diags.HasErrors() {
+		diagWriter.WriteDiagnostics(diags)
+		os.Exit(1)
+	}
 
 	cfg := ci.ConductorConfig{
-
 		Behavior: &behavior.Behavior{
 			Unattended: ctx.Bool("unattended") || ctx.Bool("ci"),
 			Ci:         ctx.Bool("ci"),
@@ -236,6 +253,7 @@ func newConfigFromCliContext(ctx *cli.Context) ci.ConductorConfig {
 			Filtered:    filtered,
 			DryRun:      ctx.Bool("dry-run"),
 		},
+		Variables: variables,
 	}
 	return cfg
 }

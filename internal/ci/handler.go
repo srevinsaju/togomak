@@ -158,14 +158,19 @@ func NewHandler(opts ...HandlerOption) *Handler {
 		cancel:     cancel,
 	}
 
-	h.Update(opts...)
+	h = h.Update(opts...)
 	return h
 }
 
-func (h *Handler) Update(opts ...HandlerOption) {
+func (h *Handler) Update(opts ...HandlerOption) *Handler {
 	for _, opt := range opts {
 		opt(h)
 	}
+	return h
+}
+
+func (h *Handler) Ptr() *Handler {
+	return h
 }
 
 func (h *Handler) Kill() {

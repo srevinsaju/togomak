@@ -2,7 +2,6 @@ package ci
 
 import (
 	"github.com/hashicorp/hcl/v2"
-	"github.com/srevinsaju/togomak/v1/internal/global"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -34,10 +33,10 @@ func (i Imports) ById(id string) (*Import, hcl.Diagnostics) {
 	}
 }
 
-func (i Imports) PopulateProperties() hcl.Diagnostics {
+func (i Imports) PopulateProperties(conductor *Conductor) hcl.Diagnostics {
 	var diags hcl.Diagnostics
 	for _, imp := range i {
-		diags = diags.Extend(imp.populateProperties())
+		diags = diags.Extend(imp.populateProperties(conductor))
 	}
 	return diags
 }
@@ -69,9 +68,11 @@ func (m *Import) Get(k any) any {
 	return nil
 }
 
-func (m *Import) populateProperties() hcl.Diagnostics {
-	evalContext := global.HclEvalContext()
+func (m *Import) populateProperties(conductor *Conductor) hcl.Diagnostics {
+	evalContext := conductor.Eval().Context()
+	conductor.Eval().Mutex().RLock()
 	s, diags := m.Source.Value(evalContext)
+	conductor.Eval().Mutex().RUnlock()
 
 	if s.Type() != cty.String {
 		diags = diags.Append(&hcl.Diagnostic{

@@ -3,9 +3,8 @@ package global
 import "sync"
 
 var (
-	EvalContextMutex = sync.RWMutex{}
-
-	DataBlockEvalContextMutex  = sync.Mutex{}
-	MacroBlockEvalContextMutex = sync.Mutex{}
-	LocalBlockEvalContextMutex = sync.Mutex{}
+	DataBlockEvalContextMutex     = sync.Mutex{}
+	VariableBlockEvalContextMutex = sync.Mutex{}
+	MacroBlockEvalContextMutex    = sync.Mutex{}
+	LocalBlockEvalContextMutex    = sync.Mutex{}
 )

@@ -19,6 +19,8 @@ type Module struct {
 	Lifecycle *Lifecycle   `hcl:"lifecycle,block" json:"lifecycle"`
 	Retry     *StageRetry  `hcl:"retry,block" json:"retry"`
 	Daemon    *StageDaemon `hcl:"daemon,block" json:"daemon"`
+
+	Body hcl.Body `hcl:",remain" json:"body"`
 }
 
 type Modules []Module

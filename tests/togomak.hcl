@@ -43,6 +43,10 @@ stage "tests" {
     name  = "GOCOVERDIR"
     value = local.coverage_data_dir
   }
+  env {
+    name  = "TOGOMAK_VAR_name"
+    value = "bot"
+  }
 }
 
 
@@ -64,6 +68,11 @@ stage "tests_dry_run" {
   env {
     name  = "GOCOVERDIR"
     value = local.coverage_data_dir
+  }
+
+  env {
+    name  = "TOGOMAK_VAR_name"
+    value = "bot"
   }
 }
 
