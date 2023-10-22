@@ -5,16 +5,20 @@ import (
 )
 
 type Module struct {
-	Id        string         `hcl:"id,label" json:"id"`
+	Id   string `hcl:"id,label" json:"id"`
+	Name string `hcl:"name,optional" json:"name"`
+
 	DependsOn hcl.Expression `hcl:"depends_on,optional" json:"depends_on"`
 	Condition hcl.Expression `hcl:"if,optional" json:"if"`
+	ForEach   hcl.Expression `hcl:"for_each,optional" json:"for_each"`
 
 	Source hcl.Expression `hcl:"source" json:"source"`
 
 	pipeline *Pipeline
 
-	Retry  *StageRetry  `hcl:"retry,block" json:"retry"`
-	Daemon *StageDaemon `hcl:"daemon,block" json:"daemon"`
+	Lifecycle *Lifecycle   `hcl:"lifecycle,block" json:"lifecycle"`
+	Retry     *StageRetry  `hcl:"retry,block" json:"retry"`
+	Daemon    *StageDaemon `hcl:"daemon,block" json:"daemon"`
 }
 
 type Modules []Module

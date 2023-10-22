@@ -41,7 +41,7 @@ func New(comp string) (*QueryEngine, hcl.Diagnostics) {
 	}, diags
 }
 
-func (e *QueryEngine) Eval(ok bool, stage Stage) (bool, bool, hcl.Diagnostics) {
+func (e *QueryEngine) Eval(ok bool, stage PhasedBlock) (bool, bool, hcl.Diagnostics) {
 	var diags hcl.Diagnostics
 	var d hcl.Diagnostics
 	if e.empty {
@@ -52,20 +52,20 @@ func (e *QueryEngine) Eval(ok bool, stage Stage) (bool, bool, hcl.Diagnostics) {
 	ectx = ectx.NewChild()
 	ectx.Variables = map[string]cty.Value{}
 	ectx.Variables["if"] = cty.BoolVal(ok)
-	ectx.Variables["id"] = cty.StringVal(stage.Id)
-	ectx.Variables["name"] = cty.StringVal(stage.Name)
+	ectx.Variables["id"] = cty.StringVal(stage.Identifier())
+	ectx.Variables["name"] = cty.StringVal(stage.Description().Name)
 
 	lifecyclePhase := cty.ListVal([]cty.Value{cty.StringVal("default")})
 	lifecycleTimeout := cty.NumberIntVal(0)
-	if stage.Lifecycle != nil {
+	if stage.LifecycleConfig() != nil {
 		global.EvalContextMutex.RLock()
-		lifecyclePhase, d = stage.Lifecycle.Phase.Value(ectx)
+		lifecyclePhase, d = stage.LifecycleConfig().Phase.Value(ectx)
 		global.EvalContextMutex.RUnlock()
 
 		diags = diags.Extend(d)
 
 		global.EvalContextMutex.RLock()
-		lifecycleTimeout, d = stage.Lifecycle.Timeout.Value(ectx)
+		lifecycleTimeout, d = stage.LifecycleConfig().Timeout.Value(ectx)
 		global.EvalContextMutex.RUnlock()
 		diags = diags.Extend(d)
 	}

@@ -17,7 +17,7 @@ func NewSlice(queries []string) (QueryEngines, hcl.Diagnostics) {
 	return engines, diags
 }
 
-func (e QueryEngines) Eval(ok bool, stage Stage) (bool, bool, hcl.Diagnostics) {
+func (e QueryEngines) Eval(ok bool, stage PhasedBlock) (bool, bool, hcl.Diagnostics) {
 	var diags hcl.Diagnostics
 	var d hcl.Diagnostics
 

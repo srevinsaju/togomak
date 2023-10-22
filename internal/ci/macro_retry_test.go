@@ -14,7 +14,7 @@ func TestMacro_CanRetry(t *testing.T) {
 
 func TestMacro_Description(t *testing.T) {
 	macro := Macro{}
-	if macro.Description() != "" {
+	if macro.Description().Description != "" {
 		t.Error("Description() should return empty string")
 	}
 }

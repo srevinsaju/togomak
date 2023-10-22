@@ -362,39 +362,39 @@ func (s *Stage) Run(conductor *Conductor, options ...runnable.Option) (diags hcl
 		return diags
 	}
 
-	if !forEachItems.IsNull() {
-		if !forEachItems.CanIterateElements() {
-			diags = diags.Append(&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "invalid type for for_each",
-				Detail:   fmt.Sprintf("for_each must be a set or map of objects"),
-			})
-			return diags
-		}
-
-		var wg sync.WaitGroup
-
-		var safeDg dg.SafeDiagnostics
-
-		forEachItems.ForEachElement(func(k cty.Value, v cty.Value) bool {
-			id := fmt.Sprintf("%s[\"%s\"]", s.Id, k.AsString())
-			wg.Add(1)
-			stage := &Stage{Id: id, CoreStage: s.CoreStage, Lifecycle: s.Lifecycle}
-			go func(options ...runnable.Option) {
-				options = append(options, runnable.WithEach(k, v))
-				d := stage.Run(conductor, options...)
-				safeDg.Extend(d)
-				wg.Done()
-			}(options...)
-			return false
-		})
-		wg.Wait()
-		return safeDg.Diagnostics()
-	} else {
+	if forEachItems.IsNull() {
 		d = s.run(conductor, evalCtx, options...)
 		diags = diags.Extend(d)
 		return diags
 	}
+	if !forEachItems.CanIterateElements() {
+		diags = diags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  "invalid type for for_each",
+			Detail:   fmt.Sprintf("for_each must be a set or map of objects"),
+		})
+		return diags
+	}
+
+	var wg sync.WaitGroup
+
+	var safeDg dg.SafeDiagnostics
+
+	forEachItems.ForEachElement(func(k cty.Value, v cty.Value) bool {
+		id := fmt.Sprintf("%s[\"%s\"]", s.Id, k.AsString())
+		wg.Add(1)
+		stage := &Stage{Id: id, CoreStage: s.CoreStage, Lifecycle: s.Lifecycle}
+		go func(options ...runnable.Option) {
+			options = append(options, runnable.WithEach(k, v))
+			d := stage.Run(conductor, options...)
+			safeDg.Extend(d)
+			wg.Done()
+		}(options...)
+		return false
+	})
+	wg.Wait()
+	return safeDg.Diagnostics()
+
 }
 
 func (s *Stage) run(conductor *Conductor, evalCtx *hcl.EvalContext, options ...runnable.Option) (diags hcl.Diagnostics) {

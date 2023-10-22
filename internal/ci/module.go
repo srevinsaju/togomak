@@ -5,8 +5,11 @@ import (
 	"github.com/srevinsaju/togomak/v1/internal/blocks"
 )
 
-func (m *Module) Description() string {
-	return ""
+func (m *Module) Description() Description {
+	return Description{
+		Name:        m.Name,
+		Description: "",
+	}
 }
 
 func (m *Module) Identifier() string {

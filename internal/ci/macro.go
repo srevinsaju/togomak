@@ -5,8 +5,8 @@ import (
 	"github.com/srevinsaju/togomak/v1/internal/blocks"
 )
 
-func (m *Macro) Description() string {
-	return ""
+func (m *Macro) Description() Description {
+	return Description{Name: m.Id}
 }
 
 func (m *Macro) Identifier() string {

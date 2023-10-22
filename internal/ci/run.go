@@ -80,15 +80,15 @@ func BlockCanRun(runnable Block, conductor *Conductor, filterList rules.Operatio
 		return false, false, diags
 	}
 
-	if runnable.Type() != blocks.StageBlock {
+	if runnable.Type() != blocks.StageBlock && runnable.Type() != blocks.ModuleBlock {
 		// TODO: optimize, PipelineRun only required data blocks
 		return ok, false, diags
 	}
 
 	runnable.Set(StageContextChildStatuses, filterList.Children(runnableId).Marshall())
 
-	if runnable.Type() == blocks.StageBlock && len(filterQuery) != 0 {
-		ok, overridden, d = filterQuery.Eval(ok, *runnable.(*Stage))
+	if (runnable.Type() == blocks.StageBlock || runnable.Type() == blocks.ModuleBlock) && len(filterQuery) != 0 {
+		ok, overridden, d = filterQuery.Eval(ok, runnable.(PhasedBlock))
 		if d.HasErrors() {
 			diags = diags.Extend(d)
 			return false, false, diags
@@ -127,12 +127,12 @@ func BlockCanRun(runnable Block, conductor *Conductor, filterList rules.Operatio
 			ok = oldOk
 			overridden = true
 		}
-		if runnable.Type() == blocks.StageBlock {
-			stage := runnable.(*Stage)
-			if stage.Lifecycle != nil {
+		if runnable.Type() == blocks.StageBlock || runnable.Type() == blocks.ModuleBlock {
+			stage := runnable.(PhasedBlock)
+			if stage.LifecycleConfig() != nil {
 				ectx := global.HclEvalContext()
 				global.EvalContextMutex.RLock()
-				phaseHcl, d := stage.Lifecycle.Phase.Value(ectx)
+				phaseHcl, d := stage.LifecycleConfig().Phase.Value(ectx)
 				global.EvalContextMutex.RUnlock()
 
 				if d.HasErrors() {

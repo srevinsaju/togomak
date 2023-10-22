@@ -11,7 +11,7 @@ func TestLocal_CanRetry(t *testing.T) {
 
 func TestLocal_Description(t *testing.T) {
 	local := Local{}
-	if local.Description() != "" {
+	if local.Description().Description != "" {
 		t.Error("Description() should return empty string")
 	}
 }

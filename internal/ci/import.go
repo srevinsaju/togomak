@@ -8,8 +8,8 @@ import (
 
 const ImportBlock = "import"
 
-func (m *Import) Description() string {
-	return ""
+func (m *Import) Description() Description {
+	return Description{Name: m.id}
 }
 
 func (m *Import) Identifier() string {

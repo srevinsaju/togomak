@@ -30,8 +30,13 @@ type Retryable interface {
 	RetryExponentialBackoff() bool
 }
 
+type Description struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
 type Describable interface {
-	Description() string
+	Description() Description
 	Identifier() string
 	Type() string
 }
@@ -78,6 +83,12 @@ type Block interface {
 	Runnable
 	Killable
 	Daemon
+}
+
+type PhasedBlock interface {
+	Block
+	Describable
+	LifecycleConfig() *Lifecycle
 }
 
 type Blocks []Block

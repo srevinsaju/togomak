@@ -7,7 +7,7 @@ import (
 
 func TestLocals_Description(t *testing.T) {
 	locals := Locals{}
-	if locals.Description() != "" {
+	if locals.Description().Description != "" {
 		t.Error("Description() should return empty string")
 	}
 }

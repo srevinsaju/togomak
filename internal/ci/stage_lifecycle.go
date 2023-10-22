@@ -11,3 +11,7 @@ func (s *Stage) ExecutionOptions(ctx context.Context) (*DaemonLifecycleConfig, h
 	}
 	return nil, nil
 }
+
+func (s *Stage) LifecycleConfig() *Lifecycle {
+	return s.Lifecycle
+}

@@ -6,6 +6,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/srevinsaju/togomak/v1/internal/behavior"
 	"github.com/srevinsaju/togomak/v1/internal/blocks"
+	"github.com/srevinsaju/togomak/v1/internal/dg"
 	"github.com/srevinsaju/togomak/v1/internal/global"
 	"github.com/srevinsaju/togomak/v1/internal/meta"
 	"github.com/srevinsaju/togomak/v1/internal/path"
@@ -14,6 +15,7 @@ import (
 	"github.com/srevinsaju/togomak/v1/internal/x"
 	"github.com/zclconf/go-cty/cty"
 	"path/filepath"
+	"sync"
 )
 
 func (m *Module) Prepare(conductor *Conductor, skip bool, overridden bool) hcl.Diagnostics {
@@ -34,13 +36,9 @@ func (m *Module) Prepare(conductor *Conductor, skip bool, overridden bool) hcl.D
 }
 
 func (m *Module) Run(conductor *Conductor, options ...runnable.Option) (diags hcl.Diagnostics) {
-	//TODO implement me
-	logger := m.Logger()
-	logger.Debugf("running %s", x.RenderBlock(blocks.ModuleBlock, m.Id))
-	evalCtx := global.HclEvalContext()
-	evalCtx = evalCtx.NewChild()
-
 	cfg := runnable.NewConfig(options...)
+	evalCtx := conductor.EvalContext
+	evalCtx = evalCtx.NewChild()
 
 	evalCtx.Variables = map[string]cty.Value{
 		"this": cty.ObjectVal(map[string]cty.Value{
@@ -50,26 +48,98 @@ func (m *Module) Run(conductor *Conductor, options ...runnable.Option) (diags hc
 	}
 
 	global.EvalContextMutex.RLock()
-	v, d := m.Source.Value(evalCtx)
+	source, d := m.Source.Value(evalCtx)
 	global.EvalContextMutex.RUnlock()
 	if d.HasErrors() {
 		return diags.Extend(d)
 	}
-	if v.Type() != cty.String {
+	if source.Type() != cty.String {
 		return diags.Append(&hcl.Diagnostic{
 			Severity:    hcl.DiagError,
 			Summary:     "source must be a string",
-			Detail:      fmt.Sprintf("source must be a string, got %s", v.Type().FriendlyName()),
+			Detail:      fmt.Sprintf("source must be a string, got %s", source.Type().FriendlyName()),
 			Subject:     m.Source.Range().Ptr(),
 			EvalContext: evalCtx,
 		})
 	}
+	src := source.AsString()
+
+	if m.ForEach == nil {
+		d = m.run(conductor, src, evalCtx, options...)
+		diags = diags.Extend(d)
+		return diags
+	}
+
+	global.EvalContextMutex.RLock()
+	forEachItems, d := m.ForEach.Value(evalCtx)
+	global.EvalContextMutex.RUnlock()
+
+	diags = diags.Extend(d)
+	if d.HasErrors() {
+		return diags
+	}
+
+	if forEachItems.IsNull() {
+		d = m.run(conductor, src, evalCtx, options...)
+		diags = diags.Extend(d)
+		return diags
+	}
+
+	if !forEachItems.CanIterateElements() {
+		diags = diags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  "invalid type for for_each",
+			Detail:   fmt.Sprintf("for_each must be a set or map of objects"),
+		})
+		return diags
+	}
+
+	var wg sync.WaitGroup
+
+	var safeDg dg.SafeDiagnostics
+
+	forEachItems.ForEachElement(func(k cty.Value, v cty.Value) bool {
+		id := fmt.Sprintf("%s[\"%s\"]", m.Id, k.AsString())
+		wg.Add(1)
+		module := &Module{
+			Id:        id,
+			DependsOn: nil,
+			Condition: m.Condition,
+			ForEach:   nil,
+			Source:    m.Source,
+			pipeline:  m.pipeline,
+			Lifecycle: m.Lifecycle,
+			Retry:     m.Retry,
+			Daemon:    m.Daemon,
+		}
+		go func(options ...runnable.Option) {
+			options = append(options, runnable.WithEach(k, v))
+			d := module.Run(conductor, options...)
+			safeDg.Extend(d)
+			wg.Done()
+		}(options...)
+		return false
+	})
+	wg.Wait()
+	diags = diags.Extend(safeDg.Diagnostics())
+	return diags
+}
+
+func (m *Module) run(conductor *Conductor, source string, evalCtx *hcl.EvalContext, options ...runnable.Option) hcl.Diagnostics {
+	var diags hcl.Diagnostics
+	logger := conductor.Logger().WithField("module", m.Id)
+	cfg := runnable.NewConfig(options...)
+
+	evalCtx = evalCtx.NewChild()
+	evalCtx.Variables = map[string]cty.Value{}
+	if cfg.Each != nil {
+		evalCtx.Variables[EachBlock] = cty.ObjectVal(cfg.Each)
+	}
 
 	paths := cfg.Paths
-	src := v.AsString()
 	get := &getter.Client{
 		Ctx: conductor.Context(),
-		Src: src,
+		Src: source,
 		Dst: filepath.Join(global.TempDir(), "modules", m.Id),
 		Pwd: paths.Module,
 		Dir: true,
@@ -120,7 +190,8 @@ func (m *Module) Run(conductor *Conductor, options ...runnable.Option) (diags hc
 	//  safe diagnostics
 	_, sd := pipe.Run(childConductor)
 
-	return sd.Diagnostics()
+	diags = diags.Extend(sd.Diagnostics())
+	return diags
 }
 
 func (m *Module) CanRun(conductor *Conductor, options ...runnable.Option) (ok bool, diags hcl.Diagnostics) {
