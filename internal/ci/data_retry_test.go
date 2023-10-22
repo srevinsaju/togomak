@@ -11,7 +11,7 @@ func TestData_CanRetry(t *testing.T) {
 
 func TestData_Description(t *testing.T) {
 	data := Data{}
-	if data.Description() != "" {
+	if data.Description().Description != "" {
 		t.Error("Description() should return empty string")
 	}
 }

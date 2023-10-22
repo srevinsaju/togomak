@@ -12,7 +12,6 @@ func List(cfg ci.ConductorConfig) error {
 
 	conductor := ci.NewConductor(cfg)
 	logger := conductor.Logger()
-	ctx := conductor.Context()
 
 	dgwriter := hcl.NewDiagnosticTextWriter(os.Stdout, conductor.Parser.Files(), 0, true)
 	pipe, hclDiags := ci.Read(cfg.Paths, conductor.Parser)
@@ -20,7 +19,7 @@ func List(cfg ci.ConductorConfig) error {
 		logger.Fatal(dgwriter.WriteDiagnostics(hclDiags))
 	}
 
-	pipe, d := pipe.ExpandImports(ctx, conductor.Parser, conductor.Config.Paths.Cwd)
+	pipe, d := pipe.ExpandImports(conductor, conductor.Parser, conductor.Config.Paths.Cwd)
 	hclDiags = hclDiags.Extend(d)
 
 	for _, stage := range pipe.Stages {

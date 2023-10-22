@@ -8,8 +8,8 @@ import (
 const LocalsBlock = "locals"
 const LocalBlock = "local"
 
-func (l Locals) Description() string {
-	return ""
+func (l Locals) Description() Description {
+	return Description{}
 }
 
 func (l Locals) Identifier() string {
@@ -42,8 +42,8 @@ func (l Locals) Expand() ([]*Local, hcl.Diagnostics) {
 	return locals, diags
 }
 
-func (*Local) Description() string {
-	return ""
+func (l *Local) Description() Description {
+	return Description{Name: l.Key}
 }
 
 func (l *Local) Identifier() string {

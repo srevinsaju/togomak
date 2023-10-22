@@ -96,6 +96,27 @@ func GraphTopoSort(ctx context.Context, pipe *Pipeline) (*depgraph.Graph, hcl.Di
 		diags = diags.Extend(d)
 	}
 
+	for _, block := range pipe.Vars {
+		self := x.RenderBlock(blocks.VarBlock, block.Id)
+		err := g.DependOn(self, meta.RootStage)
+		// the addition of the root stage is to ensure that the var block is always executed
+		// before any stage
+		// this function should succeed always
+		if err != nil {
+			panic(err)
+		}
+
+		// all pre-stage blocks depend on the data block
+		err = g.DependOn(meta.PreStage, self)
+		if err != nil {
+			panic(err)
+		}
+
+		v := block.Variables()
+		d := GraphResolve(ctx, pipe, g, v, self)
+		diags = diags.Extend(d)
+	}
+
 	for _, stage := range pipe.Stages {
 		self := x.RenderBlock(blocks.StageBlock, stage.Id)
 		err := g.DependOn(self, meta.PreStage)

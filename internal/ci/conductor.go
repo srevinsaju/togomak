@@ -6,11 +6,13 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/sirupsen/logrus"
+	"github.com/srevinsaju/togomak/v1/internal/conductor"
 	"github.com/srevinsaju/togomak/v1/internal/global"
 	"github.com/srevinsaju/togomak/v1/internal/meta"
 	"github.com/srevinsaju/togomak/v1/internal/x"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 )
 
@@ -48,7 +50,7 @@ func ConductorWithDiagWriter(diagWriter hcl.DiagnosticWriter) ConductorOption {
 
 func ConductorWithEvalContext(evalContext *hcl.EvalContext) ConductorOption {
 	return func(c *Conductor) {
-		c.EvalContext = evalContext
+		c.eval.context = evalContext
 	}
 }
 
@@ -58,15 +60,41 @@ func ConductorWithProcess(process Process) ConductorOption {
 	}
 }
 
+func ConductorWithVariable(variable *Variable) ConductorOption {
+	return func(c *Conductor) {
+		c.variables = append(c.variables, variable)
+	}
+}
+
+func ConductorWithVariablesList(variables Variables) ConductorOption {
+	return func(c *Conductor) {
+		c.variables = variables
+	}
+}
+
+type Eval struct {
+	context *hcl.EvalContext
+	mu      *sync.RWMutex
+}
+
+func (e *Eval) Context() *hcl.EvalContext {
+	return e.context
+}
+
+func (e *Eval) Mutex() *sync.RWMutex {
+	return e.mu
+}
+
 type Conductor struct {
 	RootLogger logrus.Ext1FieldLogger
 	Config     ConductorConfig
-	ctx        context.Context
+
+	stdinMu sync.Mutex
+
+	ctx context.Context
 
 	// Process is the current process
 	Process Process
-
-	// hcl stuff
 
 	// Parser is the HCL parser
 	Parser *hclparse.Parser
@@ -75,10 +103,24 @@ type Conductor struct {
 	// to os.Stdout
 	DiagWriter hcl.DiagnosticWriter
 
-	// EvalContext is the HCL evaluation context
-	EvalContext *hcl.EvalContext
+	// Eval has the evaluation context and mutexes associated with Eval Variable maps
+	eval *Eval
 
 	parent *Conductor
+
+	variables Variables
+}
+
+func (c *Conductor) Eval() conductor.Eval {
+	return c.eval
+}
+
+func (c *Conductor) StdinLock() {
+	c.stdinMu.Lock()
+}
+
+func (c *Conductor) StdinUnlock() {
+	c.stdinMu.Unlock()
 }
 
 func (c *Conductor) Child(opts ...ConductorOption) *Conductor {
@@ -141,6 +183,10 @@ func NewProcess(cfg ConductorConfig) Process {
 	}
 }
 
+func (c *Conductor) Variables() Variables {
+	return c.variables
+}
+
 func Chdir(cfg ConductorConfig, logger *logrus.Logger) string {
 	cwd := cfg.Paths.Cwd
 	if cwd == "" {
@@ -181,14 +227,18 @@ func NewConductor(cfg ConductorConfig, opts ...ConductorOption) *Conductor {
 		Parser:     parser,
 		DiagWriter: diagWriter,
 		ctx:        context.Background(),
-
-		Process: process,
-
+		Process:    process,
 		RootLogger: logger,
 		Config:     cfg,
-
-		EvalContext: CreateEvalContext(cfg, process),
+		eval: &Eval{
+			context: CreateEvalContext(cfg, process),
+			mu:      &sync.RWMutex{},
+		},
 	}
+	for _, v := range cfg.Variables {
+		c.variables = append(c.variables, v)
+	}
+
 	for _, opt := range opts {
 		opt(c)
 	}

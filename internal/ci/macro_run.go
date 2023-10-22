@@ -20,15 +20,15 @@ func (m *Macro) Run(conductor *Conductor, options ...runnable.Option) (diags hcl
 	// _ := ctx.Value(TogomakContextHclDiagWriter).(hcl.DiagnosticWriter)
 	logger := m.Logger()
 	logger.Tracef("running %s.%s", blocks.MacroBlock, m.Id)
-	hclContext := global.HclEvalContext()
+	evalContext := conductor.Eval().Context()
 
 	// region: mutating the data map
 	// TODO: move it to a dedicated helper function
 
 	global.MacroBlockEvalContextMutex.Lock()
 
-	global.EvalContextMutex.RLock()
-	macro := hclContext.Variables[blocks.MacroBlock]
+	conductor.Eval().Mutex().RLock()
+	macro := evalContext.Variables[blocks.MacroBlock]
 
 	var macroMutated map[string]cty.Value
 	if macro.IsNull() {
@@ -37,8 +37,8 @@ func (m *Macro) Run(conductor *Conductor, options ...runnable.Option) (diags hcl
 		macroMutated = macro.AsValueMap()
 	}
 	// -> update r.Value accordingly
-	f, d := m.Files.Value(hclContext)
-	global.EvalContextMutex.RUnlock()
+	f, d := m.Files.Value(evalContext)
+	conductor.Eval().Mutex().RUnlock()
 
 	if d != nil {
 		diags = diags.Extend(d)
@@ -47,9 +47,9 @@ func (m *Macro) Run(conductor *Conductor, options ...runnable.Option) (diags hcl
 		"files": f,
 	})
 
-	global.EvalContextMutex.Lock()
-	hclContext.Variables[blocks.MacroBlock] = cty.ObjectVal(macroMutated)
-	global.EvalContextMutex.Unlock()
+	conductor.Eval().Mutex().Lock()
+	evalContext.Variables[blocks.MacroBlock] = cty.ObjectVal(macroMutated)
+	conductor.Eval().Mutex().Unlock()
 
 	global.MacroBlockEvalContextMutex.Unlock()
 	// endregion

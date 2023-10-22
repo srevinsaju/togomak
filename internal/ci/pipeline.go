@@ -13,6 +13,7 @@ type Pipeline struct {
 
 	Stages  Stages      `hcl:"stage,block" json:"stages"`
 	Data    Datas       `hcl:"data,block" json:"data"`
+	Vars    Variables   `hcl:"variable,block" json:"variables"`
 	Macros  Macros      `hcl:"macro,block" json:"macro"`
 	Locals  LocalsGroup `hcl:"locals,block" json:"locals"`
 	Imports Imports     `hcl:"import,block" json:"import"`

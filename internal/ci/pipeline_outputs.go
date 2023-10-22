@@ -3,7 +3,6 @@ package ci
 import (
 	"github.com/hashicorp/go-envparse"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/srevinsaju/togomak/v1/internal/global"
 	"github.com/srevinsaju/togomak/v1/internal/meta"
 	"github.com/srevinsaju/togomak/v1/internal/x"
 	"github.com/zclconf/go-cty/cty"
@@ -32,9 +31,9 @@ func ExpandOutputs(conductor *Conductor) hcl.Diagnostics {
 		for k, v := range e {
 			ee[k] = cty.StringVal(v)
 		}
-		global.EvalContextMutex.Lock()
-		conductor.EvalContext.Variables[OutputBlock] = cty.ObjectVal(ee)
-		global.EvalContextMutex.Unlock()
+		conductor.Eval().Mutex().Lock()
+		conductor.Eval().Context().Variables[OutputBlock] = cty.ObjectVal(ee)
+		conductor.Eval().Mutex().Unlock()
 	} else {
 		logger.Warnf("could not open %s file, ignoring... :%s", meta.OutputEnvVar, err)
 	}

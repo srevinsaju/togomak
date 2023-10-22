@@ -9,3 +9,6 @@ const ModuleBlock = "module"
 const MacroBlock = "macro"
 
 const ParamBlock = "param"
+
+const VariableBlock = "variable"
+const VarBlock = "var"

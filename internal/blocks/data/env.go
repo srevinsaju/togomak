@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/srevinsaju/togomak/v1/internal/global"
+	"github.com/srevinsaju/togomak/v1/internal/conductor"
 	"github.com/zclconf/go-cty/cty"
 	"os"
 )
@@ -50,7 +50,7 @@ func (e *EnvProvider) New() Provider {
 	}
 }
 
-func (e *EnvProvider) Attributes(ctx context.Context, id string, opts ...ProviderOption) (map[string]cty.Value, hcl.Diagnostics) {
+func (e *EnvProvider) Attributes(conductor conductor.Conductor, ctx context.Context, id string, opts ...ProviderOption) (map[string]cty.Value, hcl.Diagnostics) {
 	return map[string]cty.Value{
 		EnvProviderAttrKey:     cty.StringVal(e.keyParsed),
 		EnvProviderAttrDefault: cty.StringVal(e.def),
@@ -78,12 +78,12 @@ func (e *EnvProvider) Schema() *hcl.BodySchema {
 
 }
 
-func (e *EnvProvider) DecodeBody(body hcl.Body, opts ...ProviderOption) hcl.Diagnostics {
+func (e *EnvProvider) DecodeBody(conductor conductor.Conductor, body hcl.Body, opts ...ProviderOption) hcl.Diagnostics {
 	if !e.initialized {
 		panic("provider not initialized")
 	}
 	var diags hcl.Diagnostics
-	hclContext := global.HclEvalContext()
+	hclContext := conductor.Eval().Context()
 
 	schema := e.Schema()
 	content, d := body.Content(schema)
@@ -92,9 +92,9 @@ func (e *EnvProvider) DecodeBody(body hcl.Body, opts ...ProviderOption) hcl.Diag
 	attr := content.Attributes["key"]
 	var key cty.Value
 
-	global.EvalContextMutex.RLock()
+	conductor.Eval().Mutex().RLock()
 	key, d = attr.Expr.Value(hclContext)
-	global.EvalContextMutex.RUnlock()
+	conductor.Eval().Mutex().RUnlock()
 	diags = diags.Extend(d)
 
 	e.keyParsed = key.AsString()
@@ -106,9 +106,9 @@ func (e *EnvProvider) DecodeBody(body hcl.Body, opts ...ProviderOption) hcl.Diag
 		return diags
 	}
 
-	global.EvalContextMutex.RLock()
+	conductor.Eval().Mutex().RLock()
 	key, d = attr.Expr.Value(hclContext)
-	global.EvalContextMutex.RUnlock()
+	conductor.Eval().Mutex().RUnlock()
 	diags = diags.Extend(d)
 
 	e.def = key.AsString()
@@ -118,7 +118,7 @@ func (e *EnvProvider) DecodeBody(body hcl.Body, opts ...ProviderOption) hcl.Diag
 
 }
 
-func (e *EnvProvider) Value(ctx context.Context, id string, opts ...ProviderOption) (string, hcl.Diagnostics) {
+func (e *EnvProvider) Value(conductor conductor.Conductor, ctx context.Context, id string, opts ...ProviderOption) (string, hcl.Diagnostics) {
 	if !e.initialized {
 		panic("provider not initialized")
 	}

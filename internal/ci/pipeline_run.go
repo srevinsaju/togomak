@@ -33,7 +33,7 @@ func (pipe *Pipeline) Run(conductor *Conductor) (*Handler, dg.AbstractDiagnostic
 	defer h.WriteDiagnostics()
 
 	// --> expand imports
-	pipe, d = ExpandImports(ctx, pipe, conductor.Parser, conductor.Config.Paths)
+	pipe, d = ExpandImports(conductor, pipe, conductor.Parser, conductor.Config.Paths)
 	h.Diags.Extend(d)
 	if h.Diags.HasErrors() {
 		return h, h.Diags
@@ -50,7 +50,7 @@ func (pipe *Pipeline) Run(conductor *Conductor) (*Handler, dg.AbstractDiagnostic
 
 	// store the pipe in the context
 	ctx = context.WithValue(ctx, c.TogomakContextPipeline, pipe)
-	h.Update(WithContext(ctx))
+	h = h.Update(WithContext(ctx))
 	conductor.Update(ConductorWithContext(ctx))
 
 	// --> validate the pipeline

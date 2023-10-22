@@ -6,8 +6,8 @@ import (
 
 const DataBlock = "data"
 
-func (s *Data) Description() string {
-	return ""
+func (s *Data) Description() Description {
+	return Description{Name: s.Name}
 }
 
 func (s *Data) Identifier() string {

@@ -1,7 +1,6 @@
 package ci
 
 import (
-	"context"
 	"crypto/sha256"
 	"fmt"
 	"github.com/hashicorp/go-getter"
@@ -12,7 +11,7 @@ import (
 	"path/filepath"
 )
 
-func (m *Import) Expand(ctx context.Context, parser *hclparse.Parser, pwd string, dst string) (*Pipeline, hcl.Diagnostics) {
+func (m *Import) Expand(conductor *Conductor, parser *hclparse.Parser, pwd string, dst string) (*Pipeline, hcl.Diagnostics) {
 	logger := global.Logger().WithField("import", "")
 	var diags hcl.Diagnostics
 	shaIdentifier := sha256.Sum256([]byte(m.Identifier()))
@@ -23,7 +22,7 @@ func (m *Import) Expand(ctx context.Context, parser *hclparse.Parser, pwd string
 
 	// fmt.Println(pwd, dst, m.Source, fmt.Sprintf("%x", shaIdentifier))
 	get := getter.Client{
-		Ctx: ctx,
+		Ctx: conductor.Context(),
 		Src: m.Identifier(),
 		Dir: true,
 		Pwd: pwd,
@@ -47,11 +46,11 @@ func (m *Import) Expand(ctx context.Context, parser *hclparse.Parser, pwd string
 		return nil, diags
 	}
 	if p.Imports != nil {
-		d := p.Imports.PopulateProperties()
+		d := p.Imports.PopulateProperties(conductor)
 		if d.HasErrors() {
 			return nil, d
 		}
-		p, d = p.ExpandImports(ctx, parser, clientImportPath)
+		p, d = p.ExpandImports(conductor, parser, clientImportPath)
 		diags = diags.Extend(d)
 	}
 	return p, diags

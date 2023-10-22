@@ -9,13 +9,15 @@ import (
 
 const StageContextChildStatuses = "child_statuses"
 
-func (s *Stage) Description() string {
-	// TODO: implement
-	return ""
+func (s *Stage) Description() Description {
+	return Description{
+		Name:        s.Name,
+		Description: "",
+	}
 }
 
 func (s *Stage) Identifier() string {
-	return fmt.Sprintf("%s.%s", blocks.StageBlock, s.Id)
+	return s.Id
 }
 
 func (s *Stage) Set(k any, v any) {

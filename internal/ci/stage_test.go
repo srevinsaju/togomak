@@ -7,7 +7,7 @@ import (
 
 func TestStage_Description(t *testing.T) {
 	stage := Stage{}
-	assert.Equal(t, stage.Description(), "")
+	assert.Equal(t, stage.Description().Description, "")
 }
 
 func TestStage_Set(t *testing.T) {
