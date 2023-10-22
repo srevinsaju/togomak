@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 - Add support for `modules`
 - Add JSON logger
+- Add `for_each` to modules
+- Add `variable` block
 
 ## [v2.0.0-alpha.4]
 - Add support for `for_each` meta argument
