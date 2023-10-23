@@ -9,7 +9,7 @@ import (
 
 func (l *Local) Run(conductor *Conductor, options ...runnable.Option) (diags hcl.Diagnostics) {
 
-	logger := l.Logger()
+	logger := conductor.Logger().WithField("local", l.Key)
 	logger.Debugf("running %s.%s", LocalBlock, l.Key)
 	evalContext := conductor.Eval().Context()
 

@@ -18,7 +18,7 @@ func (m *Macro) Prepare(conductor *Conductor, skip bool, overridden bool) hcl.Di
 
 func (m *Macro) Run(conductor *Conductor, options ...runnable.Option) (diags hcl.Diagnostics) {
 	// _ := ctx.Value(TogomakContextHclDiagWriter).(hcl.DiagnosticWriter)
-	logger := m.Logger()
+	logger := conductor.Logger().WithField("macro", m.Id)
 	logger.Tracef("running %s.%s", blocks.MacroBlock, m.Id)
 	evalContext := conductor.Eval().Context()
 

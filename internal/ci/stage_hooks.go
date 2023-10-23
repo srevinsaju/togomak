@@ -7,8 +7,9 @@ import (
 )
 
 func (s *Stage) BeforeRun(conductor *Conductor, opts ...runnable.Option) hcl.Diagnostics {
+	logger := conductor.Logger().WithField("stage", s.Id)
 	if s.PreHook == nil {
-		s.Logger().Debug("no pre-hook defined")
+		logger.Debug("no pre-hook defined")
 		return nil
 	}
 	var diags hcl.Diagnostics
@@ -22,8 +23,9 @@ func (s *Stage) BeforeRun(conductor *Conductor, opts ...runnable.Option) hcl.Dia
 }
 
 func (s *Stage) AfterRun(conductor *Conductor, opts ...runnable.Option) hcl.Diagnostics {
+	logger := conductor.Logger().WithField("stage", s.Id)
 	if s.PostHook == nil {
-		s.Logger().Debug("no post-hook defined")
+		logger.Debug("no post-hook defined")
 		return nil
 	}
 	var diags hcl.Diagnostics

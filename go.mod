@@ -139,3 +139,5 @@ require (
 replace github.com/sirupsen/logrus v1.9.0 => github.com/srevinsaju/logrus v1.10.4-0.20231021232453-c286e2e09f97
 
 replace github.com/sirupsen/logrus v1.9.2 => github.com/srevinsaju/logrus v1.10.4-0.20231021232453-c286e2e09f97
+
+replace github.com/hashicorp/go-getter => github.com/srevinsaju/go-getter v0.0.0-20231023111034-c5f284a1f9c8

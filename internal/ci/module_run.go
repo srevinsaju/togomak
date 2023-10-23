@@ -7,7 +7,6 @@ import (
 	"github.com/srevinsaju/togomak/v1/internal/behavior"
 	"github.com/srevinsaju/togomak/v1/internal/blocks"
 	"github.com/srevinsaju/togomak/v1/internal/dg"
-	"github.com/srevinsaju/togomak/v1/internal/global"
 	"github.com/srevinsaju/togomak/v1/internal/meta"
 	"github.com/srevinsaju/togomak/v1/internal/path"
 	"github.com/srevinsaju/togomak/v1/internal/runnable"
@@ -146,7 +145,7 @@ func (m *Module) run(conductor *Conductor, source string, evalCtx *hcl.EvalConte
 	get := &getter.Client{
 		Ctx: conductor.Context(),
 		Src: source,
-		Dst: filepath.Join(global.TempDir(), "modules", m.Id),
+		Dst: filepath.Join(conductor.TempDir(), "modules", m.Id),
 		Pwd: paths.Module,
 		Dir: true,
 	}
@@ -195,9 +194,20 @@ func (m *Module) run(conductor *Conductor, source string, evalCtx *hcl.EvalConte
 	attrs, d := m.Body.JustAttributes()
 	diags = diags.Extend(d)
 	for _, attr := range attrs {
+		//we need to evaluate the values first within the parent's evaluation context
+		//before sending it to the child goroutine and child conductor
+		//because the child evaluation context is independent of the parent's, and it is
+		//possible that the particular value may not exist in child.
+		var expr hcl.Expression
+		v, d := attr.Expr.Value(evalCtx)
+		if d.HasErrors() {
+			expr = attr.Expr
+		} else {
+			expr = hcl.StaticExpr(v, attr.Expr.Range())
+		}
 		variable := &Variable{
 			Id:    attr.Name,
-			Value: attr.Expr,
+			Value: expr,
 		}
 		conductorOptions = append(conductorOptions, ConductorWithVariable(variable))
 	}
@@ -208,7 +218,7 @@ func (m *Module) run(conductor *Conductor, source string, evalCtx *hcl.EvalConte
 	childConductor.Update(conductorOptions...)
 
 	// parse the config file
-	pipe, hclDiags := Read(childConductor.Config.Paths, childConductor.Parser)
+	pipe, hclDiags := Read(childConductor)
 	if hclDiags.HasErrors() {
 		logger.Fatal(childConductor.DiagWriter.WriteDiagnostics(hclDiags))
 	}
@@ -229,7 +239,7 @@ func (m *Module) run(conductor *Conductor, source string, evalCtx *hcl.EvalConte
 }
 
 func (m *Module) CanRun(conductor *Conductor, options ...runnable.Option) (ok bool, diags hcl.Diagnostics) {
-	logger := m.Logger()
+	logger := conductor.Logger().WithField("module", m.Id)
 	logger.Debugf("checking if %s can run", x.RenderBlock(blocks.ModuleBlock, m.Id))
 	evalCtx := conductor.Eval().Context()
 	evalCtx = evalCtx.NewChild()

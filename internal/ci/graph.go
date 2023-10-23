@@ -5,7 +5,6 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/kendru/darwin/go/depgraph"
 	"github.com/srevinsaju/togomak/v1/internal/blocks"
-	"github.com/srevinsaju/togomak/v1/internal/global"
 	"github.com/srevinsaju/togomak/v1/internal/meta"
 	"github.com/srevinsaju/togomak/v1/internal/x"
 )
@@ -41,10 +40,11 @@ func GraphResolve(ctx context.Context, pipe *Pipeline, g *depgraph.Graph, v []hc
 	}
 	return diags
 }
-func GraphTopoSort(ctx context.Context, pipe *Pipeline) (*depgraph.Graph, hcl.Diagnostics) {
+func GraphTopoSort(conductor *Conductor, pipe *Pipeline) (*depgraph.Graph, hcl.Diagnostics) {
 	g := depgraph.New()
 	var diags hcl.Diagnostics
-	logger := global.Logger().WithField("orchestra", "graph")
+	ctx := conductor.Context()
+	logger := conductor.Logger().WithField("orchestra", "graph")
 
 	x.Must(g.DependOn(meta.PreStage, meta.RootStage))
 	x.Must(g.DependOn(meta.PostStage, meta.PreStage))

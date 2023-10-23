@@ -113,7 +113,7 @@ func TestCanRun(t *testing.T) {
 		},
 	}
 
-	depGraph, d := GraphTopoSort(conductor.Context(), pipe)
+	depGraph, d := GraphTopoSort(conductor, pipe)
 	depGraph.DependOn(stage1.Identifier(), stage3.Identifier())
 	if d.HasErrors() {
 		t.Errorf("error while sorting: %s", d.Error())

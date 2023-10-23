@@ -18,7 +18,7 @@ func (s *Data) Prepare(conductor *Conductor, skip bool, overridden bool) hcl.Dia
 }
 
 func (s *Data) Run(conductor *Conductor, options ...runnable.Option) (diags hcl.Diagnostics) {
-	logger := s.Logger()
+	logger := conductor.Logger().WithField("data", s.Id)
 	logger.Debugf("running %s.%s.%s", DataBlock, s.Provider, s.Id)
 	hclContext := conductor.Eval().Context()
 	ctx := conductor.Context()

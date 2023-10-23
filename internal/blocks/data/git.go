@@ -6,9 +6,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/internal/conductor"
-	"github.com/srevinsaju/togomak/v1/internal/global"
 	"github.com/srevinsaju/togomak/v1/internal/ui"
 	"github.com/zclconf/go-cty/cty"
 	"net/url"
@@ -67,10 +65,6 @@ type GitProvider struct {
 
 	ctx context.Context
 	cfg gitProviderConfig
-}
-
-func (e *GitProvider) Logger() *logrus.Entry {
-	return global.Logger().WithField("provider", e.Name())
 }
 
 func (e *GitProvider) Name() string {
@@ -318,7 +312,7 @@ func (e *GitProvider) Value(conductor conductor.Conductor, ctx context.Context, 
 }
 
 func (e *GitProvider) Attributes(conductor conductor.Conductor, ctx context.Context, id string, opts ...ProviderOption) (map[string]cty.Value, hcl.Diagnostics) {
-	logger := e.Logger()
+	logger := conductor.Logger().WithField("data", e.Name())
 	var diags hcl.Diagnostics
 	if !e.initialized {
 		panic("provider not initialized")
@@ -348,7 +342,7 @@ func (e *GitProvider) Attributes(conductor conductor.Conductor, ctx context.Cont
 	}
 	// TODO: implement git submodules
 
-	destination, d := e.resolveDestination(ctx, id)
+	destination, d := e.resolveDestination(conductor, ctx, id)
 	diags = diags.Extend(d)
 	if diags.HasErrors() {
 		return nil, diags
@@ -514,9 +508,9 @@ func (e *GitProvider) Attributes(conductor conductor.Conductor, ctx context.Cont
 	return attrs, diags
 }
 
-func (e *GitProvider) resolveDestination(ctx context.Context, id string) (string, hcl.Diagnostics) {
-	logger := e.Logger()
-	tmpDir := global.TempDir()
+func (e *GitProvider) resolveDestination(conductor conductor.Conductor, ctx context.Context, id string) (string, hcl.Diagnostics) {
+	logger := conductor.Logger().WithField("data", e.Name())
+	tmpDir := conductor.TempDir()
 
 	var diags hcl.Diagnostics
 	destination := e.cfg.destination

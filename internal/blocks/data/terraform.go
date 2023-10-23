@@ -7,9 +7,7 @@ import (
 	"github.com/hashicorp/go-getter"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/terraform-exec/tfexec"
-	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/internal/conductor"
-	"github.com/srevinsaju/togomak/v1/internal/global"
 	"github.com/srevinsaju/togomak/v1/internal/ui"
 	"github.com/srevinsaju/togomak/v1/internal/x"
 	"github.com/zclconf/go-cty/cty"
@@ -38,10 +36,6 @@ type TfProvider struct {
 
 	ctx context.Context
 	cfg TfProviderConfig
-}
-
-func (e *TfProvider) Logger() *logrus.Entry {
-	return global.Logger().WithField("provider", e.Name())
 }
 
 func (e *TfProvider) Name() string {
@@ -149,8 +143,8 @@ func (e *TfProvider) Value(conductor conductor.Conductor, ctx context.Context, i
 }
 
 func (e *TfProvider) Attributes(conductor conductor.Conductor, ctx context.Context, id string, opts ...ProviderOption) (map[string]cty.Value, hcl.Diagnostics) {
-	logger := e.Logger()
-	tmpDir := global.TempDir()
+	logger := conductor.Logger().WithField("data", e.Name())
+	tmpDir := conductor.TempDir()
 	cfg := NewProviderConfig(opts...)
 
 	var diags hcl.Diagnostics

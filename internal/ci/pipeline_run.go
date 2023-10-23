@@ -33,7 +33,7 @@ func (pipe *Pipeline) Run(conductor *Conductor) (*Handler, dg.AbstractDiagnostic
 	defer h.WriteDiagnostics()
 
 	// --> expand imports
-	pipe, d = ExpandImports(conductor, pipe, conductor.Parser, conductor.Config.Paths)
+	pipe, d = ExpandImports(conductor, pipe, conductor.Config.Paths)
 	h.Diags.Extend(d)
 	if h.Diags.HasErrors() {
 		return h, h.Diags
@@ -63,7 +63,7 @@ func (pipe *Pipeline) Run(conductor *Conductor) (*Handler, dg.AbstractDiagnostic
 	// we will now generate a dependency graph from the pipeline
 	// this will be used to generate the pipeline
 	logger.Debugf("generating dependency graph")
-	depGraph, d := GraphTopoSort(ctx, pipe)
+	depGraph, d := GraphTopoSort(conductor, pipe)
 	h.Diags.Extend(d)
 	if h.Diags.HasErrors() {
 		return h, h.Diags

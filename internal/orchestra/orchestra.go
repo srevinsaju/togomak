@@ -42,7 +42,7 @@ func Perform(conductor *ci.Conductor) int {
 	ExpandGlobalParams(conductor)
 
 	// parse the config file
-	pipe, hclDiags := ci.Read(conductor.Config.Paths, conductor.Parser)
+	pipe, hclDiags := ci.Read(conductor)
 	if hclDiags.HasErrors() {
 		logger.Fatal(conductor.DiagWriter.WriteDiagnostics(hclDiags))
 	}

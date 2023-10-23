@@ -19,7 +19,6 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/internal/c"
-	"github.com/srevinsaju/togomak/v1/internal/global"
 	"github.com/srevinsaju/togomak/v1/internal/meta"
 	"github.com/srevinsaju/togomak/v1/internal/runnable"
 	"github.com/srevinsaju/togomak/v1/internal/ui"
@@ -68,7 +67,7 @@ func (s *Stage) expandMacros(conductor *Conductor, opts ...runnable.Option) (*St
 
 	pipe := ctx.Value(c.TogomakContextPipeline).(*Pipeline)
 
-	tmpDir := global.TempDir()
+	tmpDir := conductor.TempDir()
 
 	logger.Debugf("running %s.%s", s.Identifier(), blocks.MacroBlock)
 
@@ -411,7 +410,7 @@ func (s *Stage) Run(conductor *Conductor, options ...runnable.Option) (diags hcl
 func (s *Stage) run(conductor *Conductor, evalCtx *hcl.EvalContext, options ...runnable.Option) (diags hcl.Diagnostics) {
 	var err error
 	logger := conductor.Logger().WithField("stage", s.Id)
-	tmpDir := global.TempDir()
+	tmpDir := conductor.TempDir()
 	status := runnable.StatusRunning
 	cfg := runnable.NewConfig(options...)
 
