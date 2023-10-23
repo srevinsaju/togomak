@@ -8,6 +8,7 @@ import (
 	"github.com/srevinsaju/togomak/v1/internal/cache"
 	"github.com/srevinsaju/togomak/v1/internal/ci"
 	"github.com/srevinsaju/togomak/v1/internal/filter"
+	"github.com/srevinsaju/togomak/v1/internal/global"
 	"github.com/srevinsaju/togomak/v1/internal/meta"
 	"github.com/srevinsaju/togomak/v1/internal/orchestra"
 	"github.com/srevinsaju/togomak/v1/internal/path"
@@ -260,6 +261,8 @@ func newConfigFromCliContext(ctx *cli.Context) ci.ConductorConfig {
 
 func run(ctx *cli.Context) error {
 	cfg := newConfigFromCliContext(ctx)
+	logger := ci.NewLogger(cfg)
+	global.SetLogger(logger)
 
 	t := ci.NewConductor(cfg)
 	v := orchestra.Perform(t)

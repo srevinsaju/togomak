@@ -6,7 +6,6 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/internal/dg"
-	"github.com/srevinsaju/togomak/v1/internal/global"
 	"github.com/srevinsaju/togomak/v1/internal/ui"
 	"github.com/srevinsaju/togomak/v1/internal/x"
 	"os"
@@ -90,17 +89,28 @@ type Handler struct {
 	Process *HandlerProcess
 
 	diagWriter hcl.DiagnosticWriter
+	ctxMu      sync.RWMutex
 	ctx        context.Context
 	cancel     context.CancelFunc
+}
+
+func (h *Handler) Context() context.Context {
+	h.ctxMu.RLock()
+	defer h.ctxMu.RUnlock()
+	return h.ctx
 }
 
 type HandlerOption func(*Handler)
 
 func WithContext(ctx context.Context) HandlerOption {
 	return func(h *Handler) {
+		h.ctxMu.RLock()
 		ctx, cancel := context.WithCancel(ctx)
+		h.ctxMu.RUnlock()
+		h.ctxMu.Lock()
 		h.ctx = ctx
 		h.cancel = cancel
+		h.ctxMu.Unlock()
 	}
 }
 
@@ -175,7 +185,7 @@ func (h *Handler) Ptr() *Handler {
 
 func (h *Handler) Kill() {
 	signal.Notify(h.Tracker.killSignal, os.Kill)
-	ctx := h.ctx
+	ctx := h.Context()
 	logger := h.Logger.WithField("orchestra", "watchdog")
 	select {
 	case <-h.Tracker.killSignal:
@@ -225,7 +235,7 @@ func (h *Handler) Daemons() {
 				continue
 			}
 			logger.Tracef("checking daemon %s", daemon.Identifier())
-			lifecycle, d := daemon.ExecutionOptions(h.ctx)
+			lifecycle, d := daemon.ExecutionOptions(h.Context())
 			if d.HasErrors() {
 				h.Diags.Extend(d)
 				d := daemon.Terminate(nil, false)
@@ -266,7 +276,7 @@ func (h *Handler) Interrupt() {
 	signal.Notify(h.Tracker.interruptSignal, os.Interrupt)
 	signal.Notify(h.Tracker.interruptSignal, syscall.SIGTERM)
 
-	ctx := h.ctx
+	ctx := h.Context()
 	logger := h.Logger.WithField("orchestra", "watchdog")
 	select {
 	case <-h.Tracker.interruptSignal:
@@ -314,8 +324,15 @@ func (h *Handler) WriteDiagnostics() {
 }
 
 func (h *Handler) finale(logLevel logrus.Level) {
-	logger := global.Logger()
-	logger.Log(logLevel, ui.Grey(fmt.Sprintf("took %s", time.Since(h.Process.BootTime).Round(time.Millisecond))))
+	message := ui.Grey(fmt.Sprintf("took %s", time.Since(h.Process.BootTime).Round(time.Millisecond)))
+	switch logLevel {
+	case logrus.ErrorLevel:
+		h.Logger.Error(message)
+	case logrus.InfoLevel:
+		h.Logger.Info(message)
+	default:
+		panic("invalid log level")
+	}
 }
 
 func (h *Handler) Fatal() int {

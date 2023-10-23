@@ -5,14 +5,12 @@ import (
 	"fmt"
 	"github.com/hashicorp/go-getter"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/hclparse"
-	"github.com/srevinsaju/togomak/v1/internal/global"
 	"github.com/srevinsaju/togomak/v1/internal/ui"
 	"path/filepath"
 )
 
-func (m *Import) Expand(conductor *Conductor, parser *hclparse.Parser, pwd string, dst string) (*Pipeline, hcl.Diagnostics) {
-	logger := global.Logger().WithField("import", "")
+func (m *Import) Expand(conductor *Conductor, pwd string, dst string) (*Pipeline, hcl.Diagnostics) {
+	logger := conductor.Logger().WithField("import", "")
 	var diags hcl.Diagnostics
 	shaIdentifier := sha256.Sum256([]byte(m.Identifier()))
 	clientImportPath, err := filepath.Abs(filepath.Join(dst, fmt.Sprintf("%x", shaIdentifier)))
@@ -40,7 +38,7 @@ func (m *Import) Expand(conductor *Conductor, parser *hclparse.Parser, pwd strin
 	}
 	ppb.Done()
 
-	p, d := ReadDirFromPath(clientImportPath, parser)
+	p, d := ReadDirFromPath(conductor, clientImportPath)
 	diags = diags.Extend(d)
 	if diags.HasErrors() {
 		return nil, diags
@@ -50,7 +48,7 @@ func (m *Import) Expand(conductor *Conductor, parser *hclparse.Parser, pwd strin
 		if d.HasErrors() {
 			return nil, d
 		}
-		p, d = p.ExpandImports(conductor, parser, clientImportPath)
+		p, d = p.ExpandImports(conductor, clientImportPath)
 		diags = diags.Extend(d)
 	}
 	return p, diags

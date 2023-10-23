@@ -26,11 +26,16 @@ func (v *Variable) resolveVar(conductor *Conductor) (cty.Value, hcl.Diagnostics)
 	}
 	for _, cliVariable := range conductor.Variables() {
 		if cliVariable.Id == v.Id {
-			return cliVariable.Value.Value(conductor.Eval().Context())
+			conductor.Eval().Mutex().RLock()
+			b, d := cliVariable.Value.Value(conductor.Eval().Context())
+			conductor.Eval().Mutex().RUnlock()
+			return b, diags.Extend(d)
 		}
 	}
 	if v.Default != nil {
+		conductor.Eval().Mutex().RLock()
 		def, d := v.Default.Value(conductor.Eval().Context())
+		conductor.Eval().Mutex().RUnlock()
 		if d.HasErrors() {
 			return cty.NilVal, d
 		}
@@ -65,7 +70,10 @@ func (v *Variable) resolveVarTypedWithDefaults(conductor *Conductor) (cty.Value,
 	// the user specified type, we will check
 	// if this type is null, or undefined, and include
 	// a fallback type
+	conductor.Eval().Mutex().RLock()
 	uType, d := v.Ty.Value(conductor.Eval().Context())
+	conductor.Eval().Mutex().RUnlock()
+
 	ty := cty.DynamicPseudoType
 	var def *typeexpr.Defaults
 

@@ -2,16 +2,14 @@ package ci
 
 import (
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/hclparse"
-	"github.com/srevinsaju/togomak/v1/internal/global"
 	"path/filepath"
 )
 
-func (pipe *Pipeline) ExpandImports(conductor *Conductor, parser *hclparse.Parser, pwd string) (*Pipeline, hcl.Diagnostics) {
+func (pipe *Pipeline) ExpandImports(conductor *Conductor, pwd string) (*Pipeline, hcl.Diagnostics) {
 	var pipes MetaList
 	var diags hcl.Diagnostics
 	pipes = pipes.Append(NewMeta(pipe, nil, "memory"))
-	tmpDir := global.TempDir()
+	tmpDir := conductor.TempDir()
 
 	dst, err := filepath.Abs(filepath.Join(tmpDir, "import"))
 	if err != nil {
@@ -19,7 +17,7 @@ func (pipe *Pipeline) ExpandImports(conductor *Conductor, parser *hclparse.Parse
 	}
 	m := pipe.Imports
 	for _, im := range m {
-		p, d := im.Expand(conductor, parser, pwd, dst)
+		p, d := im.Expand(conductor, pwd, dst)
 		diags = diags.Extend(d)
 		if d.HasErrors() {
 			continue

@@ -4,11 +4,9 @@ import (
 	"fmt"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
-	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/srevinsaju/togomak/v1/internal/global"
 	"github.com/srevinsaju/togomak/v1/internal/meta"
 	"github.com/srevinsaju/togomak/v1/internal/parse"
-	"github.com/srevinsaju/togomak/v1/internal/path"
 	"github.com/srevinsaju/togomak/v1/internal/ui"
 	"os"
 	"path/filepath"
@@ -18,10 +16,10 @@ import (
 // Read reads togomak.hcl from the configuration file directory. A configuration file directory is the one that
 // contains togomak.hcl, it searches recursively outwards.
 // DEPRECATED: use ReadDir instead
-func Read(paths *path.Path, parser *hclparse.Parser) (*Pipeline, hcl.Diagnostics) {
-	ciFile := parse.ConfigFilePath(paths)
+func Read(conductor *Conductor) (*Pipeline, hcl.Diagnostics) {
+	ciFile := parse.ConfigFilePath(conductor.Config.Paths)
+	f, diags := conductor.Parser.ParseHCLFile(ciFile)
 
-	f, diags := parser.ParseHCLFile(ciFile)
 	if diags.HasErrors() {
 		return nil, diags
 	}
@@ -30,7 +28,7 @@ func Read(paths *path.Path, parser *hclparse.Parser) (*Pipeline, hcl.Diagnostics
 	diags = gohcl.DecodeBody(f.Body, nil, pipeline)
 
 	if pipeline.Builder.Version != 1 {
-		return ReadDir(paths, parser)
+		return ReadDir(conductor)
 	} else if pipeline.Builder.Version == 1 {
 		ui.DeprecationWarning(fmt.Sprintf("%s configuration version 1 is deprecated, and support for the same will be removed in a later version. ", meta.AppName))
 	}
@@ -39,13 +37,13 @@ func Read(paths *path.Path, parser *hclparse.Parser) (*Pipeline, hcl.Diagnostics
 
 // ReadDir parses an entire directory of *.hcl files and merges them together. This is useful when you want to
 // split your pipeline into multiple files, without having to import them individually
-func ReadDir(paths *path.Path, parser *hclparse.Parser) (*Pipeline, hcl.Diagnostics) {
-	dir := parse.ConfigFileDir(paths)
-	return ReadDirFromPath(dir, parser)
+func ReadDir(conductor *Conductor) (*Pipeline, hcl.Diagnostics) {
+	dir := parse.ConfigFileDir(conductor.Config.Paths)
+	return ReadDirFromPath(conductor, dir)
 
 }
 
-func ReadDirFromPath(dir string, parser *hclparse.Parser) (*Pipeline, hcl.Diagnostics) {
+func ReadDirFromPath(conductor *Conductor, dir string) (*Pipeline, hcl.Diagnostics) {
 	logger := global.Logger()
 	var diags hcl.Diagnostics
 	togomakFiles, err := os.ReadDir(dir)
@@ -64,7 +62,8 @@ func ReadDirFromPath(dir string, parser *hclparse.Parser) (*Pipeline, hcl.Diagno
 			// we will not process .lock.hcl files
 			continue
 		}
-		f, d := parser.ParseHCLFile(filepath.Join(dir, file.Name()))
+
+		f, d := conductor.Parser.ParseHCLFile(filepath.Join(dir, file.Name()))
 		diags = diags.Extend(d)
 
 		p := &Pipeline{}

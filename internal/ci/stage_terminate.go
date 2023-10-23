@@ -12,7 +12,8 @@ import (
 )
 
 func (s *Stage) Terminate(conductor *Conductor, safe bool) hcl.Diagnostics {
-	s.Logger().Debug("terminating stage")
+	logger := conductor.Logger().WithField("stage", s.Id)
+	logger.Debug("terminating stage")
 	ctx := context.Background()
 	var diags hcl.Diagnostics
 	if safe {
@@ -38,7 +39,7 @@ func (s *Stage) Terminate(conductor *Conductor, safe bool) hcl.Diagnostics {
 				Detail:   fmt.Sprintf("%s: %s", dockerContainerSourceFmt(s.ContainerId), err.Error()),
 			})
 		}
-		s.Logger().Debug("stopping container")
+		logger.Debug("stopping container")
 		err = cli.ContainerStop(ctx, s.ContainerId, dockerContainer.StopOptions{})
 		if err != nil {
 			diags = diags.Append(&hcl.Diagnostic{
@@ -47,11 +48,11 @@ func (s *Stage) Terminate(conductor *Conductor, safe bool) hcl.Diagnostics {
 				Detail:   fmt.Sprintf("%s: %s", dockerContainerSourceFmt(s.ContainerId), err.Error()),
 			})
 		}
-		s.Logger().Debug("removing container")
+		logger.Debug("removing container")
 		err = cli.ContainerRemove(ctx, s.ContainerId, types.ContainerRemoveOptions{
 			RemoveVolumes: true,
 		})
-		s.Logger().Debug("removed container")
+		logger.Debug("removed container")
 
 	} else if s.process != nil && s.process.Process != nil {
 		if s.process.ProcessState != nil {
@@ -68,7 +69,7 @@ func (s *Stage) Terminate(conductor *Conductor, safe bool) hcl.Diagnostics {
 			})
 		}
 	}
-	s.Logger().Debug("terminated stage")
+	logger.Debug("terminated stage")
 
 	return diags
 }

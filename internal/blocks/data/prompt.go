@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/internal/conductor"
-	"github.com/srevinsaju/togomak/v1/internal/global"
 	"github.com/srevinsaju/togomak/v1/internal/meta"
 	"github.com/zclconf/go-cty/cty"
 	"os"
@@ -106,10 +104,6 @@ func (e *PromptProvider) Initialized() bool {
 	return e.initialized
 }
 
-func (e *PromptProvider) Logger() *logrus.Entry {
-	return global.Logger().WithField("provider", e.Name())
-}
-
 func (e *PromptProvider) Value(conductor conductor.Conductor, ctx context.Context, id string, opts ...ProviderOption) (string, hcl.Diagnostics) {
 	var diags hcl.Diagnostics
 	if !e.initialized {
@@ -118,7 +112,7 @@ func (e *PromptProvider) Value(conductor conductor.Conductor, ctx context.Contex
 
 	cfg := NewProviderConfig(opts...)
 
-	logger := e.Logger()
+	logger := conductor.Logger().WithField("data", e.Name())
 
 	envVarName := fmt.Sprintf("%s%s__%s", meta.EnvVarPrefix, e.Name(), id)
 	logger.Tracef("checking for environment variable %s", envVarName)

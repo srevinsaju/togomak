@@ -7,7 +7,6 @@ import (
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/internal/conductor"
-	"github.com/srevinsaju/togomak/v1/internal/global"
 	"github.com/srevinsaju/togomak/v1/internal/meta"
 	"github.com/srevinsaju/togomak/v1/internal/x"
 	"os"
@@ -36,7 +35,7 @@ func ConductorWithContext(ctx context.Context) ConductorOption {
 	}
 }
 
-func ConductorWithParser(parser *hclparse.Parser) ConductorOption {
+func ConductorWithParser(parser *Parser) ConductorOption {
 	return func(c *Conductor) {
 		c.Parser = parser
 	}
@@ -97,7 +96,7 @@ type Conductor struct {
 	Process Process
 
 	// Parser is the HCL parser
-	Parser *hclparse.Parser
+	Parser *Parser
 
 	// DiagWriter is the HCL diagnostic writer, it is used to write the diagnostics
 	// to os.Stdout
@@ -109,6 +108,27 @@ type Conductor struct {
 	parent *Conductor
 
 	variables Variables
+}
+
+type Parser struct {
+	parser *hclparse.Parser
+	mu     *sync.RWMutex
+}
+
+func (p *Parser) ParseHCLFile(filename string) (*hcl.File, hcl.Diagnostics) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.parser.ParseHCLFile(filename)
+}
+
+func (p *Parser) Files() map[string]*hcl.File {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.parser.Files()
+}
+
+func (c *Conductor) TempDir() string {
+	return c.Process.TempDir
 }
 
 func (c *Conductor) Eval() conductor.Eval {
@@ -173,7 +193,6 @@ func NewProcess(cfg ConductorConfig) Process {
 	// create a temporary directory
 	tempDir, err := os.MkdirTemp("", "togomak")
 	x.Must(err)
-	global.SetTempDir(tempDir)
 
 	return Process{
 		Id:         pipelineId,
@@ -212,11 +231,11 @@ func NewConductor(cfg ConductorConfig, opts ...ConductorOption) *Conductor {
 	diagWriter := hcl.NewDiagnosticTextWriter(os.Stdout, parser.Files(), 0, true)
 
 	logger := NewLogger(cfg)
-	global.SetLogger(logger)
 
 	dir := Chdir(cfg, logger)
-	cfg.Paths.Cwd = dir
-
+	if dir != cfg.Paths.Cwd {
+		cfg.Paths.Cwd = dir
+	}
 	if cfg.Paths.Module == "" {
 		cfg.Paths.Module = cfg.Paths.Cwd
 	}
@@ -224,7 +243,10 @@ func NewConductor(cfg ConductorConfig, opts ...ConductorOption) *Conductor {
 	process := NewProcess(cfg)
 
 	c := &Conductor{
-		Parser:     parser,
+		Parser: &Parser{
+			parser: parser,
+			mu:     &sync.RWMutex{},
+		},
 		DiagWriter: diagWriter,
 		ctx:        context.Background(),
 		Process:    process,
