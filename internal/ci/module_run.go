@@ -195,9 +195,15 @@ func (m *Module) run(conductor *Conductor, source string, evalCtx *hcl.EvalConte
 	attrs, d := m.Body.JustAttributes()
 	diags = diags.Extend(d)
 	for _, attr := range attrs {
+		//we need to evaluate the values first within the parent's evaluation context
+		//before sending it to the child goroutine and child conductor
+		//because the child evaluation context is independent of the parent's, and it is
+		//possible that the particular value may not exist in child.
+		v, d := attr.Expr.Value(evalCtx)
+		diags = diags.Extend(d)
 		variable := &Variable{
 			Id:    attr.Name,
-			Value: attr.Expr,
+			Value: hcl.StaticExpr(v, attr.Expr.Range()),
 		}
 		conductorOptions = append(conductorOptions, ConductorWithVariable(variable))
 	}
