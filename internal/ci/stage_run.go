@@ -1,32 +1,23 @@
 package ci
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"github.com/alessio/shellescape"
-	"github.com/docker/docker/api/types"
-	dockerContainer "github.com/docker/docker/api/types/container"
-	dockerClient "github.com/docker/docker/client"
 	"github.com/srevinsaju/togomak/v1/internal/blocks"
 	"github.com/srevinsaju/togomak/v1/internal/dg"
 	"github.com/srevinsaju/togomak/v1/internal/x"
 	"sync"
 
-	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/google/uuid"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/imdario/mergo"
-	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/internal/c"
 	"github.com/srevinsaju/togomak/v1/internal/global"
 	"github.com/srevinsaju/togomak/v1/internal/meta"
 	"github.com/srevinsaju/togomak/v1/internal/runnable"
 	"github.com/srevinsaju/togomak/v1/internal/ui"
 	"github.com/zclconf/go-cty/cty"
-	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -409,11 +400,11 @@ func (s *Stage) Run(conductor *Conductor, options ...runnable.Option) (diags hcl
 }
 
 func (s *Stage) run(conductor *Conductor, evalCtx *hcl.EvalContext, options ...runnable.Option) (diags hcl.Diagnostics) {
-	var err error
-	logger := conductor.Logger().WithField("stage", s.Id)
-	tmpDir := global.TempDir()
-	status := runnable.StatusRunning
 	cfg := runnable.NewConfig(options...)
+	c := s.newStageConductor(conductor, cfg)
+
+	logger := conductor.Logger().WithField("stage", s.Id)
+	status := runnable.StatusRunning
 
 	defer func() {
 		logger.Debug("running post hooks")
@@ -436,292 +427,27 @@ func (s *Stage) run(conductor *Conductor, evalCtx *hcl.EvalContext, options ...r
 	d := s.executePreHooks(conductor, status, options...)
 	diags = diags.Extend(d)
 
-	paramsGo := map[string]cty.Value{}
+	c = c.
+		expandParams().
+		expandSelf().
+		expandEach().
+		parseEnvironment().
+		processEnvironment().
+		parseExecCommand()
 
-	logger.Debugf("expanding global macro parameters")
-	conductor.Eval().Mutex().RLock()
-	oldParam, ok := evalCtx.Variables[blocks.ParamBlock]
-	conductor.Eval().Mutex().RUnlock()
-	if ok {
-		oldParamMap := oldParam.AsValueMap()
-		for k, v := range oldParamMap {
-			paramsGo[k] = v
-		}
+	if c.diags.HasErrors() {
+		return diags.Extend(c.diags)
 	}
-
-	id := s.Id
-	name := s.Name
-	if cfg.Parent != nil {
-		logger.Debugf("using parent %s.%s", cfg.Parent.Name, cfg.Parent.Id)
-		id = cfg.Parent.Id
-		name = cfg.Parent.Name
-	}
-
-	logger.Debug("creating new evaluation context")
-	evalCtx = evalCtx.NewChild()
-	evalCtx.Variables = map[string]cty.Value{
-		ThisBlock: cty.ObjectVal(map[string]cty.Value{
-			"name":   cty.StringVal(name),
-			"id":     cty.StringVal(id),
-			"hook":   cty.BoolVal(cfg.Hook),
-			"status": cty.StringVal(string(cfg.Status.Status)),
-		}),
-	}
-	if cfg.Each != nil {
-		evalCtx.Variables[EachBlock] = cty.ObjectVal(cfg.Each)
-	}
-
-	logger.Debugf("expanding macro parameters")
-	if s.Use != nil && s.Use.Parameters != nil {
-		conductor.Eval().Mutex().RLock()
-		parameters, d := s.Use.Parameters.Value(evalCtx)
-		conductor.Eval().Mutex().RUnlock()
-		diags = diags.Extend(d)
-		if !parameters.IsNull() {
-			for k, v := range parameters.AsValueMap() {
-				paramsGo[k] = v
-			}
-		}
-	}
-	evalCtx.Variables[blocks.ParamBlock] = cty.ObjectVal(paramsGo)
-
-	environment, d := s.parseEnvironmentVariables(conductor, evalCtx)
-	diags = diags.Extend(d)
-	if diags.HasErrors() {
-		return diags
-	}
-
-	envStrings := s.processEnvironmentVariables(conductor, environment, cfg, tmpDir, paramsGo)
-
-	cmd, d := s.parseExecCommand(conductor, evalCtx, cfg, envStrings)
-	diags = diags.Extend(d)
-	if diags.HasErrors() {
-		return diags
-	}
-	logger.Trace("command parsed")
-	logger.Tracef("script: %.30s... ", cmd.String())
 
 	if s.Container == nil {
-		s.process = cmd
-		logger.Tracef("running command: %.30s...", cmd.String())
-		if !cfg.Behavior.DryRun {
-			err = cmd.Run()
-
-			if err != nil && err.Error() == "signal: terminated" && s.Terminated() {
-				logger.Warnf("command terminated with signal: %s", cmd.ProcessState.String())
-				err = nil
-			}
-		} else {
-			fmt.Println(cmd.String())
-		}
+		c = c.runUsingShell()
 	} else {
-		d := s.executeDocker(conductor, evalCtx, cmd, cfg)
-		diags = diags.Extend(d)
+		c = c.runUsingDocker()
+	}
+	if c.diags.HasErrors() {
+		return diags.Extend(c.diags)
 	}
 
-	if err != nil {
-		diags = diags.Append(&hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  fmt.Sprintf("failed to run command (%s)", s.Identifier()),
-			Detail:   err.Error(),
-		})
-	}
-
-	return diags
-}
-
-func (s *Stage) executeDocker(conductor *Conductor, evalCtx *hcl.EvalContext, cmd *exec.Cmd, cfg *runnable.Config) hcl.Diagnostics {
-	var diags hcl.Diagnostics
-	logger := conductor.Logger().WithField("stage", s.Id)
-	ctx := conductor.Context()
-
-	image, d := s.hclImage(conductor, evalCtx)
-	diags = diags.Extend(d)
-
-	// begin entrypoint evaluation
-	entrypoint, d := s.hclEndpoint(conductor, evalCtx)
-	diags = diags.Extend(d)
-
-	if diags.HasErrors() {
-		return diags
-	}
-
-	cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
-	if err != nil {
-		return diags.Append(&hcl.Diagnostic{
-			Severity:    hcl.DiagError,
-			Summary:     "could not create docker client",
-			Detail:      err.Error(),
-			Subject:     s.Container.Image.Range().Ptr(),
-			EvalContext: evalCtx,
-		})
-	}
-	defer x.Must(cli.Close())
-
-	// check if image exists
-	logger.Debugf("checking if image %s exists", image)
-	_, _, err = cli.ImageInspectWithRaw(ctx, image)
-	if err != nil {
-		logger.Infof("image %s does not exist, pulling...", image)
-		reader, err := cli.ImagePull(ctx, image, types.ImagePullOptions{})
-		if err != nil {
-			return diags.Append(&hcl.Diagnostic{
-				Severity:    hcl.DiagError,
-				Summary:     "could not pull image",
-				Detail:      err.Error(),
-				Subject:     s.Container.Image.Range().Ptr(),
-				EvalContext: evalCtx,
-			})
-		}
-
-		pb := ui.NewDockerProgressWriter(reader, logger.Writer(), fmt.Sprintf("pulling image %s", image))
-		defer pb.Close()
-		defer reader.Close()
-		io.Copy(pb, reader)
-	}
-
-	logger.Trace("parsing container arguments")
-	binds := []string{
-		fmt.Sprintf("%s:/workspace", cmd.Dir),
-	}
-
-	logger.Trace("parsing container volumes")
-	for _, m := range s.Container.Volumes {
-		conductor.Eval().Mutex().RLock()
-		source, d := m.Source.Value(evalCtx)
-		conductor.Eval().Mutex().RUnlock()
-		diags = diags.Extend(d)
-
-		conductor.Eval().Mutex().RLock()
-		dest, d := m.Destination.Value(evalCtx)
-		conductor.Eval().Mutex().RUnlock()
-		diags = diags.Extend(d)
-		if diags.HasErrors() {
-			continue
-		}
-		binds = append(binds, fmt.Sprintf("%s:%s", source.AsString(), dest.AsString()))
-	}
-	logger.Tracef("%d diagnostic(s) after parsing container volumes", len(diags.Errs()))
-	if diags.HasErrors() {
-		return diags
-	}
-
-	logger.Trace("dry run check")
-	if cfg.Behavior.DryRun {
-		fmt.Println(ui.Blue("docker:run.image"), ui.Green(image))
-		fmt.Println(ui.Blue("docker:run.workdir"), ui.Green("/workspace"))
-		fmt.Println(ui.Blue("docker:run.volume"), ui.Green(cmd.Dir+":/workspace"))
-		fmt.Println(ui.Blue("docker:run.stdin"), ui.Green(s.Container.Stdin))
-		fmt.Println(ui.Blue("docker:run.args"), ui.Green(cmd.String()))
-		return diags
-	}
-
-	logger.Trace("parsing container ports")
-	exposedPorts, bindings, d := s.Container.Ports.Nat(conductor, evalCtx)
-	diags = diags.Extend(d)
-	if diags.HasErrors() {
-		return diags
-	}
-
-	logger.Trace("creating container")
-	resp, err := cli.ContainerCreate(conductor.Context(), &dockerContainer.Config{
-		Image:      image,
-		Cmd:        cmd.Args,
-		WorkingDir: "/workspace",
-		Volumes: map[string]struct{}{
-			"/workspace": {},
-		},
-		Tty:          true,
-		AttachStdout: true,
-		AttachStderr: true,
-		AttachStdin:  s.Container.Stdin,
-		OpenStdin:    s.Container.Stdin,
-		StdinOnce:    s.Container.Stdin,
-		Entrypoint:   entrypoint,
-		Env:          cmd.Env,
-		ExposedPorts: exposedPorts,
-		// User: s.Container.User,
-	}, &dockerContainer.HostConfig{
-		Binds:        binds,
-		PortBindings: bindings,
-	}, nil, nil, "")
-	if err != nil {
-		return diags.Append(&hcl.Diagnostic{
-			Severity:    hcl.DiagError,
-			Summary:     "could not create container",
-			Detail:      err.Error(),
-			Subject:     s.Container.Image.Range().Ptr(),
-			EvalContext: evalCtx,
-		})
-	}
-
-	logger.Trace("starting container")
-	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
-		return diags.Append(&hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  "could not start container",
-			Detail:   err.Error(),
-			Subject:  s.Container.Image.Range().Ptr(),
-		})
-	}
-	s.ContainerId = resp.ID
-
-	logger.Trace("getting container metadata for log retrieval")
-	container, err := cli.ContainerInspect(ctx, resp.ID)
-	if err != nil {
-		panic(err)
-	}
-
-	logger.Trace("getting container logs")
-	responseBody, err := cli.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{
-		ShowStdout: true, ShowStderr: true,
-		Follow: true,
-	})
-	if err != nil {
-		return diags.Append(&hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  "could not get container logs",
-			Detail:   err.Error(),
-			Subject:  s.Container.Image.Range().Ptr(),
-		})
-	}
-	defer responseBody.Close()
-
-	logger.Tracef("copying container logs on container: %s", resp.ID)
-	if container.Config.Tty {
-		_, err = io.Copy(logger.Writer(), responseBody)
-	} else {
-		_, err = stdcopy.StdCopy(logger.Writer(), logger.WriterLevel(logrus.WarnLevel), responseBody)
-	}
-
-	logger.Trace("waiting for container to finish")
-	if err != nil && err != io.EOF {
-		if errors.Is(err, context.Canceled) {
-			return diags
-		}
-		diags = diags.Append(&hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  "failed to copy container logs",
-			Detail:   err.Error(),
-			Subject:  s.Container.Image.Range().Ptr(),
-		})
-	}
-
-	logger.Tracef("removing container with id: %s", resp.ID)
-	err = cli.ContainerRemove(ctx, resp.ID, types.ContainerRemoveOptions{
-		RemoveVolumes: true,
-	})
-	if err != nil {
-		diags = diags.Append(&hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  "failed to remove container",
-			Detail:   err.Error(),
-			Subject:  s.Container.Image.Range().Ptr(),
-		})
-		return diags
-	}
-
-	logger.Tracef("%d diagnostic(s) after removing container", len(diags.Errs()))
 	return diags
 }
 
@@ -758,77 +484,6 @@ func (s *Stage) parseEnvironmentVariables(conductor *Conductor, evalCtx *hcl.Eva
 		}
 	}
 	return environment, diags
-}
-
-func (s *Stage) parseExecCommand(conductor *Conductor, evalCtx *hcl.EvalContext, cfg *runnable.Config, envStrings []string) (*exec.Cmd, hcl.Diagnostics) {
-	var diags hcl.Diagnostics
-	logger := conductor.Logger().WithField("stage", s.Id)
-
-	logger.Trace("evaluating script value")
-	conductor.Eval().Mutex().RLock()
-	script, d := s.Script.Value(evalCtx)
-	conductor.Eval().Mutex().RUnlock()
-
-	if d.HasErrors() && cfg.Behavior.DryRun {
-		script = cty.StringVal(ui.Italic(ui.Yellow("(will be evaluated later)")))
-	} else {
-		diags = diags.Extend(d)
-	}
-
-	logger.Trace("evaluating shell value")
-	conductor.Eval().Mutex().RLock()
-	shellRaw, d := s.Shell.Value(evalCtx)
-	conductor.Eval().Mutex().RUnlock()
-
-	shell := ""
-	if d.HasErrors() {
-		diags = diags.Extend(d)
-	} else {
-		if shellRaw.IsNull() {
-			shell = "bash"
-		} else {
-			shell = shellRaw.AsString()
-		}
-	}
-
-	logger.Trace("evaluating args value")
-	conductor.Eval().Mutex().RLock()
-	args, d := s.Args.Value(evalCtx)
-	conductor.Eval().Mutex().RUnlock()
-	diags = diags.Extend(d)
-
-	cmdHcl, d := s.parseCommand(evalCtx, shell, script, args)
-	diags = diags.Extend(d)
-	if diags.HasErrors() {
-		return nil, diags
-	}
-
-	dir := cfg.Paths.Cwd
-
-	conductor.Eval().Mutex().RLock()
-	dirParsed, d := s.Dir.Value(evalCtx)
-	conductor.Eval().Mutex().RUnlock()
-
-	if d.HasErrors() {
-		diags = diags.Extend(d)
-	} else {
-		if !dirParsed.IsNull() && dirParsed.AsString() != "" {
-			dir = dirParsed.AsString()
-		}
-		if !filepath.IsAbs(dir) {
-			dir = filepath.Join(cfg.Paths.Cwd, dir)
-		}
-		if cfg.Behavior.DryRun {
-			fmt.Println(ui.Blue("cd"), dir)
-		}
-	}
-
-	cmd := exec.CommandContext(conductor.Context(), cmdHcl.command, cmdHcl.args...)
-	cmd.Stdout = logger.Writer()
-	cmd.Stderr = logger.WriterLevel(logrus.WarnLevel)
-	cmd.Env = append(os.Environ(), envStrings...)
-	cmd.Dir = dir
-	return cmd, diags
 }
 
 type command struct {

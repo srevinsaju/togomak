@@ -2,89 +2,26 @@ package ci
 
 import (
 	"context"
-	"github.com/google/uuid"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/sirupsen/logrus"
-	"github.com/srevinsaju/togomak/v1/internal/conductor"
 	"github.com/srevinsaju/togomak/v1/internal/global"
 	"github.com/srevinsaju/togomak/v1/internal/meta"
-	"github.com/srevinsaju/togomak/v1/internal/x"
 	"os"
-	"path/filepath"
 	"sync"
-	"time"
 )
 
-type ConductorOption func(*Conductor)
-
-func ConductorWithLogger(logger logrus.Ext1FieldLogger) ConductorOption {
-	return func(c *Conductor) {
-		c.RootLogger = logger
-	}
-}
-
-func ConductorWithConfig(cfg ConductorConfig) ConductorOption {
-	return func(c *Conductor) {
-		c.Config = cfg
-	}
-}
-
-func ConductorWithContext(ctx context.Context) ConductorOption {
-	return func(c *Conductor) {
-		c.ctx = ctx
-	}
-}
-
-func ConductorWithParser(parser *hclparse.Parser) ConductorOption {
-	return func(c *Conductor) {
-		c.Parser = parser
-	}
-}
-
-func ConductorWithDiagWriter(diagWriter hcl.DiagnosticWriter) ConductorOption {
-	return func(c *Conductor) {
-		c.DiagWriter = diagWriter
-	}
-}
-
-func ConductorWithEvalContext(evalContext *hcl.EvalContext) ConductorOption {
-	return func(c *Conductor) {
-		c.eval.context = evalContext
-	}
-}
-
-func ConductorWithProcess(process Process) ConductorOption {
-	return func(c *Conductor) {
-		c.Process = process
-	}
-}
-
-func ConductorWithVariable(variable *Variable) ConductorOption {
-	return func(c *Conductor) {
-		c.variables = append(c.variables, variable)
-	}
-}
-
-func ConductorWithVariablesList(variables Variables) ConductorOption {
-	return func(c *Conductor) {
-		c.variables = variables
-	}
-}
-
-type Eval struct {
-	context *hcl.EvalContext
-	mu      *sync.RWMutex
-}
-
-func (e *Eval) Context() *hcl.EvalContext {
-	return e.context
-}
-
-func (e *Eval) Mutex() *sync.RWMutex {
-	return e.mu
-}
-
+// Conductor is a struct which holds the state of the orchestra
+// a conductor orchestrates the orchestra, in this case, workflow or the pipeline
+// the conductor is responsible for the following:
+// 1. Create a temporary directory, Config.Paths.TempDir
+// 2. Create a process, Process
+// 3. Create a logger, Logger
+// 4. Create a parser, Parser
+// 5. Create a diagnostic writer DiagWriter
+// 6. Create an evaluation context Eval
+// 7. Create a context, Context
+// 8. Create an input variable map, Variables
 type Conductor struct {
 	RootLogger logrus.Ext1FieldLogger
 	Config     ConductorConfig
@@ -111,101 +48,10 @@ type Conductor struct {
 	variables Variables
 }
 
-func (c *Conductor) Eval() conductor.Eval {
-	return c.eval
-}
-
-func (c *Conductor) StdinLock() {
-	c.stdinMu.Lock()
-}
-
-func (c *Conductor) StdinUnlock() {
-	c.stdinMu.Unlock()
-}
-
-func (c *Conductor) Child(opts ...ConductorOption) *Conductor {
-	inheritOpts := []ConductorOption{
-		ConductorWithConfig(c.Config),
-	}
-	opts = append(inheritOpts, opts...)
-	child := NewConductor(c.Config, opts...)
-	child.parent = c
-	return child
-}
-
-func (c *Conductor) Parent() *Conductor {
-	return c.parent
-}
-
-func (c *Conductor) RootParent() *Conductor {
-	if c.parent == nil {
-		return c
-	}
-	return c.parent.RootParent()
-}
-
-func (c *Conductor) Logger() logrus.Ext1FieldLogger {
-	return c.RootLogger
-}
-
-type Process struct {
-	Id uuid.UUID
-
-	Executable string
-
-	// BootTime is the time when the process was started
-	BootTime time.Time
-
-	// TempDir is the temporary directory created for the process
-	TempDir string
-}
-
-func (c *Conductor) Context() context.Context {
-	return c.ctx
-}
-
-func NewProcess(cfg ConductorConfig) Process {
-	e, err := os.Executable()
-	x.Must(err)
-
-	pipelineId := uuid.New()
-
-	// create a temporary directory
-	tempDir, err := os.MkdirTemp("", "togomak")
-	x.Must(err)
-	global.SetTempDir(tempDir)
-
-	return Process{
-		Id:         pipelineId,
-		Executable: e,
-		BootTime:   time.Now(),
-		TempDir:    tempDir,
-	}
-}
-
-func (c *Conductor) Variables() Variables {
-	return c.variables
-}
-
-func Chdir(cfg ConductorConfig, logger *logrus.Logger) string {
-	cwd := cfg.Paths.Cwd
-	if cwd == "" {
-		cwd = filepath.Dir(cfg.Paths.Pipeline)
-		if filepath.Base(cwd) == meta.BuildDirPrefix {
-			cwd = filepath.Dir(cwd)
-		}
-	}
-	err := os.Chdir(cwd)
-	if err != nil {
-		logger.Fatal(err)
-	}
-	cwd, err = os.Getwd()
-	x.Must(err)
-	logger.Debug("changing working directory to ", cwd)
-	return cwd
-
-}
-
+// NewConductor creates a new conductor, it accepts a ConductorConfig along with a set of options
+// which can be used to override the default values
+// ConductorConfig is created from command-line context using cli.Context. Extra options can be
+// passed using ConductorOption
 func NewConductor(cfg ConductorConfig, opts ...ConductorOption) *Conductor {
 	parser := hclparse.NewParser()
 
@@ -214,7 +60,7 @@ func NewConductor(cfg ConductorConfig, opts ...ConductorOption) *Conductor {
 	logger := NewLogger(cfg)
 	global.SetLogger(logger)
 
-	dir := Chdir(cfg, logger)
+	dir := chdir(cfg, logger)
 	cfg.Paths.Cwd = dir
 
 	if cfg.Paths.Module == "" {
@@ -230,10 +76,7 @@ func NewConductor(cfg ConductorConfig, opts ...ConductorOption) *Conductor {
 		Process:    process,
 		RootLogger: logger,
 		Config:     cfg,
-		eval: &Eval{
-			context: CreateEvalContext(cfg, process),
-			mu:      &sync.RWMutex{},
-		},
+		eval:       NewEval(cfg, process),
 	}
 	for _, v := range cfg.Variables {
 		c.variables = append(c.variables, v)
@@ -250,6 +93,7 @@ func NewConductor(cfg ConductorConfig, opts ...ConductorOption) *Conductor {
 	return c
 }
 
+// Destroy destroys the conductor, it removes the temporary directory
 func (c *Conductor) Destroy() {
 	c.Logger().Debug("removing temporary directory")
 	err := os.RemoveAll(c.Process.TempDir)
@@ -265,6 +109,7 @@ func (c *Conductor) Destroy() {
 	c.DiagWriter = nil
 }
 
+// Update updates the conductor with the given options
 func (c *Conductor) Update(opts ...ConductorOption) {
 	for _, opt := range opts {
 		opt(c)

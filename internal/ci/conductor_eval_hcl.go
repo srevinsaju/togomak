@@ -12,14 +12,14 @@ import (
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 	"os"
 	"os/exec"
+	"sync"
 	"time"
 )
 
-func CreateEvalContext(cfg ConductorConfig, process Process) *hcl.EvalContext {
-	// --> set up HCL context
+func NewEval(cfg ConductorConfig, process Process) *Eval {
 	paths := cfg.Paths
 	behavior := cfg.Behavior
-	hclContext := &hcl.EvalContext{
+	ectx := &hcl.EvalContext{
 		Functions: map[string]function.Function{
 			"abs":              stdlib.AbsoluteFunc,
 			"abspath":          funcs.AbsPathFunc,
@@ -239,5 +239,8 @@ func CreateEvalContext(cfg ConductorConfig, process Process) *hcl.EvalContext {
 			}),
 		},
 	}
-	return hclContext
+	return &Eval{
+		context: ectx,
+		mu:      &sync.RWMutex{},
+	}
 }

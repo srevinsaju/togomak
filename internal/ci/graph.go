@@ -41,7 +41,7 @@ func GraphResolve(ctx context.Context, pipe *Pipeline, g *depgraph.Graph, v []hc
 	}
 	return diags
 }
-func GraphTopoSort(ctx context.Context, pipe *Pipeline) (*depgraph.Graph, hcl.Diagnostics) {
+func NewGraph(ctx context.Context, pipe *Pipeline) (*depgraph.Graph, hcl.Diagnostics) {
 	g := depgraph.New()
 	var diags hcl.Diagnostics
 	logger := global.Logger().WithField("orchestra", "graph")

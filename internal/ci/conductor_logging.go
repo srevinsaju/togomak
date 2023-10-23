@@ -5,6 +5,10 @@ import (
 	"os"
 )
 
+// NewLogger creates a new logger with the given configuration
+// The logger is configured to write to stdout
+// The logger is configured to write in text format if the child behavior is enabled.
+// The logger is configured to write in JSON format if the JSON logging is enabled.
 func NewLogger(cfg ConductorConfig) *logrus.Logger {
 	logger := logrus.New()
 	logger.SetOutput(os.Stdout)
