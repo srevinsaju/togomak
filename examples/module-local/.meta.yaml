@@ -1,0 +1,5 @@
+title: Using Modules with variable inputs 
+description: |
+  This example loads a local module from a subfolder 
+  and passed it `local.*` values as inputs.
+  This example is a module which does addition.

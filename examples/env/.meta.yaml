@@ -1,0 +1,4 @@
+title: Environment Variables
+description: |
+  Derive environment variables from the host environment, and 
+  also pass them to stages using the `env {}` sub block.

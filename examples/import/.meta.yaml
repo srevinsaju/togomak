@@ -1,0 +1,4 @@
+title: Imports 
+description: |
+  This example imports a subfolder and a remote repository togomak pipeline code
+  and merges the caller pipeline with its contents to create a flattened pipeline.

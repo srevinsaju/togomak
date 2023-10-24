@@ -1,0 +1,6 @@
+title: Using `for_each` on a module
+description: |
+  This is essentially the same example as `for_each`, but using 
+  this on `module` on a nested set array. 
+  In addition, this module also uses a remote github repository 
+  source for its module.

@@ -1,0 +1,6 @@
+title: Function 
+description: |
+  Demonstrates the use of default functions and string interpolation 
+  in stage scripts. This example deals with the `env()` helper function.
+
+

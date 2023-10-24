@@ -1,0 +1,5 @@
+title: Lifecycles 
+description: |
+  Uses Togomak lifecycles to classify stages using `phases`.
+  Consider reading [Lifecycle Usage](https://togomak.srev.in/docs/cli/usage)
+  for a detailed explanation.

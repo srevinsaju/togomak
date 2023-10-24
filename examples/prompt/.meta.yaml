@@ -1,0 +1,7 @@
+title: Prompt
+description: |
+  Deprecated, use `variable {}` instead.
+  Prompt data provider requests information from the user 
+  before the pipeline starts. This, however is done directly by 
+  the `variable {}` block, accessible through the `var.<name>`
+  attribute.

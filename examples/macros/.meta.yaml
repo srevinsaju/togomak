@@ -1,0 +1,6 @@
+title: Macros
+description: |
+  > **Note**
+  > Consider using `module` instead. 
+
+  Invokes a stage with parameters as a macro, which can be reused, imported or customized with parameters.

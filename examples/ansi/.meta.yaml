@@ -1,0 +1,5 @@
+title: Dynamic ANSI colors
+description: |
+  ANSI colors are provided as functions and variables 
+  which can be used to created colored terminal output
+  platform agnostically.

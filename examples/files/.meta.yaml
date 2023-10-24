@@ -1,0 +1,3 @@
+title: Simple Stage 
+description: |
+  Uses stage `args` argument to perform a simple `ls -al`
