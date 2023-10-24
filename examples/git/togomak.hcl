@@ -13,5 +13,4 @@ stage "example" {
   script = <<-EOT
   echo '${data.git.repo.files["togomak.hcl"]}'
   EOT
-
 }

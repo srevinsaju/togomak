@@ -1,0 +1,5 @@
+title: Stage hooks 
+description: |
+  Runs a stage before or after the execution of a stage using 
+  `pre_hook` and `post_hook`. `post_hook` will run regardless of the stage execution statuses, 
+  which can be useful to check if a step failed or not. 

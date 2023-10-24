@@ -1,0 +1,6 @@
+title: Terraform 
+description: |
+  Example on using Terraform data source blocks, using the `hashicorp/random`
+  provider to create a `random_pet` name, and use them directly in your 
+  `togomak` pipeline, illustrating similar use cases where pipelines need 
+  to run against IP addresses of Terraform provisioned resources.

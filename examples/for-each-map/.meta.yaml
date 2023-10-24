@@ -1,0 +1,6 @@
+title: Using `for_each`
+description: |
+  This example uses a `for_each` on a stage using a `map`.
+  Each item in the map specified as the argument to `for_each`
+  will be iterated over and assigned `each.key` and `each.value`.
+

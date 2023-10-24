@@ -24,6 +24,8 @@ type Behavior struct {
 	Child Child
 
 	DryRun bool
+
+	DisableConcurrency bool
 }
 
 func NewDefaultBehavior() *Behavior {
