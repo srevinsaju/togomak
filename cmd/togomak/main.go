@@ -133,6 +133,11 @@ func main() {
 			Usage:   "enable verbose logging",
 			Count:   &verboseCount,
 		},
+		&cli.BoolFlag{
+			Name:    "disable-concurrency",
+			Aliases: []string{"disable-parallel"},
+			Usage:   "disable concurrency",
+		},
 		&cli.BoolFlag{Name: "json", Usage: "enable json logging", EnvVars: []string{"TOGOMAK_JSON_LOG"}},
 		&cli.BoolFlag{
 			Name:    "dry-run",
@@ -229,9 +234,10 @@ func newConfigFromCliContext(ctx *cli.Context) ci.ConductorConfig {
 
 	cfg := ci.ConductorConfig{
 		Behavior: &behavior.Behavior{
-			Unattended: ctx.Bool("unattended") || ctx.Bool("ci"),
-			Ci:         ctx.Bool("ci"),
-			DryRun:     ctx.Bool("dry-run"),
+			Unattended:         ctx.Bool("unattended") || ctx.Bool("ci"),
+			Ci:                 ctx.Bool("ci"),
+			DryRun:             ctx.Bool("dry-run"),
+			DisableConcurrency: ctx.Bool("disable-concurrency"),
 
 			Child: behavior.Child{
 				Enabled:      ctx.Bool("child"),

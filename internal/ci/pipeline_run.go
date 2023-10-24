@@ -133,6 +133,10 @@ func (pipe *Pipeline) Run(conductor *Conductor) (*Handler, dg.AbstractDiagnostic
 				h.Tracker.RunnableWait()
 				h.Tracker.DaemonWait()
 			}
+			if pipe.Builder.Behavior != nil && pipe.Builder.Behavior.DisableConcurrency {
+				h.Tracker.RunnableWait()
+				h.Tracker.DaemonWait()
+			}
 		}
 		h.Tracker.RunnableWait()
 

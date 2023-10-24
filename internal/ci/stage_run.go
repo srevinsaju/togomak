@@ -335,6 +335,7 @@ func (s *Stage) expandMacros(conductor *Conductor, opts ...runnable.Option) (*St
 
 func (s *Stage) Run(conductor *Conductor, options ...runnable.Option) (diags hcl.Diagnostics) {
 	logger := conductor.Logger().WithField("stage", s.Id)
+	cfg := runnable.NewConfig(options...)
 
 	logger.Debugf("running %s", x.RenderBlock(blocks.StageBlock, s.Id))
 
@@ -400,6 +401,9 @@ func (s *Stage) Run(conductor *Conductor, options ...runnable.Option) (diags hcl
 			safeDg.Extend(d)
 			wg.Done()
 		}(keyCty, options...)
+		if cfg.Behavior.DisableConcurrency {
+			wg.Wait()
+		}
 		return false
 	})
 	wg.Wait()

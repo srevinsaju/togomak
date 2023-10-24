@@ -129,6 +129,9 @@ func (m *Module) Run(conductor *Conductor, options ...runnable.Option) (diags hc
 			safeDg.Extend(d)
 			wg.Done()
 		}(keyCty, options...)
+		if cfg.Behavior.DisableConcurrency {
+			wg.Wait()
+		}
 		return false
 	})
 	wg.Wait()
