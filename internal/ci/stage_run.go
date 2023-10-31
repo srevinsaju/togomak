@@ -849,6 +849,16 @@ func (s *Stage) parseCommand(evalCtx *hcl.EvalContext, shell string, script cty.
 	// emptyCommands - specifies if both args and scripts were unset
 	emptyCommands := false
 	if script.Type() == cty.String {
+		if !script.IsKnown() {
+			diags = diags.Append(&hcl.Diagnostic{
+				Severity:    hcl.DiagError,
+				Summary:     "invalid script",
+				Detail:      fmt.Sprintf("script is not a valid string"),
+				Subject:     s.Script.Range().Ptr(),
+				EvalContext: evalCtx,
+			})
+			return command{}, diags
+		}
 		if shell == "bash" {
 			runArgs = append(runArgs, "-e", "-u", "-c", script.AsString())
 		} else if shell == "sh" {
