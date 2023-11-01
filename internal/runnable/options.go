@@ -33,6 +33,12 @@ func WithStatus(status StatusType) Option {
 	}
 }
 
+func WithStatusOutput(artifact string) Option {
+	return func(c *Config) {
+		c.Status.Output = artifact
+	}
+}
+
 func WithPaths(paths *path.Path) Option {
 	return func(c *Config) {
 		c.Paths = paths

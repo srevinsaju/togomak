@@ -6,6 +6,7 @@ require (
 	code.gitea.io/gitea v1.19.3
 	github.com/AlecAivazis/survey/v2 v2.3.6
 	github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2
+	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/alessio/shellescape v1.4.1
 	github.com/bcicen/jstream v1.0.1
 	github.com/bmatcuk/doublestar v1.1.5

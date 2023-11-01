@@ -1,6 +1,10 @@
 package ci
 
-import "github.com/hashicorp/hcl/v2"
+import (
+	"github.com/hashicorp/hcl/v2"
+	"github.com/srevinsaju/togomak/v1/internal/blocks"
+	"github.com/srevinsaju/togomak/v1/internal/x"
+)
 
 func (s *Stage) Override() bool {
 	return false
@@ -26,4 +30,8 @@ func (s Stages) CheckIfDistinct(ss Stages) hcl.Diagnostics {
 		}
 	}
 	return diags
+}
+
+func (s *Stage) String() string {
+	return x.RenderBlock(blocks.StageBlock, s.Id)
 }

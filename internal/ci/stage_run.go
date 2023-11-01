@@ -1,6 +1,7 @@
 package ci
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -411,14 +412,16 @@ func (s *Stage) Run(conductor *Conductor, options ...runnable.Option) (diags hcl
 
 }
 
-func (s *Stage) run(conductor *Conductor, evalCtx *hcl.EvalContext, options ...runnable.Option) (diags hcl.Diagnostics) {
+func (s *Stage) run(conductor *Conductor, evalCtx *hcl.EvalContext, options ...runnable.Option) hcl.Diagnostics {
 	var err error
 	logger := conductor.Logger().WithField("stage", s.Id)
 	tmpDir := conductor.TempDir()
 	status := runnable.StatusRunning
 	cfg := runnable.NewConfig(options...)
+	stream := conductor.NewOutputMemoryStream(s.String())
+	diags := &dg.Diagnostics{}
 
-	defer func() {
+	defer func(stream *bytes.Buffer) {
 		logger.Debug("running post hooks")
 		success := !diags.HasErrors()
 		if !success {
@@ -429,15 +432,16 @@ func (s *Stage) run(conductor *Conductor, evalCtx *hcl.EvalContext, options ...r
 		hookOpts := []runnable.Option{
 			runnable.WithStatus(status),
 			runnable.WithHook(),
+			runnable.WithStatusOutput(stream.String()),
 			runnable.WithParent(runnable.ParentConfig{Name: s.Name, Id: s.Id}),
 		}
 		hookOpts = append(hookOpts, options...)
-		diags = diags.Extend(s.AfterRun(conductor, hookOpts...))
+		diags.Extend(s.AfterRun(conductor, hookOpts...))
 		logger.Debug("finished running post hooks")
-	}()
+	}(stream)
 
 	d := s.executePreHooks(conductor, status, options...)
-	diags = diags.Extend(d)
+	diags.Extend(d)
 
 	paramsGo := map[string]cty.Value{}
 
@@ -468,6 +472,7 @@ func (s *Stage) run(conductor *Conductor, evalCtx *hcl.EvalContext, options ...r
 			"id":     cty.StringVal(id),
 			"hook":   cty.BoolVal(cfg.Hook),
 			"status": cty.StringVal(string(cfg.Status.Status)),
+			"output": cty.StringVal(cfg.Status.Output),
 		}),
 	}
 	if cfg.Each != nil {
@@ -479,7 +484,7 @@ func (s *Stage) run(conductor *Conductor, evalCtx *hcl.EvalContext, options ...r
 		conductor.Eval().Mutex().RLock()
 		parameters, d := s.Use.Parameters.Value(evalCtx)
 		conductor.Eval().Mutex().RUnlock()
-		diags = diags.Extend(d)
+		diags.Extend(d)
 		if !parameters.IsNull() {
 			for k, v := range parameters.AsValueMap() {
 				paramsGo[k] = v
@@ -489,17 +494,17 @@ func (s *Stage) run(conductor *Conductor, evalCtx *hcl.EvalContext, options ...r
 	evalCtx.Variables[blocks.ParamBlock] = cty.ObjectVal(paramsGo)
 
 	environment, d := s.parseEnvironmentVariables(conductor, evalCtx)
-	diags = diags.Extend(d)
+	diags.Extend(d)
 	if diags.HasErrors() {
-		return diags
+		return diags.Diagnostics()
 	}
 
 	envStrings := s.processEnvironmentVariables(conductor, environment, cfg, tmpDir, paramsGo)
 
-	cmd, d := s.parseExecCommand(conductor, evalCtx, cfg, envStrings)
-	diags = diags.Extend(d)
+	cmd, d := s.parseExecCommand(conductor, evalCtx, cfg, envStrings, stream)
+	diags.Extend(d)
 	if diags.HasErrors() {
-		return diags
+		return diags.Diagnostics()
 	}
 	logger.Trace("command parsed")
 	logger.Tracef("script: %.30s... ", cmd.String())
@@ -519,23 +524,24 @@ func (s *Stage) run(conductor *Conductor, evalCtx *hcl.EvalContext, options ...r
 		}
 	} else {
 		d := s.executeDocker(conductor, evalCtx, cmd, cfg)
-		diags = diags.Extend(d)
+		diags.Extend(d)
 	}
 
 	if err != nil {
-		diags = diags.Append(&hcl.Diagnostic{
+		diags.Append(&hcl.Diagnostic{
 			Severity: hcl.DiagError,
 			Summary:  fmt.Sprintf("failed to run command (%s)", s.Identifier()),
 			Detail:   err.Error(),
 		})
 	}
 
-	return diags
+	return diags.Diagnostics()
 }
 
 func (s *Stage) executeDocker(conductor *Conductor, evalCtx *hcl.EvalContext, cmd *exec.Cmd, cfg *runnable.Config) hcl.Diagnostics {
 	var diags hcl.Diagnostics
 	logger := conductor.Logger().WithField("stage", s.Id)
+
 	ctx := conductor.Context()
 
 	image, d := s.hclImage(conductor, evalCtx)
@@ -763,7 +769,7 @@ func (s *Stage) parseEnvironmentVariables(conductor *Conductor, evalCtx *hcl.Eva
 	return environment, diags
 }
 
-func (s *Stage) parseExecCommand(conductor *Conductor, evalCtx *hcl.EvalContext, cfg *runnable.Config, envStrings []string) (*exec.Cmd, hcl.Diagnostics) {
+func (s *Stage) parseExecCommand(conductor *Conductor, evalCtx *hcl.EvalContext, cfg *runnable.Config, envStrings []string, outputBuffer io.Writer) (*exec.Cmd, hcl.Diagnostics) {
 	var diags hcl.Diagnostics
 	logger := conductor.Logger().WithField("stage", s.Id)
 
@@ -827,8 +833,8 @@ func (s *Stage) parseExecCommand(conductor *Conductor, evalCtx *hcl.EvalContext,
 	}
 
 	cmd := exec.CommandContext(conductor.Context(), cmdHcl.command, cmdHcl.args...)
-	cmd.Stdout = logger.Writer()
-	cmd.Stderr = logger.WriterLevel(logrus.WarnLevel)
+	cmd.Stdout = io.MultiWriter(logger.Writer(), outputBuffer)
+	cmd.Stderr = io.MultiWriter(logger.Writer(), outputBuffer)
 	cmd.Env = append(os.Environ(), envStrings...)
 	cmd.Dir = dir
 	return cmd, diags
@@ -849,6 +855,16 @@ func (s *Stage) parseCommand(evalCtx *hcl.EvalContext, shell string, script cty.
 	// emptyCommands - specifies if both args and scripts were unset
 	emptyCommands := false
 	if script.Type() == cty.String {
+		if !script.IsKnown() {
+			diags = diags.Append(&hcl.Diagnostic{
+				Severity:    hcl.DiagError,
+				Summary:     "invalid script",
+				Detail:      fmt.Sprintf("script is not a valid string"),
+				Subject:     s.Script.Range().Ptr(),
+				EvalContext: evalCtx,
+			})
+			return command{}, diags
+		}
 		if shell == "bash" {
 			runArgs = append(runArgs, "-e", "-u", "-c", script.AsString())
 		} else if shell == "sh" {
@@ -1001,6 +1017,7 @@ func (s *Stage) CanRun(conductor *Conductor, options ...runnable.Option) (ok boo
 			"id":     cty.StringVal(id),
 			"hook":   cty.BoolVal(cfg.Hook),
 			"status": cty.StringVal(string(cfg.Status.Status)),
+			"output": cty.StringVal(cfg.Status.Output),
 		}),
 		"param": cty.ObjectVal(paramsGo),
 	}

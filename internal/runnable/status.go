@@ -23,4 +23,6 @@ type Status struct {
 
 	// Status is the status of the runnable
 	Status StatusType
+
+	Output string
 }

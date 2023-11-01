@@ -1,6 +1,7 @@
 package ci
 
 import (
+	"bytes"
 	"context"
 	"github.com/google/uuid"
 	"github.com/hashicorp/hcl/v2"
@@ -108,6 +109,34 @@ type Conductor struct {
 	parent *Conductor
 
 	variables Variables
+
+	outputsMu sync.Mutex
+	outputs   map[string]*bytes.Buffer
+}
+
+func (c *Conductor) Outputs() map[string]*bytes.Buffer {
+	c.outputsMu.Lock()
+	defer c.outputsMu.Unlock()
+	return c.outputs
+}
+
+func (c *Conductor) OutputMemoryStream(name string) *bytes.Buffer {
+	c.outputsMu.Lock()
+	defer c.outputsMu.Unlock()
+	if c.outputs == nil {
+		c.outputs = make(map[string]*bytes.Buffer)
+	}
+	return c.outputs[name]
+}
+
+func (c *Conductor) NewOutputMemoryStream(name string) *bytes.Buffer {
+	c.outputsMu.Lock()
+	defer c.outputsMu.Unlock()
+	if c.outputs == nil {
+		c.outputs = make(map[string]*bytes.Buffer)
+	}
+	c.outputs[name] = bytes.NewBuffer(nil)
+	return c.outputs[name]
 }
 
 type Parser struct {
