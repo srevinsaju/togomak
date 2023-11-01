@@ -32,7 +32,7 @@ func (s *Stage) AfterRun(conductor *Conductor, opts ...runnable.Option) hcl.Diag
 
 	for _, hook := range s.PostHook {
 		diags = diags.Extend(
-			(&Stage{fmt.Sprintf("%s.pre", s.Id), nil, hook.Stage, nil}).Run(conductor, opts...),
+			(&Stage{fmt.Sprintf("%s.post", s.Id), nil, hook.Stage, nil}).Run(conductor, opts...),
 		)
 	}
 	return diags
