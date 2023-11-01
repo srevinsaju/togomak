@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"github.com/acarl005/stripansi"
+	"github.com/alessio/shellescape"
 	"github.com/fatih/color"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
@@ -73,6 +74,20 @@ var StripAnsiFunc = function.New(&function.Spec{
 	Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 		message := args[0].AsString()
 		return cty.StringVal(stripansi.Strip(message)), nil
+	},
+})
+
+var ShellEscapeFunc = function.New(&function.Spec{
+	Params: []function.Parameter{
+		{
+			Name: "message",
+			Type: cty.String,
+		},
+	},
+	Type: function.StaticReturnType(cty.String),
+	Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+		message := args[0].AsString()
+		return cty.StringVal(shellescape.Quote(message)), nil
 	},
 })
 

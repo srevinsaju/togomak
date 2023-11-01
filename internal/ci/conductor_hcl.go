@@ -151,7 +151,8 @@ func CreateEvalContext(cfg ConductorConfig, process Process) *hcl.EvalContext {
 			"yamlencode": yaml.YAMLEncodeFunc,
 			"zipmap":     stdlib.ZipmapFunc,
 
-			"stripansi": ui.StripAnsiFunc,
+			"stripansi":   ui.StripAnsiFunc,
+			"shellescape": ui.ShellEscapeFunc,
 
 			"ansifmt": ui.AnsiFunc,
 			"env": function.New(&function.Spec{
