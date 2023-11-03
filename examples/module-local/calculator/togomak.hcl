@@ -20,3 +20,11 @@ stage "add" {
   if = var.operation == "add"
   script = "echo ${var.a} + ${var.b} is ${var.a + var.b}"
 }
+
+stage "paths" {
+  script = <<-EOT
+  echo path.module: ${path.module}
+  echo path.cwd: ${path.cwd}
+  echo path.root: ${path.root}
+  EOT
+}

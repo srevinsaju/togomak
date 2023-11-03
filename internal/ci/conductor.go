@@ -281,10 +281,6 @@ func NewConductor(cfg ConductorConfig, opts ...ConductorOption) *Conductor {
 		Process:    process,
 		RootLogger: logger,
 		Config:     cfg,
-		eval: &Eval{
-			context: CreateEvalContext(cfg, process),
-			mu:      &sync.RWMutex{},
-		},
 	}
 	for _, v := range cfg.Variables {
 		c.variables = append(c.variables, v)
@@ -292,6 +288,10 @@ func NewConductor(cfg ConductorConfig, opts ...ConductorOption) *Conductor {
 
 	for _, opt := range opts {
 		opt(c)
+	}
+	c.eval = &Eval{
+		context: CreateEvalContext(c.Config, process),
+		mu:      &sync.RWMutex{},
 	}
 
 	if !c.Config.Behavior.Child.Enabled {
