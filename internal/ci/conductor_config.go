@@ -2,6 +2,7 @@ package ci
 
 import (
 	"github.com/srevinsaju/togomak/v1/internal/behavior"
+	"github.com/srevinsaju/togomak/v1/internal/logging"
 	"github.com/srevinsaju/togomak/v1/internal/path"
 	"github.com/srevinsaju/togomak/v1/internal/rules"
 )
@@ -33,4 +34,6 @@ type ConductorConfig struct {
 	Behavior *behavior.Behavior
 
 	Variables Variables
+
+	Logging logging.Config
 }

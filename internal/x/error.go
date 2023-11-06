@@ -5,3 +5,10 @@ func Must(err error) {
 		panic(err)
 	}
 }
+
+func MustReturn(v any, err error) any {
+	if err != nil {
+		panic(err)
+	}
+	return v
+}
