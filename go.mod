@@ -3,6 +3,7 @@ module github.com/srevinsaju/togomak/v1
 go 1.20
 
 require (
+	cloud.google.com/go/logging v1.7.0
 	code.gitea.io/gitea v1.19.3
 	github.com/AlecAivazis/survey/v2 v2.3.6
 	github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2
@@ -25,6 +26,7 @@ require (
 	github.com/mattn/go-isatty v0.0.17
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/moby/sys/mountinfo v0.6.2
+	github.com/rifflock/lfshook v0.0.0-20180920164130-b9218ef580f5
 	github.com/sirupsen/logrus v1.9.2
 	github.com/spf13/afero v1.9.5
 	github.com/stretchr/testify v1.8.2
@@ -33,6 +35,7 @@ require (
 	github.com/zclconf/go-cty-yaml v1.0.3
 	golang.org/x/crypto v0.14.0
 	golang.org/x/text v0.13.0
+	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1
 )
 
 require (
@@ -40,6 +43,7 @@ require (
 	cloud.google.com/go/compute v1.19.1 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	cloud.google.com/go/iam v0.13.0 // indirect
+	cloud.google.com/go/longrunning v0.4.1 // indirect
 	cloud.google.com/go/storage v1.28.1 // indirect
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
@@ -57,10 +61,10 @@ require (
 	github.com/ulikunitz/xz v0.5.11 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/oauth2 v0.7.0 // indirect
+	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/api v0.114.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
 	google.golang.org/grpc v1.56.3 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
 )

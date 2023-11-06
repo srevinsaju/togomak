@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/sirupsen/logrus"
 	"github.com/srevinsaju/togomak/v1/internal/conductor"
+	"github.com/srevinsaju/togomak/v1/internal/logging"
 	"github.com/srevinsaju/togomak/v1/internal/meta"
 	"github.com/srevinsaju/togomak/v1/internal/x"
 	"os"
@@ -259,7 +260,19 @@ func NewConductor(cfg ConductorConfig, opts ...ConductorOption) *Conductor {
 
 	diagWriter := hcl.NewDiagnosticTextWriter(os.Stdout, parser.Files(), 0, true)
 
-	logger := NewLogger(cfg)
+	process := NewProcess(cfg)
+	// create a new logger derived from conductor configurations
+	logger, err := logging.New(logging.Config{
+		Verbosity:     cfg.Logging.Verbosity,
+		Child:         cfg.Logging.Child,
+		IsCI:          cfg.Logging.IsCI,
+		JSON:          cfg.Logging.JSON,
+		CorrelationID: process.Id.String(),
+		Sinks:         cfg.Logging.Sinks,
+	})
+	if err != nil {
+		panic(err)
+	}
 
 	dir := Chdir(cfg, logger)
 	if dir != cfg.Paths.Cwd {
@@ -268,8 +281,6 @@ func NewConductor(cfg ConductorConfig, opts ...ConductorOption) *Conductor {
 	if cfg.Paths.Module == "" {
 		cfg.Paths.Module = cfg.Paths.Cwd
 	}
-
-	process := NewProcess(cfg)
 
 	c := &Conductor{
 		Parser: &Parser{

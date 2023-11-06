@@ -9,6 +9,7 @@ import (
 	"github.com/srevinsaju/togomak/v1/internal/ci"
 	"github.com/srevinsaju/togomak/v1/internal/filter"
 	"github.com/srevinsaju/togomak/v1/internal/global"
+	"github.com/srevinsaju/togomak/v1/internal/logging"
 	"github.com/srevinsaju/togomak/v1/internal/meta"
 	"github.com/srevinsaju/togomak/v1/internal/orchestra"
 	"github.com/srevinsaju/togomak/v1/internal/path"
@@ -157,6 +158,29 @@ func main() {
 				"Variables set this way take precedence over variables set in the pipeline file.",
 			Aliases: []string{"variable"},
 		},
+		&cli.BoolFlag{
+			Name:    "logging.remote.google-cloud",
+			Usage:   "Enable remote logging to Google Cloud",
+			EnvVars: []string{"TOGOMAK_LOGGING_REMOTE_GCLOUD"},
+			Value:   false,
+		},
+		&cli.StringFlag{
+			Name:    "logging.remote.google-cloud.project",
+			Usage:   "Google Cloud project ID where logs are ingested",
+			EnvVars: []string{"TOGOMAK_LOGGING_REMOTE_GCLOUD_PROJECT", "GOOGLE_CLOUD_PROJECT"},
+		},
+		&cli.BoolFlag{
+			Name:    "logging.local.file",
+			Usage:   "Enable local logging to a file",
+			EnvVars: []string{"TOGOMAK_LOGGING_LOCAL_FILE"},
+			Value:   false,
+		},
+		&cli.StringFlag{
+			Name:    "logging.local.file.path",
+			Usage:   "Path to the file where logs are written",
+			EnvVars: []string{"TOGOMAK_LOGGING_LOCAL_FILE_PATH"},
+			Value:   "togomak.log",
+		},
 	}
 	cli.VersionFlag = &cli.BoolFlag{
 		Name:    "version",
@@ -261,13 +285,26 @@ func newConfigFromCliContext(ctx *cli.Context) ci.ConductorConfig {
 			DryRun:      ctx.Bool("dry-run"),
 		},
 		Variables: variables,
+
+		Logging: logging.Config{
+			Verbosity:     verboseCount,
+			Child:         ctx.Bool("child"),
+			IsCI:          ctx.Bool("ci"),
+			JSON:          ctx.Bool("json"),
+			CorrelationID: "",
+			Sinks:         logging.ParseSinksFromCLI(ctx),
+		},
 	}
 	return cfg
 }
 
 func run(ctx *cli.Context) error {
 	cfg := newConfigFromCliContext(ctx)
-	logger := ci.NewLogger(cfg)
+	logger, err := logging.New(cfg.Logging)
+	if err != nil {
+		panic(err)
+	}
+
 	global.SetLogger(logger)
 
 	t := ci.NewConductor(cfg)
