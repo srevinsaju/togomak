@@ -16,6 +16,7 @@ import (
 	"github.com/srevinsaju/togomak/v1/internal/rules"
 	"github.com/urfave/cli/v2"
 	"os"
+	"strings"
 )
 
 var verboseCount = 0
@@ -228,8 +229,14 @@ func newConfigFromCliContext(ctx *cli.Context) ci.ConductorConfig {
 		hostname = "localhost"
 	}
 
+	args := ctx.Args().Slice()
+	envArgs := os.Getenv("TOGOMAK_ARGS")
+	if envArgs != "" {
+		args = append(args, strings.Split(envArgs, " ")...)
+	}
+
 	var stages []filter.Item
-	for _, stage := range ctx.Args().Slice() {
+	for _, stage := range args {
 		stages = append(stages, filter.NewFilterItem(stage))
 	}
 
@@ -240,7 +247,7 @@ func newConfigFromCliContext(ctx *cli.Context) ci.ConductorConfig {
 		diagWriter.WriteDiagnostics(d)
 		os.Exit(1)
 	}
-	filtered, d := rules.Unmarshal(ctx.Args().Slice())
+	filtered, d := rules.Unmarshal(args)
 	if d.HasErrors() {
 		diagWriter.WriteDiagnostics(d)
 		os.Exit(1)
