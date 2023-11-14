@@ -18,10 +18,10 @@ const (
 )
 
 var (
-	operationAddMatcher = regexp.MustCompile(`^\+([a-zA-Z0-9.\-_]+)$`)
-	operationSubMatcher = regexp.MustCompile(`^\^([a-zA-Z0-9.\-_]+)$`)
+	operationAddMatcher = regexp.MustCompile(`^\+([a-zA-Z0-9.\-:_]+)$`)
+	operationSubMatcher = regexp.MustCompile(`^\^([a-zA-Z0-9.\-:_]+)$`)
 
-	operationAndMatcher = regexp.MustCompile(`^([a-zA-Z0-9.\-_]+)$`)
+	operationAndMatcher = regexp.MustCompile(`^([a-zA-Z0-9.\-:_]+)$`)
 )
 
 var OperationTypes = []OperationType{

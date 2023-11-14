@@ -125,8 +125,9 @@ func TestCanRun(t *testing.T) {
 		t.Errorf("error while parsing rules: %s", d.Error())
 		return
 	}
+	conductor.Config.Pipeline.Filtered = filtered
 
-	ok, overridden, err := BlockCanRun(&stage1, conductor, filtered, nil, stage1.Identifier(), depGraph)
+	ok, overridden, err := BlockCanRun(&stage1, conductor, stage1.Identifier(), depGraph)
 	if err != nil {
 		t.Errorf("error while running BlockCanRun: %s", err.Error())
 		return
@@ -140,7 +141,7 @@ func TestCanRun(t *testing.T) {
 		return
 	}
 
-	ok, overridden, err = BlockCanRun(&stage3, conductor, filtered, nil, stage3.Identifier(), depGraph)
+	ok, overridden, err = BlockCanRun(&stage3, conductor, stage3.Identifier(), depGraph)
 	if err != nil {
 		t.Errorf("error while running BlockCanRun: %s", err.Error())
 		return
@@ -150,7 +151,7 @@ func TestCanRun(t *testing.T) {
 		return
 	}
 
-	ok, overridden, err = BlockCanRun(&stage2, conductor, filtered, nil, stage2.Identifier(), depGraph)
+	ok, overridden, err = BlockCanRun(&stage2, conductor, stage2.Identifier(), depGraph)
 	if err != nil {
 		t.Errorf("error while running BlockCanRun: %s", err.Error())
 		return
@@ -160,7 +161,7 @@ func TestCanRun(t *testing.T) {
 		return
 	}
 
-	ok, overridden, err = BlockCanRun(&stage2, conductor, nil, nil, stage2.Identifier(), depGraph)
+	ok, overridden, err = BlockCanRun(&stage2, conductor, stage2.Identifier(), depGraph)
 	if err != nil {
 		t.Errorf("error while running BlockCanRun: %s", err.Error())
 		return
@@ -170,7 +171,7 @@ func TestCanRun(t *testing.T) {
 		return
 	}
 
-	ok, overridden, err = BlockCanRun(&stage1, conductor, nil, nil, stage1.Identifier(), depGraph)
+	ok, overridden, err = BlockCanRun(&stage1, conductor, stage1.Identifier(), depGraph)
 	if err != nil {
 		t.Errorf("error while running BlockCanRun: %s", err.Error())
 		return
@@ -185,8 +186,9 @@ func TestCanRun(t *testing.T) {
 		t.Errorf("error while parsing rules: %s", d.Error())
 		return
 	}
+	conductor.Config.Pipeline.Filtered = filtered
 
-	ok, overridden, err = BlockCanRun(&stage1, conductor, filtered, nil, stage1.Identifier(), depGraph)
+	ok, overridden, err = BlockCanRun(&stage1, conductor, stage1.Identifier(), depGraph)
 	if err != nil {
 		t.Errorf("error while running BlockCanRun: %s", err.Error())
 		return
@@ -195,7 +197,7 @@ func TestCanRun(t *testing.T) {
 		t.Errorf("%s should be runnable", stage1.Identifier())
 		return
 	}
-	ok, overridden, err = BlockCanRun(&stage2, conductor, filtered, nil, stage2.Identifier(), depGraph)
+	ok, overridden, err = BlockCanRun(&stage2, conductor, stage2.Identifier(), depGraph)
 	if err != nil {
 		t.Errorf("error while running BlockCanRun: %s", err.Error())
 		return
@@ -210,7 +212,8 @@ func TestCanRun(t *testing.T) {
 		t.Errorf("error while parsing rules: %s", d.Error())
 		return
 	}
-	ok, overridden, err = BlockCanRun(&stage1, conductor, filtered, nil, stage1.Identifier(), depGraph)
+	conductor.Config.Pipeline.Filtered = filtered
+	ok, overridden, err = BlockCanRun(&stage1, conductor, stage1.Identifier(), depGraph)
 	if err != nil {
 		t.Errorf("error while running BlockCanRun: %s", err.Error())
 		return
@@ -218,7 +221,7 @@ func TestCanRun(t *testing.T) {
 	if ok {
 		t.Errorf("%s should not be runnable", stage1.Identifier())
 	}
-	ok, overridden, err = BlockCanRun(&stage2, conductor, filtered, nil, stage2.Identifier(), depGraph)
+	ok, overridden, err = BlockCanRun(&stage2, conductor, stage2.Identifier(), depGraph)
 	if err != nil {
 		t.Errorf("error while running BlockCanRun: %s", err.Error())
 		return

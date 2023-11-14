@@ -10,6 +10,7 @@ import (
 	"github.com/srevinsaju/togomak/v1/internal/conductor"
 	"github.com/srevinsaju/togomak/v1/internal/logging"
 	"github.com/srevinsaju/togomak/v1/internal/meta"
+	"github.com/srevinsaju/togomak/v1/internal/rules"
 	"github.com/srevinsaju/togomak/v1/internal/x"
 	"os"
 	"path/filepath"
@@ -106,6 +107,8 @@ type Conductor struct {
 
 	// Eval has the evaluation context and mutexes associated with Eval Variable maps
 	eval *Eval
+
+	filterList *rules.Operations
 
 	parent *Conductor
 

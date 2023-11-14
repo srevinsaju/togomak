@@ -7,6 +7,7 @@ import (
 	"github.com/srevinsaju/togomak/v1/internal/blocks"
 	"github.com/srevinsaju/togomak/v1/internal/rules"
 	"github.com/srevinsaju/togomak/v1/internal/runnable"
+	"github.com/zclconf/go-cty/cty"
 	"time"
 )
 
@@ -71,8 +72,10 @@ func BlockRunWithRetries(conductor *Conductor, runnableId string, runnable Block
 	}
 }
 
-func BlockCanRun(runnable Block, conductor *Conductor, filterList rules.Operations, filterQuery QueryEngines, runnableId string, depGraph *depgraph.Graph, opts ...runnable.Option) (ok bool, overridden bool, diags hcl.Diagnostics) {
+func BlockCanRun(runnable Block, conductor *Conductor, runnableId string, depGraph *depgraph.Graph, opts ...runnable.Option) (ok bool, overridden bool, diags hcl.Diagnostics) {
 
+	filterList := conductor.Config.Pipeline.Filtered
+	filterQuery := conductor.Config.Pipeline.FilterQuery
 	ok, d := runnable.CanRun(conductor, opts...)
 	if d.HasErrors() {
 		diags = diags.Extend(d)
@@ -109,6 +112,30 @@ func BlockCanRun(runnable Block, conductor *Conductor, filterList rules.Operatio
 	ok = false
 	overridden = false
 
+	// if the list is empty, we will assume that the runnable is not overridden
+	// and we will run all module blocks. This is so that the child processoe
+	var phases []cty.Value
+	var phasesDefined bool
+	stage := runnable.(PhasedBlock)
+	if stage.LifecycleConfig() != nil {
+		evalContext := conductor.Eval().Context()
+		conductor.Eval().Mutex().RLock()
+		phaseHcl, d := stage.LifecycleConfig().Phase.Value(evalContext)
+		conductor.Eval().Mutex().RUnlock()
+		if d.HasErrors() {
+			diags = diags.Extend(d)
+			return false, false, diags
+		}
+		phasesDefined = !phaseHcl.IsNull()
+		phases = phaseHcl.AsValueSlice()
+	}
+
+	if runnable.Type() == blocks.ModuleBlock && len(phases) == 0 && !phasesDefined {
+		ok = oldOk
+		overridden = false
+		return ok, overridden, diags
+	}
+
 	for _, rule := range filterList {
 		if rule.RunnableId() == runnableId && rule.Operation() == rules.OperationTypeAdd {
 			ok = true
@@ -127,19 +154,7 @@ func BlockCanRun(runnable Block, conductor *Conductor, filterList rules.Operatio
 			overridden = true
 		}
 		if runnable.Type() == blocks.StageBlock || runnable.Type() == blocks.ModuleBlock {
-			stage := runnable.(PhasedBlock)
-			if stage.LifecycleConfig() != nil {
-				evalContext := conductor.Eval().Context()
-				conductor.Eval().Mutex().RLock()
-				phaseHcl, d := stage.LifecycleConfig().Phase.Value(evalContext)
-				conductor.Eval().Mutex().RUnlock()
-
-				if d.HasErrors() {
-					diags = diags.Extend(d)
-					return false, false, diags
-				}
-				phases := phaseHcl.AsValueSlice()
-
+			if phasesDefined {
 				for _, phase := range phases {
 					if rule.RunnableId() == phase.AsString() {
 						overridden = false

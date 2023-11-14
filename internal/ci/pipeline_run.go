@@ -53,12 +53,6 @@ func (pipe *Pipeline) Run(conductor *Conductor) (*Handler, dg.AbstractDiagnostic
 	h = h.Update(WithContext(ctx))
 	conductor.Update(ConductorWithContext(ctx))
 
-	// --> validate the pipeline
-	// TODO: validate the pipeline
-	// whitelist all stages if unspecified
-	filterList := cfg.Pipeline.Filtered
-	filterQuery := cfg.Pipeline.FilterQuery
-
 	// --> generate a dependency graph
 	// we will now generate a dependency graph from the pipeline
 	// this will be used to generate the pipeline
@@ -97,7 +91,7 @@ func (pipe *Pipeline) Run(conductor *Conductor) (*Handler, dg.AbstractDiagnostic
 				break
 			}
 
-			ok, overridden, d := BlockCanRun(runnable, conductor, filterList, filterQuery, runnableId, depGraph, opts...)
+			ok, overridden, d := BlockCanRun(runnable, conductor, runnableId, depGraph, opts...)
 			h.Diags.Extend(d)
 			if d.HasErrors() {
 				break

@@ -114,9 +114,6 @@ func (s *Stage) expandMacros(conductor *Conductor, opts ...runnable.Option) (*St
 			})
 		}
 		sourceEvaluated := source.AsString()
-		if !strings.HasSuffix(sourceEvaluated, ".hcl") {
-			sourceEvaluated = filepath.Join(sourceEvaluated, meta.ConfigFileName)
-		}
 		macro = &Macro{
 			Source: sourceEvaluated,
 			Id:     uuid.New().String(),
