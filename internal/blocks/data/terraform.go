@@ -280,8 +280,16 @@ func getObjectType(m map[string]interface{}) map[string]cty.Value {
 		}
 		typeOf := typeRaw.Kind()
 		if typeOf == reflect.Map {
+			if len(v.(map[string]interface{})) == 0 {
+				s[k] = cty.ObjectVal(map[string]cty.Value{})
+				continue
+			}
 			s[k] = cty.ObjectVal(getObjectType(v.(map[string]interface{})))
 		} else if typeOf == reflect.Slice {
+			if len(v.([]interface{})) == 0 {
+				s[k] = cty.ListValEmpty(cty.String)
+				continue
+			}
 			s[k] = cty.ListVal(getListType(v.([]interface{})))
 		} else {
 			impliedType, err := gocty.ImpliedType(v)
