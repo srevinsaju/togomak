@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [v2.0.0-alpha.16]
 - Add `stage.*.container.skip_workspace` boolean parameter to skip mounting the current working directory when using the docker plugin
+- Do not pass the PATH and host environment variables to the child docker container
 
 ## [v2.0.0-alpha.14]
 - Fixes `depends_on` not being respected on modules.
