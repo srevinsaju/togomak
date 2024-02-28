@@ -587,8 +587,9 @@ func (s *Stage) executeDocker(conductor *Conductor, evalCtx *hcl.EvalContext, cm
 	}
 
 	logger.Trace("parsing container arguments")
-	binds := []string{
-		fmt.Sprintf("%s:/workspace", cmd.Dir),
+	var binds []string
+	if !s.Container.SkipWorkspace {
+		binds = append(binds, fmt.Sprintf("%s:/workspace", cmd.Dir))
 	}
 
 	logger.Trace("parsing container volumes")
@@ -614,11 +615,11 @@ func (s *Stage) executeDocker(conductor *Conductor, evalCtx *hcl.EvalContext, cm
 
 	logger.Trace("dry run check")
 	if cfg.Behavior.DryRun {
-		fmt.Println(ui.Blue("docker:run.image"), ui.Green(image))
-		fmt.Println(ui.Blue("docker:run.workdir"), ui.Green("/workspace"))
-		fmt.Println(ui.Blue("docker:run.volume"), ui.Green(cmd.Dir+":/workspace"))
-		fmt.Println(ui.Blue("docker:run.stdin"), ui.Green(s.Container.Stdin))
-		fmt.Println(ui.Blue("docker:run.args"), ui.Green(cmd.String()))
+		fmt.Println(ui.Blue("# docker:run.image"), ui.Green(image))
+		fmt.Println(ui.Blue("# docker:run.workdir"), ui.Green("/workspace"))
+		fmt.Println(ui.Blue("# docker:run.volume"), ui.Green(cmd.Dir+":/workspace"))
+		fmt.Println(ui.Blue("# docker:run.stdin"), ui.Green(s.Container.Stdin))
+		fmt.Println(ui.Blue("# docker:run.args"), ui.Green(cmd.String()))
 		return diags
 	}
 

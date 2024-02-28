@@ -44,6 +44,9 @@ type StageContainer struct {
 	// Volumes have a list of host path volume mapping which is bound on docker run
 	Volumes StageContainerVolumes `hcl:"volume,block" json:"volumes"`
 
+	// SkipWorkspace allows you to skip mounting the workspace directory
+	SkipWorkspace bool `hcl:"skip_workspace,optional" json:"skip_workspace"`
+
 	// Ports have a list of ports that needs to be exposed from the container
 	Ports StageContainerPorts `hcl:"port,block" json:"ports"`
 
