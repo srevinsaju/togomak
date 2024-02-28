@@ -498,7 +498,7 @@ func (s *Stage) run(conductor *Conductor, evalCtx *hcl.EvalContext, options ...r
 
 	envStrings := s.processEnvironmentVariables(conductor, environment, cfg, tmpDir, paramsGo)
 
-	cmd, d := s.parseExecCommand(conductor, evalCtx, cfg, envStrings, stream)
+	cmd, d := s.parseExecCommand(conductor, evalCtx, cfg, stream)
 	diags.Extend(d)
 	if diags.HasErrors() {
 		return diags.Diagnostics()
@@ -507,6 +507,7 @@ func (s *Stage) run(conductor *Conductor, evalCtx *hcl.EvalContext, options ...r
 	logger.Tracef("script: %.30s... ", cmd.String())
 
 	if s.Container == nil {
+		cmd.Env = append(os.Environ(), envStrings...)
 		s.process = cmd
 		logger.Tracef("running command: %.30s...", cmd.String())
 		if !cfg.Behavior.DryRun {
@@ -520,6 +521,7 @@ func (s *Stage) run(conductor *Conductor, evalCtx *hcl.EvalContext, options ...r
 			fmt.Println(cmd.String())
 		}
 	} else {
+		cmd.Env = envStrings
 		d := s.executeDocker(conductor, evalCtx, cmd, cfg)
 		diags.Extend(d)
 	}
@@ -587,8 +589,9 @@ func (s *Stage) executeDocker(conductor *Conductor, evalCtx *hcl.EvalContext, cm
 	}
 
 	logger.Trace("parsing container arguments")
-	binds := []string{
-		fmt.Sprintf("%s:/workspace", cmd.Dir),
+	var binds []string
+	if !s.Container.SkipWorkspace {
+		binds = append(binds, fmt.Sprintf("%s:/workspace", cmd.Dir))
 	}
 
 	logger.Trace("parsing container volumes")
@@ -614,11 +617,11 @@ func (s *Stage) executeDocker(conductor *Conductor, evalCtx *hcl.EvalContext, cm
 
 	logger.Trace("dry run check")
 	if cfg.Behavior.DryRun {
-		fmt.Println(ui.Blue("docker:run.image"), ui.Green(image))
-		fmt.Println(ui.Blue("docker:run.workdir"), ui.Green("/workspace"))
-		fmt.Println(ui.Blue("docker:run.volume"), ui.Green(cmd.Dir+":/workspace"))
-		fmt.Println(ui.Blue("docker:run.stdin"), ui.Green(s.Container.Stdin))
-		fmt.Println(ui.Blue("docker:run.args"), ui.Green(cmd.String()))
+		fmt.Println(ui.Blue("# docker:run.image"), ui.Green(image))
+		fmt.Println(ui.Blue("# docker:run.workdir"), ui.Green("/workspace"))
+		fmt.Println(ui.Blue("# docker:run.volume"), ui.Green(cmd.Dir+":/workspace"))
+		fmt.Println(ui.Blue("# docker:run.stdin"), ui.Green(s.Container.Stdin))
+		fmt.Println(ui.Blue("# docker:run.args"), ui.Green(cmd.String()))
 		return diags
 	}
 
@@ -631,12 +634,9 @@ func (s *Stage) executeDocker(conductor *Conductor, evalCtx *hcl.EvalContext, cm
 
 	logger.Trace("creating container")
 	resp, err := cli.ContainerCreate(conductor.Context(), &dockerContainer.Config{
-		Image:      image,
-		Cmd:        cmd.Args,
-		WorkingDir: "/workspace",
-		Volumes: map[string]struct{}{
-			"/workspace": {},
-		},
+		Image:        image,
+		WorkingDir:   "/workspace",
+		Cmd:          cmd.Args,
 		Tty:          true,
 		AttachStdout: true,
 		AttachStderr: true,
@@ -766,7 +766,7 @@ func (s *Stage) parseEnvironmentVariables(conductor *Conductor, evalCtx *hcl.Eva
 	return environment, diags
 }
 
-func (s *Stage) parseExecCommand(conductor *Conductor, evalCtx *hcl.EvalContext, cfg *runnable.Config, envStrings []string, outputBuffer io.Writer) (*exec.Cmd, hcl.Diagnostics) {
+func (s *Stage) parseExecCommand(conductor *Conductor, evalCtx *hcl.EvalContext, cfg *runnable.Config, outputBuffer io.Writer) (*exec.Cmd, hcl.Diagnostics) {
 	var diags hcl.Diagnostics
 	logger := conductor.Logger().WithField("stage", s.Id)
 
@@ -832,7 +832,6 @@ func (s *Stage) parseExecCommand(conductor *Conductor, evalCtx *hcl.EvalContext,
 	cmd := exec.CommandContext(conductor.Context(), cmdHcl.command, cmdHcl.args...)
 	cmd.Stdout = io.MultiWriter(logger.Writer(), outputBuffer)
 	cmd.Stderr = io.MultiWriter(logger.Writer(), outputBuffer)
-	cmd.Env = append(os.Environ(), envStrings...)
 	cmd.Dir = dir
 	return cmd, diags
 }
@@ -970,11 +969,16 @@ func (s *Stage) hclEndpoint(conductor *Conductor, evalCtx *hcl.EvalContext) ([]s
 	conductor.Eval().Mutex().RUnlock()
 
 	var entrypoint []string
+
 	if d.HasErrors() {
 		diags = diags.Extend(d)
-	} else if entrypointRaw.IsNull() {
-		entrypoint = nil
-	} else if !entrypointRaw.CanIterateElements() {
+		return nil, diags
+	}
+
+	if entrypointRaw.IsNull() {
+		return nil, diags
+	}
+	if !entrypointRaw.CanIterateElements() {
 		diags = diags.Append(&hcl.Diagnostic{
 			Severity:    hcl.DiagError,
 			Summary:     "entrypoint must be a list of strings",
@@ -982,11 +986,12 @@ func (s *Stage) hclEndpoint(conductor *Conductor, evalCtx *hcl.EvalContext) ([]s
 			Subject:     s.Container.Entrypoint.Range().Ptr(),
 			EvalContext: evalCtx,
 		})
-	} else {
-		v := entrypointRaw.AsValueSlice()
-		for _, e := range v {
-			entrypoint = append(entrypoint, e.AsString())
-		}
+		return nil, diags
+	}
+
+	v := entrypointRaw.AsValueSlice()
+	for _, e := range v {
+		entrypoint = append(entrypoint, e.AsString())
 	}
 	return entrypoint, diags
 }
