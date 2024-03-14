@@ -163,13 +163,28 @@ func (m *Module) run(conductor *Conductor, source string, evalCtx *hcl.EvalConte
 		})
 	}
 
+	var parentLifecycles []string
+	if cfg.Behavior.Child.ParentLifecycles != nil {
+		parentLifecycles = cfg.Behavior.Child.ParentLifecycles
+	}
+	if m.Lifecycle != nil {
+		conductor.Eval().Mutex().RLock()
+		lifecyclePhases, d := m.Lifecycle.Phase.Value(evalCtx)
+		conductor.Eval().Mutex().RUnlock()
+		diags = diags.Extend(d)
+		for _, phase := range lifecyclePhases.AsValueSlice() {
+			parentLifecycles = append(parentLifecycles, phase.AsString())
+		}
+	}
+
 	b := &behavior.Behavior{
 		Unattended: conductor.Config.Behavior.Unattended,
 		Ci:         conductor.Config.Behavior.Ci,
 		Child: behavior.Child{
-			Enabled:      true,
-			Parent:       "",
-			ParentParams: nil,
+			Enabled:          true,
+			Parent:           "",
+			ParentParams:     nil,
+			ParentLifecycles: parentLifecycles,
 		},
 		DryRun: false,
 	}
@@ -194,8 +209,7 @@ func (m *Module) run(conductor *Conductor, source string, evalCtx *hcl.EvalConte
 	conductorOptions = append(conductorOptions, ConductorWithParser(conductor.Parser))
 
 	// populate input variables for the child conductor, which would be passed to the module
-	attrs, d := m.Body.JustAttributes()
-	diags = diags.Extend(d)
+	attrs, _ := m.Body.JustAttributes()
 	for _, attr := range attrs {
 		//we need to evaluate the values first within the parent's evaluation context
 		//before sending it to the child goroutine and child conductor
