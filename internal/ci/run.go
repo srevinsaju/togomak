@@ -112,10 +112,16 @@ func BlockCanRun(runnable Block, conductor *Conductor, runnableId string, depGra
 	ok = false
 	overridden = false
 
-	// if the list is empty, we will assume that the runnable is not overridden
+	// if the list is empty, we will assume that the runnable is not overridden,
 	// and we will run all module blocks. This is so that the child processoe
 	var phases []cty.Value
-	var phasesDefined bool
+
+	// if the parent config has lifecycles defined, we will append it to the child
+	for _, phase := range conductor.Config.Behavior.Child.ParentLifecycles {
+		phases = append(phases, cty.StringVal(phase))
+	}
+
+	var phasesDefined bool = len(phases) > 0
 	stage := runnable.(PhasedBlock)
 	if stage.LifecycleConfig() != nil {
 		evalContext := conductor.Eval().Context()
@@ -126,8 +132,8 @@ func BlockCanRun(runnable Block, conductor *Conductor, runnableId string, depGra
 			diags = diags.Extend(d)
 			return false, false, diags
 		}
-		phasesDefined = !phaseHcl.IsNull()
-		phases = phaseHcl.AsValueSlice()
+		phasesDefined = !phaseHcl.IsNull() || len(phases) > 0
+		phases = append(phases, phaseHcl.AsValueSlice()...)
 	}
 
 	if runnable.Type() == blocks.ModuleBlock && len(phases) == 0 && !phasesDefined {

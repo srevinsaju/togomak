@@ -49,6 +49,36 @@ stage "tests" {
   }
 }
 
+stage "module_phase_test" {
+  pre_hook {
+    stage {
+      script = "echo ${ansi.fg.green}${each.key}${ansi.reset}: full"
+    }
+  }
+
+  for_each = toset([
+    "../examples/module-phases-inheritance/togomak.hcl",
+  ])
+
+  depends_on = [stage.build, stage.coverage_prepare]
+  args = [
+    "./togomak_coverage",
+    "-C", dirname(each.key),
+    "--ci", "-v", "-v", "-v",
+    "add"
+  ]
+
+  env {
+    name  = "GOCOVERDIR"
+    value = local.coverage_data_dir
+  }
+  env {
+    name  = "TOGOMAK_VAR_name"
+    value = "bot"
+  }
+
+}
+
 
 stage "tests_dry_run" {
   pre_hook {
@@ -82,7 +112,7 @@ stage "fmt" {
 }
 
 stage "cache" {
-  depends_on = [stage.fmt, stage.tests, stage.tests_dry_run]
+  depends_on = [stage.fmt, stage.tests, stage.tests_dry_run, stage.module_phase_test]
   script     = "./togomak_coverage cache clean --recursive"
 }
 

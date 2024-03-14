@@ -7,6 +7,8 @@ type Child struct {
 	// Parent is the flag to indicate whether the program is running in parent mode
 	Parent string
 
+	ParentLifecycles []string
+
 	// ParentParams is the list of parameters to be passed to the parent
 	ParentParams []string
 }
